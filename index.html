@@ -72,7 +72,8 @@
         </label>
       </div>
       <label>Tags <input name="tags" placeholder="comma, separated" /></label>
-      <label class="check"><input name="newTab" type="checkbox" checked /> Open in new tab</label>
+      <label class="check"><input name="embed" type="checkbox" /> Open inside the launcher</label>
+      <label class="check"><input name="newTab" type="checkbox" checked /> Otherwise open in a new tab</label>
       <datalist id="categoryList"></datalist>
       <div class="dialog-actions">
         <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
@@ -82,6 +83,18 @@
       </div>
     </form>
   </dialog>
+
+  <div id="player" class="player" hidden>
+    <div class="player-bar">
+      <button id="playerBack" class="btn" type="button" aria-label="Back to launcher">← Launcher</button>
+      <img id="playerIcon" alt="" width="24" height="24" />
+      <strong id="playerName"></strong>
+      <span class="spacer"></span>
+      <button id="playerFull" class="btn icon" type="button" title="Full screen" aria-label="Full screen">⛶</button>
+      <a id="playerOpen" class="btn icon" target="_blank" rel="noopener" title="Open in its own tab" aria-label="Open in its own tab">↗</a>
+    </div>
+    <iframe id="playerFrame" title="App" allow="fullscreen; gamepad; autoplay; clipboard-write; pointer-lock" allowfullscreen></iframe>
+  </div>
 
   <input id="importFile" type="file" accept="application/json,.json" hidden />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

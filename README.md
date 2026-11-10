@@ -30,6 +30,7 @@ Edit **`apps.json`**:
       "category": "Tools",                // becomes a filter chip
       "status": "live",                   // live | beta | dev | archived
       "tags": ["web"],
+      "embed": true,                      // play it inside the launcher instead of leaving
       "newTab": true                      // false opens it in the same tab
     }
   ]
@@ -37,6 +38,13 @@ Edit **`apps.json`**:
 ```
 
 You can also use **+ Add app** in the UI. Changes made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
+
+## Apps inside the launcher
+
+Apps with `"embed": true` open in a player inside the launcher, with a back button, full screen and an "open in its own tab" button.
+
+- **Project SuperInk** is still its own game with its own site and repo. The launcher just plays that site in the player.
+- **Orca** is built in: its chat page lives in `orca/`. It talks to the Cloudflare Worker from [breeezyy111/Ai](https://github.com/breeezyy111/Ai). Paste the Worker address into `orca/config.js` (`apiUrl`) once it is deployed.
 
 ## Features
 
@@ -55,5 +63,6 @@ You can also use **+ Add app** in the UI. Changes made in the UI are saved in th
 | `styles.css` | Styles (light and dark themes) |
 | `app.js` | All logic |
 | `apps.json` | The app registry |
+| `orca/` | Orca's chat page, built into the launcher |
 | `sw.js`, `manifest.webmanifest` | Offline support and install as an app |
 | `.github/workflows/pages.yml` | Deploys to GitHub Pages |

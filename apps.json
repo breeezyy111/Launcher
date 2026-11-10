@@ -9,18 +9,20 @@
       "color": "#ff2fa8",
       "category": "Games",
       "tags": ["game", "multiplayer", "typescript", "vite"],
-      "status": "live"
+      "status": "live",
+      "embed": true
     },
     {
       "id": "orca",
       "name": "Orca",
-      "description": "Friendly AI chat and coding assistant. Attach images, PDFs and code.",
-      "url": "https://breeezyy111.github.io/Ai/",
-      "icon": "icons/orca.svg",
-      "color": "#2563eb",
+      "description": "Friendly AI chat and coding assistant, built into the launcher.",
+      "url": "orca/",
+      "icon": "orca/icons/icon.svg",
+      "color": "#6d4ff5",
       "category": "AI",
       "tags": ["ai", "chat", "gemini", "assistant"],
-      "status": "beta"
+      "status": "beta",
+      "embed": true
     }
   ]
 }

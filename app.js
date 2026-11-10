@@ -92,7 +92,7 @@
     a.className = 'tile';
     a.href = safeHref(app.url);
     a.dataset.id = app.id;
-    if (app.newTab !== false) { a.target = '_blank'; a.rel = 'noopener'; }
+    if (!app.embed && app.newTab !== false) { a.target = '_blank'; a.rel = 'noopener'; }
     if (app.color) a.style.setProperty('--tile-color', app.color);
 
     const ico = document.createElement('div');
@@ -132,7 +132,14 @@
     );
     a.append(tools);
 
-    a.addEventListener('click', () => recordLaunch(app.id));
+    a.addEventListener('click', (e) => {
+      recordLaunch(app.id);
+      // Plain clicks on embeddable apps play inside the launcher; ctrl/cmd-click still opens a tab.
+      if (app.embed && a.getAttribute('href') !== '#' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        location.hash = '#/play/' + encodeURIComponent(app.id);
+      }
+    });
     return a;
   }
 
@@ -229,6 +236,7 @@
     f.category.value = app?.category ?? (category !== 'All' ? category : '');
     f.status.value = app?.status ?? '';
     f.tags.value = (app?.tags ?? []).join(', ');
+    f.embed.checked = !!app?.embed;
     f.newTab.checked = app?.newTab !== false;
     dialog.showModal();
     f.name.focus();
@@ -252,6 +260,7 @@
       category: f.category.value.trim(),
       status: f.status.value,
       tags: f.tags.value.split(',').map((t) => t.trim()).filter(Boolean),
+      embed: f.embed.checked,
       newTab: f.newTab.checked,
     };
     local.overrides[id] = app;
@@ -321,6 +330,41 @@
     }
   });
 
+  // ---------- player (apps that run inside the launcher) ----------
+  const player = $('#player');
+  const frame = $('#playerFrame');
+  let playingId = null;
+
+  function syncPlayer() {
+    const m = location.hash.match(/^#\/play\/(.+)$/);
+    const app = m && allApps().find((a) => a.id === decodeURIComponent(m[1]));
+    const href = app ? safeHref(app.url) : '#';
+    if (!app || href === '#') {
+      if (playingId) { frame.src = 'about:blank'; playingId = null; }
+      player.hidden = true;
+      document.body.classList.remove('playing');
+      document.title = 'Launcher';
+      return;
+    }
+    if (playingId !== app.id) { frame.src = href; playingId = app.id; }
+    $('#playerName').textContent = app.name;
+    const icon = $('#playerIcon');
+    icon.hidden = !isImage(app.icon);
+    if (!icon.hidden) icon.src = app.icon;
+    $('#playerOpen').href = href;
+    player.hidden = false;
+    document.body.classList.add('playing');
+    document.title = app.name + ' · Launcher';
+    frame.focus();
+  }
+
+  window.addEventListener('hashchange', syncPlayer);
+  $('#playerBack').addEventListener('click', () => { location.hash = ''; });
+  $('#playerFull').addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (player.requestFullscreen?.() || Promise.reject()).catch(() => toast('Full screen isn’t available here'));
+  });
+
   // ---------- skins ----------
   const SKIN_KEY = 'launcher:skin';
   const SKINS = ['cards', 'springboard', 'poster', 'arcade', 'terminal'];
@@ -343,7 +387,7 @@
   search.addEventListener('input', () => { query = search.value.trim(); selected = 0; render(); });
 
   document.addEventListener('keydown', (e) => {
-    if (dialog.open) return;
+    if (dialog.open || !player.hidden) return;
     const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     if (e.key === '/' && !typing) { e.preventDefault(); search.focus(); search.select(); return; }
     if (e.target !== search) return;
@@ -369,6 +413,7 @@
       toast('Couldn’t load apps.json — showing local apps only');
     }
     render();
+    syncPlayer();
   }
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orca</title>
+  <meta name="description" content="Orca - a friendly AI chat and coding assistant." />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f7f7f9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1c1c24" media="(prefers-color-scheme: dark)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Orca" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand"><img class="logo" src="icons/icon.svg" alt="" /> Orca</div>
+    <button id="new-chat" type="button" title="Start a new chat">New chat</button>
+  </header>
+
+  <main id="chat">
+    <div id="welcome">
+      <h1>Hi, I'm Orca 🐋</h1>
+      <p>Ask me anything, or let me help with your code. You can attach images, PDFs, or code files with 📎.</p>
+    </div>
+  </main>
+
+  <form id="composer">
+    <div id="attachments"></div>
+    <div class="row">
+      <label class="attach" title="Attach files">
+        📎
+        <input id="file-input" type="file" multiple hidden
+          accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf,.txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.c,.cpp,.h,.cs,.go,.rs,.rb,.php,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh,.csv,.lua,.swift,.kt" />
+      </label>
+      <textarea id="input" rows="1" placeholder="Message Orca…" autofocus></textarea>
+      <button id="send" type="submit" title="Send">➤</button>
+    </div>
+    <p class="hint">Enter to send · Shift+Enter for a new line · Orca can make mistakes.</p>
+  </form>
+
+  <script src="config.js"></script>
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
