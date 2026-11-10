@@ -278,6 +278,8 @@
   document.addEventListener('click', () => { menu.hidden = true; });
 
   menu.addEventListener('click', (e) => {
+    const skin = e.target.closest('button')?.dataset.skin;
+    if (skin) { setSkin(skin); return; }
     const action = e.target.closest('button')?.dataset.action;
     if (action === 'export') exportApps();
     if (action === 'import') $('#importFile').click();
@@ -318,6 +320,23 @@
       toast('Import failed: ' + err.message);
     }
   });
+
+  // ---------- skins ----------
+  const SKIN_KEY = 'launcher:skin';
+  const SKINS = ['cards', 'springboard', 'poster', 'arcade', 'terminal'];
+
+  function setSkin(skin, quiet) {
+    if (!SKINS.includes(skin)) skin = 'cards';
+    document.body.dataset.skin = skin;
+    menu.querySelectorAll('[data-skin]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.skin === skin)));
+    try { localStorage.setItem(SKIN_KEY, skin); } catch { /* ignore */ }
+    if (!quiet) toast(`Style: ${skin[0].toUpperCase()}${skin.slice(1)}`);
+  }
+
+  // ?skin=arcade in the URL wins (handy for sharing a look), then the saved choice.
+  let initialSkin = new URLSearchParams(location.search).get('skin');
+  if (!initialSkin) { try { initialSkin = localStorage.getItem(SKIN_KEY); } catch { /* ignore */ } }
+  setSkin(initialSkin || 'cards', true);
 
   // ---------- search + keyboard ----------
   const search = $('#search');

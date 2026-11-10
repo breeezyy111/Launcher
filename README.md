@@ -42,6 +42,7 @@ You can also use **+ Add app** in the UI. Changes made in the UI are saved in th
 - Category filters, plus status badges (live, beta, dev, archived)
 - Pin favourites. Recently launched apps move to the front.
 - Add, edit and delete apps in the UI, with JSON import and export
+- Five styles you can switch in the **⋯** menu: Cards, Springboard (a phone home screen), Poster, Arcade (neon) and Terminal (a list). The choice is remembered, and `?skin=arcade` in the URL forces one.
 - Light and dark themes, works on phones, and keeps working offline once loaded
 
 ## Files
