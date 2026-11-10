@@ -9,7 +9,9 @@ python3 -m http.server 8080
 # open http://localhost:8080
 ```
 
-Any static host works too, like GitHub Pages, Netlify, Vercel or Cloudflare Pages.
+## Live site
+
+`.github/workflows/pages.yml` publishes the launcher to GitHub Pages on every push to `main` (or run it by hand from the Actions tab). One-time setup: repo **Settings → Pages → Source: GitHub Actions**. The site is then at `https://breeezyy111.github.io/Cloud/`.
 
 ## Add your apps
 
@@ -54,3 +56,4 @@ You can also use **+ Add app** in the UI. Changes made in the UI are saved in th
 | `app.js` | All logic |
 | `apps.json` | The app registry |
 | `sw.js`, `manifest.webmanifest` | Offline support and install as an app |
+| `.github/workflows/pages.yml` | Deploys to GitHub Pages |

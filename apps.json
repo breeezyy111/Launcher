@@ -10,6 +10,17 @@
       "category": "Games",
       "tags": ["game", "multiplayer", "typescript", "vite"],
       "status": "live"
+    },
+    {
+      "id": "orca",
+      "name": "Orca",
+      "description": "Friendly AI chat and coding assistant. Attach images, PDFs and code.",
+      "url": "https://breeezyy111.github.io/Ai/",
+      "icon": "icons/orca.svg",
+      "color": "#2563eb",
+      "category": "AI",
+      "tags": ["ai", "chat", "gemini", "assistant"],
+      "status": "beta"
     }
   ]
 }
