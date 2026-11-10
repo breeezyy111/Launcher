@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Launcher</title>
+  <meta name="description" content="One place to open every app I'm building." />
+  <meta name="theme-color" content="#0b0f17" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1 class="brand"><img src="icons/icon.svg" alt="" width="28" height="28" /> Launcher</h1>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search apps…  ( / )" autocomplete="off" aria-label="Search apps" />
+    </div>
+    <div class="actions">
+      <button id="addBtn" class="btn primary" type="button">+ Add app</button>
+      <button id="menuBtn" class="btn icon" type="button" aria-label="More" aria-haspopup="true">⋯</button>
+      <div id="menu" class="menu" hidden>
+        <button type="button" data-action="export">Export apps (JSON)</button>
+        <button type="button" data-action="import">Import apps (JSON)</button>
+        <button type="button" data-action="reset">Reset local changes</button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="filters" class="filters" aria-label="Categories"></nav>
+
+  <main>
+    <section id="pinnedSection" hidden>
+      <h2 class="section-title">Pinned</h2>
+      <div id="pinned" class="grid"></div>
+    </section>
+    <section>
+      <h2 class="section-title" id="allTitle">All apps</h2>
+      <div id="grid" class="grid"></div>
+      <p id="empty" class="empty" hidden>No apps match. <button type="button" class="link" id="emptyAdd">Add one?</button></p>
+    </section>
+  </main>
+
+  <dialog id="editor">
+    <form id="editorForm" method="dialog">
+      <h2 id="editorTitle">Add app</h2>
+      <label>Name <input name="name" required maxlength="60" /></label>
+      <label>URL <input name="url" required placeholder="https://…" /></label>
+      <label>Description <input name="description" maxlength="140" /></label>
+      <div class="row">
+        <label>Icon <input name="icon" placeholder="emoji or image URL" /></label>
+        <label>Color <input name="color" type="color" value="#6366f1" /></label>
+      </div>
+      <div class="row">
+        <label>Category <input name="category" list="categoryList" placeholder="e.g. Tools" /></label>
+        <label>Status
+          <select name="status">
+            <option value="">—</option>
+            <option value="live">Live</option>
+            <option value="beta">Beta</option>
+            <option value="dev">In dev</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+      </div>
+      <label>Tags <input name="tags" placeholder="comma, separated" /></label>
+      <label class="check"><input name="newTab" type="checkbox" checked /> Open in new tab</label>
+      <datalist id="categoryList"></datalist>
+      <div class="dialog-actions">
+        <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input id="importFile" type="file" accept="application/json,.json" hidden />
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

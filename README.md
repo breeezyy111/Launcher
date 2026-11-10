@@ -1,1 +1,55 @@
-# Cloud
+# Launcher
+
+A home screen for all the apps I'm building. It's one static web page with no build step and no dependencies, and you can install it as an app (PWA) on desktop or phone.
+
+## Run it
+
+```bash
+python3 -m http.server 8080
+# open http://localhost:8080
+```
+
+Any static host works too, like GitHub Pages, Netlify, Vercel or Cloudflare Pages.
+
+## Add your apps
+
+Edit **`apps.json`**:
+
+```json
+{
+  "apps": [
+    {
+      "id": "my-app",                     // optional, made from the name if missing
+      "name": "My App",
+      "url": "https://my-app.example.com",
+      "description": "What it does",
+      "icon": "🚀",                        // an emoji, or an image URL/path such as icons/my-app.png
+      "color": "#6366f1",
+      "category": "Tools",                // becomes a filter chip
+      "status": "live",                   // live | beta | dev | archived
+      "tags": ["web"],
+      "newTab": true                      // false opens it in the same tab
+    }
+  ]
+}
+```
+
+You can also use **+ Add app** in the UI. Changes made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
+
+## Features
+
+- Search across name, description, tags and URL. Press `/` to focus it, use the arrow keys to move, and press `Enter` to launch.
+- Category filters, plus status badges (live, beta, dev, archived)
+- Pin favourites. Recently launched apps move to the front.
+- Add, edit and delete apps in the UI, with JSON import and export
+- Light and dark themes, works on phones, and keeps working offline once loaded
+
+## Files
+
+| File | Purpose |
+| --- | --- |
+| `index.html` | Page shell |
+| `styles.css` | Styles (light and dark themes) |
+| `app.js` | All logic |
+| `apps.json` | The app registry |
+| `sw.js`, `manifest.webmanifest` | Offline support and install as an app |

@@ -1,0 +1,26 @@
+{
+  "apps": [
+    {
+      "id": "example-notes",
+      "name": "Notes",
+      "description": "Example entry — replace with one of your apps.",
+      "url": "https://example.com",
+      "icon": "📝",
+      "color": "#f59e0b",
+      "category": "Productivity",
+      "tags": ["example"],
+      "status": "dev"
+    },
+    {
+      "id": "example-dashboard",
+      "name": "Dashboard",
+      "description": "Another example entry.",
+      "url": "https://example.org",
+      "icon": "📊",
+      "color": "#6366f1",
+      "category": "Tools",
+      "tags": ["example"],
+      "status": "live"
+    }
+  ]
+}
