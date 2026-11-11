@@ -3,5 +3,5 @@
 //   apiUrl: 'https://orca-ai.your-name.workers.dev'
 // This copy of Orca is built into the launcher. The Worker code lives in breeezyy111/Orca.
 window.ORCA_CONFIG = {
-  apiUrl: '',
+  apiUrl: 'https://orca.orcabot.workers.dev',
 };

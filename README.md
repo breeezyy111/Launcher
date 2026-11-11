@@ -44,7 +44,7 @@ You can also use **+ Add app** in the UI. Changes made in the UI are saved in th
 Apps with `"embed": true` open in a player inside the launcher, with a back button, full screen and an "open in its own tab" button.
 
 - **Project SuperInk** is still its own game with its own site and repo. The launcher just plays that site in the player.
-- **Orca** is built in: its chat page lives in `orca/`. It talks to the Cloudflare Worker from [breeezyy111/Orca](https://github.com/breeezyy111/Orca). Paste the Worker address into `orca/config.js` (`apiUrl`) once it is deployed.
+- **Orca** is built in: its chat page lives in `orca/`. It talks to the Cloudflare Worker from [breeezyy111/Orca](https://github.com/breeezyy111/Orca). The Worker address is set in `orca/config.js` (`apiUrl`).
 
 ## Features
 
