@@ -222,8 +222,23 @@ async function send() {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: history, stream: true }),
     });
+
+    if (res.ok && (res.headers.get('Content-Type') || '').includes('text/event-stream')) {
+      // The answer arrives piece by piece: show the words as they come in.
+      const result = await readStream(res, typing);
+      if (result.error && !result.text) {
+        result.el?.remove();
+        history.pop();
+        addMessage('assistant', `⚠️ ${result.error}`).classList.add('error');
+      } else {
+        history.push({ role: 'assistant', text: result.text });
+        if (result.error) addMessage('assistant', `⚠️ ${result.error}`).classList.add('error');
+      }
+      return;
+    }
+
     const data = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
     typing.remove();
 
@@ -242,6 +257,48 @@ async function send() {
     setBusy(false);
     input.focus();
   }
+}
+
+// Reads a streamed answer and fills in one message bubble as the text arrives.
+async function readStream(res, typing) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  let error = '';
+  let el = null;
+
+  const handleLine = (line) => {
+    if (!line.startsWith('data:')) return;
+    let piece;
+    try { piece = JSON.parse(line.slice(5)); } catch { return; }
+    if (piece.error) error = piece.error;
+    if (piece.text) {
+      text += piece.text;
+      if (!el) { typing.remove(); el = addMessage('assistant', ''); }
+      const atBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 80;
+      el.innerHTML = renderMarkdown(text);
+      if (atBottom) chatEl.scrollTop = chatEl.scrollHeight;
+    }
+  };
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      lines.forEach((line) => handleLine(line.trim()));
+    }
+    handleLine(buffer.trim());
+  } catch {
+    error = error || 'The connection dropped before Orca finished.';
+  }
+
+  typing.remove();
+  if (el) addCopyButtons(el);
+  return { text, error, el };
 }
 
 function setBusy(value) {
