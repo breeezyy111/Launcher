@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jot</title>
+<style>
+  :root { --bg:#fbfaf7; --side:#f3f1ec; --fg:#1f1d24; --muted:#77737f; --line:#e3e0d8; --accent:#10b981; --sel:#e6f6ef; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141317; --side:#1b1a1f; --fg:#eeedf2; --muted:#9692a0; --line:#2b2a31; --accent:#34d399; --sel:#1d2b26; } }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .app { display:grid; grid-template-columns:280px 1fr; height:100%; }
+  aside { background:var(--side); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  .top { padding:14px; display:flex; gap:8px; }
+  input[type=search] { flex:1; min-width:0; font:inherit; font-size:15px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--fg); }
+  button { font:inherit; font-weight:600; border:0; border-radius:10px; cursor:pointer; min-height:44px; padding:0 14px; background:var(--accent); color:#05281b; }
+  button.ghost { background:transparent; color:var(--muted); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  ul { list-style:none; padding:0 8px 12px; overflow:auto; flex:1; }
+  li button { all:unset; box-sizing:border-box; display:block; width:100%; padding:10px 12px; border-radius:10px; cursor:pointer; }
+  li button:focus-visible { outline:2px solid var(--accent); }
+  li button[aria-current=true] { background:var(--sel); }
+  li b { display:block; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  li span { display:block; font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+  .empty { color:var(--muted); padding:16px; font-size:14px; }
+  section { display:flex; flex-direction:column; min-width:0; min-height:0; }
+  .bar { display:flex; align-items:center; gap:8px; padding:10px 16px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; }
+  .bar .back { display:none; }
+  .bar .grow { flex:1; }
+  textarea { flex:1; border:0; resize:none; padding:24px clamp(16px,5vw,56px); font:inherit; font-size:17px; line-height:1.65; background:transparent; color:var(--fg); }
+  textarea:focus { outline:none; }
+  textarea:first-line { font-weight:700; font-size:1.3em; }
+  @media (max-width: 700px) {
+    .app { grid-template-columns:1fr; }
+    .app.editing aside, .app:not(.editing) section { display:none; }
+    .bar .back { display:inline-block; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside>
+    <div class="top"><input type="search" id="q" placeholder="Search notes" aria-label="Search notes"><button id="add" aria-label="New note" title="New note (Ctrl+Alt+N)">+ New</button></div>
+    <ul id="list"></ul>
+  </aside>
+  <section>
+    <div class="bar"><button class="ghost back" id="back">← Notes</button><span class="grow" id="meta"></span><button class="ghost" id="del">Delete</button></div>
+    <textarea id="ed" placeholder="Start typing. The first line is the title." aria-label="Note"></textarea>
+  </section>
+</div>
+<script>
+(() => {
+  const KEY = 'jot-notes';
+  const store = { get(){ try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; } }, set(v){ try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
+  let notes = store.get() || [{ id: Date.now(), text: 'Welcome to Jot\nNotes save automatically in this browser as you type.\n\nThe first line becomes the title. Use the search box to find anything.', at: Date.now() }];
+  let cur = notes[0]?.id, q = '';
+  const $ = (s) => document.querySelector(s), app = $('#app'), list = $('#list'), ed = $('#ed'), meta = $('#meta');
+  const title = (n) => n.text.trim().split('\n')[0].slice(0, 80) || 'Untitled';
+  const preview = (n) => n.text.trim().split('\n').slice(1).join(' ').trim().slice(0, 90) || 'No more text';
+  const when = (t) => { const d = new Date(t), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : d.toLocaleDateString([], { month:'short', day:'numeric' }); };
+
+  function renderList(){
+    const shown = notes.filter(n => n.text.toLowerCase().includes(q)).sort((a,b) => b.at - a.at);
+    list.replaceChildren(...shown.map(n => { const li = document.createElement('li'), b = document.createElement('button');
+      b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = title(n); b.querySelector('span').textContent = `${when(n.at)} · ${preview(n)}`;
+      b.setAttribute('aria-current', String(n.id === cur)); b.onclick = () => open(n.id); li.append(b); return li; }));
+    if (!shown.length) list.innerHTML = `<li class="empty">${q ? 'No notes match.' : 'No notes yet.'}</li>`;
+  }
+  function open(id){ cur = id; const n = notes.find(n => n.id === id); ed.value = n ? n.text : ''; meta.textContent = n ? `Edited ${when(n.at)}` : ''; app.classList.add('editing'); renderList(); ed.focus(); }
+  function add(){ const n = { id: Date.now(), text: '', at: Date.now() }; notes.push(n); store.set(notes); q = ''; $('#q').value = ''; open(n.id); }
+  ed.addEventListener('input', () => { let n = notes.find(n => n.id === cur); if (!n) { n = { id: Date.now(), text: '', at: 0 }; notes.push(n); cur = n.id; } n.text = ed.value; n.at = Date.now(); meta.textContent = 'Saved'; store.set(notes); renderList(); });
+  $('#add').onclick = add;
+  $('#del').onclick = () => { const n = notes.find(n => n.id === cur); if (!n) return; if (n.text.trim() && !confirm(`Delete "${title(n)}"?`)) return; notes = notes.filter(x => x !== n); store.set(notes); const next = notes.sort((a,b) => b.at - a.at)[0]; app.classList.remove('editing'); next ? open(next.id) : (cur = null, ed.value = '', renderList()); if (matchMedia('(max-width:700px)').matches) app.classList.remove('editing'); };
+  $('#back').onclick = () => { app.classList.remove('editing'); renderList(); };
+  $('#q').addEventListener('input', (e) => { q = e.target.value.toLowerCase(); renderList(); });
+  addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); add(); } });
+  if (cur) { const n = notes.find(n => n.id === cur); ed.value = n.text; meta.textContent = `Edited ${when(n.at)}`; }
+  renderList();
+})();
+</script>
+</body>
+</html>
