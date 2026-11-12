@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0c1222">
+<title>Word Blitz</title>
+<style>
+  :root { --bg:#0c1222; --fg:#f8fafc; --muted:#94a3b8; --tile:#fef3c7; --tile2:#fde68a; --ink:#1e1b4b; --a:#f97316; --ok:#22c55e; --bad:#ef4444; --sel:#38bdf8; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+  body { background:radial-gradient(circle at 50% 0%, #1e3a8a55, transparent 60%), var(--bg); }
+  .app { height:100%; display:flex; flex-direction:column; align-items:center; padding:max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); gap:10px; max-width:980px; margin:0 auto; }
+  .top { width:100%; max-width:440px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .stat small { display:block; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .stat b { font-size:26px; font-variant-numeric:tabular-nums; }
+  .timer { position:relative; width:64px; height:64px; }
+  .timer svg { width:100%; height:100%; transform:rotate(-90deg); }
+  .timer span { position:absolute; inset:0; display:grid; place-items:center; font-weight:900; font-size:20px; font-variant-numeric:tabular-nums; }
+  .timer.low span { color:var(--bad); }
+  .main { flex:1; width:100%; display:flex; gap:20px; align-items:center; justify-content:center; min-height:0; }
+  .boardWrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  #word { height:44px; font-size:30px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--fg); display:flex; align-items:center; gap:10px; }
+  #word.ok { color:var(--ok); } #word.bad { color:var(--bad); animation:shake .3s; } #word.dup { color:#facc15; }
+  #word small { font-size:14px; letter-spacing:0; font-weight:700; text-transform:none; }
+  @keyframes shake { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  .board { position:relative; display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(8px,2.4vw,12px); width:min(88vw, 52vh, 420px); aspect-ratio:1; touch-action:none; }
+  .tile { position:relative; border-radius:18%; background:linear-gradient(180deg,var(--tile),var(--tile2)); color:var(--ink); display:grid; place-items:center; font-weight:900; font-size:clamp(28px, 8vw, 46px); box-shadow:0 6px 0 #b45309, 0 10px 18px #0008; transition:transform .08s, background .08s; text-transform:uppercase; }
+  .tile.qu { font-size:clamp(22px, 6.4vw, 36px); }
+  .tile.sel { background:linear-gradient(180deg,#bae6fd,var(--sel)); box-shadow:0 6px 0 #0369a1, 0 10px 18px #0008; transform:translateY(2px) scale(.97); }
+  .tile.cur { outline:4px solid #fff; outline-offset:3px; }
+  .tile .pts { position:absolute; right:12%; bottom:8%; font-size:clamp(9px,2.2vw,12px); opacity:.6; }
+  svg.path { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+  .side { width:260px; align-self:stretch; display:flex; flex-direction:column; min-height:0; background:#ffffff08; border-radius:16px; padding:12px 14px; }
+  .side h3 { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; }
+  #found { overflow:auto; display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; }
+  #found span { background:#ffffff12; border-radius:8px; padding:3px 8px; font-weight:700; font-size:14px; text-transform:uppercase; }
+  #found span.new { background:#22c55e44; }
+  @media (max-width:760px) { .main { flex-direction:column; gap:12px; } .side { width:100%; max-width:440px; flex:1; } }
+  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 30%, #1e3a8acc, #0c1222f4 70%); padding:16px; overflow:auto; z-index:5; }
+  .screen[hidden] { display:none; }
+  .panel { text-align:center; max-width:520px; width:100%; margin:auto; }
+  h1 { font-size:clamp(50px,14vw,92px); line-height:.86; font-weight:900; letter-spacing:-.02em; }
+  h1 .t { display:inline-block; background:linear-gradient(180deg,var(--tile),var(--tile2)); color:var(--ink); border-radius:14px; padding:0 .1em; margin:3px; box-shadow:0 5px 0 #b45309; font-size:.8em; }
+  h1 .t:nth-child(odd) { transform:rotate(-4deg); } h1 .t:nth-child(even) { transform:rotate(3deg); }
+  p { color:var(--muted); margin:16px 0; line-height:1.5; font-size:15px; }
+  .btn { font:inherit; font-weight:900; font-size:17px; letter-spacing:.05em; text-transform:uppercase; color:#2a1503; background:linear-gradient(180deg,#fdba74,#f97316); border:0; border-radius:999px; padding:14px 34px; cursor:pointer; box-shadow:0 5px 0 #9a3412; }
+  .btn.alt { color:var(--fg); background:#ffffff14; box-shadow:inset 0 0 0 1.5px #ffffff2a; }
+  .btn:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+  .btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+  .howto { text-align:left; background:#ffffff0a; border-radius:14px; padding:12px 16px; margin-top:18px; font-size:13px; line-height:1.65; color:#e2e8f0; }
+  .howto b { color:#fdba74; }
+  kbd { font:inherit; font-size:12px; font-weight:700; border:1px solid #ffffff40; border-bottom-width:2px; border-radius:6px; padding:0 5px; background:#ffffff0d; }
+  .big { font-size:clamp(44px,12vw,72px); font-weight:900; font-variant-numeric:tabular-nums; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  .stats div { background:#ffffff0c; border-radius:12px; padding:10px; } .stats b { display:block; font-size:20px; text-transform:uppercase; } .stats small { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.1em; }
+  .missed { margin-top:14px; text-align:left; font-size:13px; color:var(--muted); line-height:1.7; }
+  .missed b { color:var(--fg); text-transform:uppercase; }
+  #loading { font-size:13px; color:var(--muted); margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top">
+    <div class="stat"><small>Score</small><b id="score">0</b></div>
+    <div class="timer" id="timer"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="#ffffff1a" stroke-width="3"/><circle id="ring" cx="18" cy="18" r="16" fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><span id="time">60</span></div>
+    <div class="stat" style="text-align:right"><small>Words</small><b id="count">0</b></div>
+  </div>
+  <div class="main">
+    <div class="boardWrap">
+      <div id="word"></div>
+      <div class="board" id="board"><svg class="path" id="path"></svg></div>
+    </div>
+    <div class="side"><h3><span>Found</span><span id="best"></span></h3><div id="found"></div></div>
+  </div>
+</div>
+<div class="screen" id="menu">
+  <div class="panel">
+    <h1><span class="t">W</span><span class="t">O</span><span class="t">R</span><span class="t">D</span><br><span style="color:#fdba74">Blitz</span></h1>
+    <p>Sixty seconds. Sixteen letters. Chain neighbouring tiles (diagonals count) to spell words of three letters or more. Longer words score way more.</p>
+    <div class="btns"><button class="btn" id="go" disabled>Loading words…</button></div>
+    <div class="howto">
+      <b>Mouse or touch:</b> drag across the tiles, let go to submit<br>
+      <b>Keyboard:</b> just type the word and press <kbd>Enter</kbd>, <kbd>Backspace</kbd> to fix, <kbd>Esc</kbd> to clear<br>
+      <b>Gamepad:</b> d-pad moves, <kbd>A</kbd> picks a tile, <kbd>B</kbd> undoes, <kbd>X</kbd> submits<br>
+      <b>Points:</b> 3 letters 1 · 4 letters 2 · 5 letters 4 · 6 letters 7 · 7+ letters 11
+    </div>
+  </div>
+</div>
+<div class="screen" id="over" hidden>
+  <div class="panel">
+    <p style="margin:0;text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:700">Time!</p>
+    <div class="big" id="oScore">0</div>
+    <p id="oBest" style="margin:0"></p>
+    <div class="stats"><div><b id="oWords">0</b><small>Words</small></div><div><b id="oLong">-</b><small>Longest</small></div><div><b id="oPct">0%</b><small>Of the board</small></div></div>
+    <div class="missed" id="missed"></div>
+    <div class="btns"><button class="btn" id="again">New board</button></div>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+  const Snd = (() => {
+    let ac;
+    const ensure = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+    const tone = (f, d = .1, type = 'sine', v = .05, slide = 0) => { const a = ensure(); if (!a) return; const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02); };
+    return { ensure, tick: (n) => tone(500 + n * 70, .06, 'triangle', .04), ok: (n) => [0, 4, 7, 12].slice(0, Math.min(4, n - 1)).forEach((s, i) => setTimeout(() => tone(523 * Math.pow(2, s / 12), .14, 'triangle', .06), i * 60)), bad: () => tone(160, .2, 'square', .04, -40), dup: () => tone(330, .12, 'sine', .05), beep: () => tone(880, .08, 'square', .03), end: () => [784, 659, 523].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .06), i * 140)) };
+  })();
+
+  // ---------- dictionary ----------
+  let DICT = null, COMMON = new Map();
+  const trie = { c: {} };
+  function addWord(w) { let n = trie; for (const ch of w) n = n.c[ch] || (n.c[ch] = { c: {} }); n.w = true; }
+  Promise.all([fetch('words.txt').then((r) => r.text()), fetch('common.txt').then((r) => r.text()).catch(() => '')]).then(([a, b]) => {
+    DICT = new Set(); for (const w of a.split('\n')) { const x = w.trim(); if (x) { DICT.add(x); addWord(x); } }
+    b.split('\n').forEach((w, i) => { if (w) COMMON.set(w.trim(), i); });
+    $('go').disabled = false; $('go').textContent = 'Play';
+  }).catch(() => { $('go').textContent = 'Could not load words'; });
+
+  // ---------- board ----------
+  // letter weights tuned for word-rich boards; "q" always comes as "qu"
+  const FREQ = 'eeeeeeeeeeeaaaaaaaaaiiiiiiiioooooooonnnnnnrrrrrrttttttllllssssssuuudddggbbccmmppffhhvwwykjxqz';
+  const VOW = new Set(['a', 'e', 'i', 'o', 'u']);
+  let grid = [], allWords = new Set();
+  function genBoard() {
+    for (let tries = 0; tries < 60; tries++) {
+      const g = Array.from({ length: 16 }, () => FREQ[Math.floor(Math.random() * FREQ.length)]);
+      const v = g.filter((c) => VOW.has(c)).length; if (v < 4 || v > 8) continue;
+      if (g.filter((c) => 'qzxjk'.includes(c)).length > 1) continue;
+      const tiles = g.map((c) => (c === 'q' ? 'qu' : c)), words = solve(tiles);
+      if (words.size >= 45 || tries === 59) { grid = tiles; allWords = words; return; }
+    }
+  }
+  const NB = Array.from({ length: 16 }, (_, i) => { const r = i >> 2, c = i & 3, out = []; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { if (!dr && !dc) continue; const a = r + dr, b = c + dc; if (a >= 0 && b >= 0 && a < 4 && b < 4) out.push(a * 4 + b); } return out; });
+  function solve(tiles) {
+    const found = new Set(), used = Array(16).fill(false);
+    function dfs(i, node, w) {
+      for (const ch of tiles[i]) { node = node.c[ch]; if (!node) return; }
+      w += tiles[i]; if (node.w && w.length >= 3) found.add(w);
+      used[i] = true; for (const j of NB[i]) if (!used[j]) dfs(j, node, w); used[i] = false;
+    }
+    for (let i = 0; i < 16; i++) dfs(i, trie, '');
+    return found;
+  }
+  // find a path for typed text
+  function pathFor(text) {
+    let res = null;
+    function go(i, pos, path) { if (res) return; const t = grid[i]; if (text.substr(pos, t.length) !== t) { if (!(t === 'qu' && text.substr(pos) === 'q')) return; } const np = path.concat(i), npos = pos + t.length; if (npos >= text.length) { res = np; return; } for (const j of NB[i]) if (!np.includes(j)) go(j, npos, np); }
+    for (let i = 0; i < 16 && !res; i++) go(i, 0, []);
+    return res;
+  }
+
+  // ---------- game state ----------
+  const PTS = (n) => (n <= 3 ? 1 : n === 4 ? 2 : n === 5 ? 4 : n === 6 ? 7 : 11);
+  let state = 'menu', found = [], score = 0, endAt = 0, path = [], typed = '', cursor = 5, tilesEl = [];
+  const DUR = 60;
+  function build() {
+    const b = $('board'); b.querySelectorAll('.tile').forEach((t) => t.remove()); tilesEl = [];
+    grid.forEach((t, i) => { const d = document.createElement('div'); d.className = 'tile' + (t === 'qu' ? ' qu' : ''); d.innerHTML = (t === 'qu' ? 'Qu' : t) + ''; d.dataset.i = i; b.appendChild(d); tilesEl.push(d); });
+  }
+  function start() {
+    Snd.ensure(); genBoard(); build(); found = []; score = 0; path = []; typed = '';
+    $('found').innerHTML = ''; $('score').textContent = 0; $('count').textContent = 0; setWord('');
+    const best = +store.get('word-blitz-best') || 0; $('best').textContent = best ? `Best ${best}` : '';
+    endAt = performance.now() + DUR * 1000; state = 'play'; lastBeep = 99;
+    $('menu').hidden = true; $('over').hidden = true; render();
+  }
+  function setWord(text, cls = '', note = '') { const w = $('word'); w.className = cls; w.innerHTML = text ? `${text}${note ? ` <small>${note}</small>` : ''}` : ''; }
+  function curWord() { return path.map((i) => grid[i]).join(''); }
+  function render() {
+    tilesEl.forEach((t, i) => { t.classList.toggle('sel', path.includes(i)); t.classList.toggle('cur', padUsed && i === cursor && state === 'play'); });
+    const svg = $('path'), br = $('board').getBoundingClientRect();
+    if (path.length > 1) {
+      const pts = path.map((i) => { const r = tilesEl[i].getBoundingClientRect(); return `${r.left - br.left + r.width / 2},${r.top - br.top + r.height / 2}`; }).join(' ');
+      svg.innerHTML = `<polyline points="${pts}" fill="none" stroke="#0369a1" stroke-opacity=".55" stroke-width="${br.width / 22}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    } else svg.innerHTML = '';
+    if (state === 'play' && (path.length || typed)) setWord(curWord() || typed);
+  }
+  function submit() {
+    const w = curWord(); path = []; typed = '';
+    if (w.length < 3) { setWord(''); render(); return; }
+    if (found.includes(w)) { setWord(w, 'dup', 'already found'); Snd.dup(); }
+    else if (DICT.has(w)) {
+      found.push(w); const p = PTS(w.length); score += p; Snd.ok(w.length);
+      setWord(w, 'ok', `+${p}`); $('score').textContent = score; $('count').textContent = found.length;
+      const s = document.createElement('span'); s.textContent = w; s.className = 'new'; $('found').prepend(s); setTimeout(() => s.classList.remove('new'), 900);
+    } else { setWord(w, 'bad', 'not a word'); Snd.bad(); }
+    render();
+  }
+  function addTile(i) {
+    if (path.includes(i)) { if (path.length > 1 && path[path.length - 2] === i) { path.pop(); Snd.tick(path.length); } return; }
+    if (path.length && !NB[path[path.length - 1]].includes(i)) return;
+    path.push(i); Snd.tick(path.length);
+  }
+  function finish() {
+    state = 'over'; path = []; render(); Snd.end();
+    const best = +store.get('word-blitz-best') || 0, nb = score > best; if (nb) store.set('word-blitz-best', score);
+    $('oScore').textContent = score; $('oBest').textContent = nb && score ? 'New best!' : best ? `Best ${best}` : '';
+    $('oWords').textContent = found.length; $('oLong').textContent = found.reduce((a, w) => (w.length > a.length ? w : a), '') || '-';
+    $('oPct').textContent = Math.round(found.length / Math.max(1, allWords.size) * 100) + '%';
+    const missed = [...allWords].filter((w) => !found.includes(w));
+    const nice = missed.filter((w) => COMMON.has(w)).sort((a, b) => b.length - a.length || COMMON.get(a) - COMMON.get(b)).slice(0, 12);
+    const longest = missed.sort((a, b) => b.length - a.length).slice(0, 4).filter((w) => !nice.includes(w));
+    $('missed').innerHTML = `This board had <b>${allWords.size}</b> words.${nice.length ? ` You missed: ${nice.map((w) => `<b>${w}</b>`).join(', ')}` : ''}${longest.length ? `. Longest: ${longest.map((w) => `<b>${w}</b>`).join(', ')}` : ''}.`;
+    $('over').hidden = false; $('again').focus();
+  }
+  $('go').onclick = start; $('again').onclick = start;
+
+  // ---------- pointer ----------
+  const board = $('board'); let dragging = false;
+  function tileAt(x, y) { for (let i = 0; i < 16; i++) { const r = tilesEl[i].getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; if (Math.hypot(x - cx, y - cy) < r.width * .42) return i; } return -1; }
+  board.addEventListener('pointerdown', (e) => { if (state !== 'play') return; e.preventDefault(); Snd.ensure(); typed = ''; path = []; dragging = true; try { board.setPointerCapture(e.pointerId); } catch {} const i = tileAt(e.clientX, e.clientY); if (i >= 0) addTile(i); render(); });
+  board.addEventListener('pointermove', (e) => { if (!dragging || state !== 'play') return; const i = tileAt(e.clientX, e.clientY); if (i >= 0) { const before = path.length; addTile(i); if (path.length !== before) render(); } });
+  const up = () => { if (!dragging) return; dragging = false; if (state === 'play') submit(); };
+  board.addEventListener('pointerup', up); board.addEventListener('pointercancel', up);
+
+  // ---------- keyboard ----------
+  addEventListener('keydown', (e) => {
+    if (state !== 'play') { if ((e.code === 'Enter' || e.code === 'Space') && !$('go').disabled && document.activeElement?.tagName !== 'BUTTON') start(); return; }
+    if (e.key === 'Enter') { e.preventDefault(); if (typed && !path.length) { setWord(typed, 'bad', 'not on the board'); Snd.bad(); typed = ''; return; } submit(); return; }
+    if (e.key === 'Escape') { typed = ''; path = []; setWord(''); render(); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); typed = typed.slice(0, -1); path = typed ? pathFor(typed) || [] : []; setWord(typed); render(); return; }
+    if (/^[a-zA-Z]$/.test(e.key)) {
+      const t = typed + e.key.toLowerCase(); const p = pathFor(t);
+      typed = t; path = p || []; if (p) Snd.tick(p.length); setWord(t, p ? '' : 'bad', p ? '' : 'not on the board'); render();
+    }
+  });
+
+  // ---------- gamepad ----------
+  let pm = {}, padUsed = false;
+  function pollPad() {
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; if (!pads.length) return;
+    const n = { l: false, r: false, u: false, d: false, a: false, b: false, x: false };
+    for (const p of pads) { const ax = p.axes[0] || 0, ay = p.axes[1] || 0; n.l ||= p.buttons[14]?.pressed || ax < -.6; n.r ||= p.buttons[15]?.pressed || ax > .6; n.u ||= p.buttons[12]?.pressed || ay < -.6; n.d ||= p.buttons[13]?.pressed || ay > .6; n.a ||= p.buttons[0]?.pressed; n.b ||= p.buttons[1]?.pressed; n.x ||= p.buttons[2]?.pressed || p.buttons[3]?.pressed || p.buttons[7]?.pressed; }
+    const pr = (k) => n[k] && !pm[k];
+    if (state === 'play') {
+      let moved = false; const r = cursor >> 2, c = cursor & 3;
+      if (pr('l') && c > 0) { cursor--; moved = true; } if (pr('r') && c < 3) { cursor++; moved = true; } if (pr('u') && r > 0) { cursor -= 4; moved = true; } if (pr('d') && r < 3) { cursor += 4; moved = true; }
+      if (moved || pr('a') || pr('b') || pr('x')) padUsed = true;
+      if (pr('a')) { typed = ''; addTile(cursor); }
+      if (pr('b')) { path.pop(); if (!path.length) setWord(''); }
+      if (pr('x')) submit();
+      if (moved || pr('a') || pr('b')) render();
+    } else if (pr('a')) { const b = state === 'menu' ? $('go') : $('again'); if (!b.disabled) b.click(); }
+    pm = n;
+  }
+
+  // ---------- timer loop ----------
+  let lastBeep = 99;
+  function loop() {
+    pollPad();
+    if (state === 'play') {
+      const left = Math.max(0, (endAt - performance.now()) / 1000);
+      $('time').textContent = Math.ceil(left); $('ring').style.strokeDashoffset = 100.5 * (1 - left / DUR);
+      $('timer').classList.toggle('low', left < 10); $('ring').style.stroke = left < 10 ? '#ef4444' : '#f97316';
+      if (left < 6 && Math.ceil(left) < lastBeep) { lastBeep = Math.ceil(left); Snd.beep(); }
+      if (left <= 0) finish();
+    }
+    requestAnimationFrame(loop);
+  }
+  addEventListener('resize', render);
+  genBoardPlaceholder();
+  function genBoardPlaceholder() { grid = 'wordblitzplaygam'.split(''); build(); }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

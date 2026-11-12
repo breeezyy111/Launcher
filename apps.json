@@ -35,6 +35,141 @@
       "embed": true
     },
     {
+      "id": "sky-hopper",
+      "name": "Sky Hopper",
+      "description": "Endless climber: bounce Pip up through crumbling sky platforms, stomp thornbugs and grab sparks.",
+      "url": "sky-hopper/",
+      "icon": "icons/sky-hopper.svg",
+      "color": "#c084fc",
+      "category": "Games",
+      "tags": [
+        "arcade",
+        "game",
+        "climber",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "block-bash",
+      "name": "Block Bash Arena",
+      "description": "Bumper car brawl on a shrinking stage. Knock rivals off the edge, solo vs CPUs or with a friend.",
+      "url": "block-bash/",
+      "icon": "icons/block-bash.svg",
+      "color": "#facc15",
+      "category": "Games",
+      "tags": [
+        "party",
+        "game",
+        "2-player",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "turbo-tanks",
+      "name": "Turbo Tanks",
+      "description": "Tiny tanks, bouncing shells, random mazes. First to 5 vs the CPU or a friend.",
+      "url": "turbo-tanks/",
+      "icon": "icons/turbo-tanks.svg",
+      "color": "#4ade80",
+      "category": "Games",
+      "tags": [
+        "action",
+        "game",
+        "2-player",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "dungeon-dash",
+      "name": "Dungeon Dash",
+      "description": "Quick roguelike: five rooms of random monsters, a treasure pick after each, and a boss at the bottom.",
+      "url": "dungeon-dash/",
+      "icon": "icons/dungeon-dash.svg",
+      "color": "#fbbf24",
+      "category": "Games",
+      "tags": [
+        "roguelike",
+        "game",
+        "action",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "rhythm-rush",
+      "name": "Rhythm Rush",
+      "description": "Four-lane rhythm game with three original tracks. Lanes speed up as your combo grows.",
+      "url": "rhythm-rush/",
+      "icon": "icons/rhythm-rush.svg",
+      "color": "#f472b6",
+      "category": "Games",
+      "tags": [
+        "rhythm",
+        "game",
+        "music",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "gravity-golf",
+      "name": "Gravity Golf",
+      "description": "Nine holes of mini golf in space, where every planet bends your shot.",
+      "url": "gravity-golf/",
+      "icon": "icons/gravity-golf.svg",
+      "color": "#a3e635",
+      "category": "Games",
+      "tags": [
+        "golf",
+        "game",
+        "physics",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "zombie-holdout",
+      "name": "Zombie Hold-Out",
+      "description": "Wave survival shooter. Build barricades and turrets between rounds and see how long you last.",
+      "url": "zombie-holdout/",
+      "icon": "icons/zombie-holdout.svg",
+      "color": "#84cc16",
+      "category": "Games",
+      "tags": [
+        "shooter",
+        "game",
+        "survival",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "word-blitz",
+      "name": "Word Blitz",
+      "description": "60-second word hunt on a 4x4 letter grid. Chain neighbouring tiles to spell words.",
+      "url": "word-blitz/",
+      "icon": "icons/word-blitz.svg",
+      "color": "#f97316",
+      "category": "Games",
+      "tags": [
+        "word",
+        "game",
+        "puzzle"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "orca",
       "name": "Orca",
       "description": "Friendly AI chat and coding assistant, built into the launcher.",

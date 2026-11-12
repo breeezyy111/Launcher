@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#050816">
+<title>Gravity Golf</title>
+<style>
+  :root { --bg:#050816; --fg:#f5f8ff; --muted:#9aa6cf; --g:#a3e635; --c:#38bdf8; --p:#c084fc; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+  canvas { display:block; width:100%; height:100%; }
+  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 30%, #1e2a6bcc, #050816f2 70%); padding:16px; overflow:auto; z-index:5; }
+  .screen[hidden] { display:none; }
+  .panel { text-align:center; max-width:480px; width:100%; margin:auto; }
+  h1 { font-size:clamp(46px,12vw,84px); line-height:.88; font-weight:900; letter-spacing:-.02em; color:#fff; text-shadow:0 0 30px #38bdf888; }
+  h1 span { display:block; color:var(--g); text-shadow:0 0 30px #a3e63588; }
+  p { color:var(--muted); margin:16px 0; line-height:1.5; font-size:15px; }
+  .btn { font:inherit; font-weight:900; font-size:17px; letter-spacing:.05em; text-transform:uppercase; color:#0b1a02; background:linear-gradient(180deg,#d9f99d,#84cc16); border:0; border-radius:999px; padding:14px 34px; cursor:pointer; box-shadow:0 0 30px #a3e63555; }
+  .btn.alt { color:var(--fg); background:#ffffff14; box-shadow:inset 0 0 0 1.5px #ffffff2a; }
+  .btn:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+  .btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+  .howto { text-align:left; background:#ffffff0a; border-radius:14px; padding:12px 16px; margin-top:18px; font-size:13px; line-height:1.65; color:#d8def5; }
+  .howto b { color:var(--g); }
+  kbd { font:inherit; font-size:12px; font-weight:700; border:1px solid #ffffff40; border-bottom-width:2px; border-radius:6px; padding:0 5px; background:#ffffff0d; }
+  table { width:100%; border-collapse:collapse; margin-top:16px; font-variant-numeric:tabular-nums; font-size:14px; }
+  th, td { padding:6px 4px; border-bottom:1px solid #ffffff14; } th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+  td.u { color:var(--g); font-weight:800; } td.o { color:#f87171; font-weight:800; }
+  .big { font-size:clamp(34px,9vw,56px); font-weight:900; }
+  #pauseBtn { position:fixed; top:max(10px, env(safe-area-inset-top)); right:max(10px, env(safe-area-inset-right)); width:40px; height:40px; border-radius:12px; border:0; background:#ffffff1a; color:#fff; font-weight:900; z-index:4; cursor:pointer; }
+  #pauseBtn[hidden] { display:none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="pauseBtn" aria-label="Menu" hidden>II</button>
+<div class="screen" id="menu">
+  <div class="panel">
+    <h1>Gravity<span>Golf</span></h1>
+    <p>Nine holes across the stars. Planets pull your ball, so curve your shots around them and land in the cup. Watch out for black holes.</p>
+    <div class="btns"><button class="btn" id="go">Tee off</button></div>
+    <p id="bestLine" style="font-size:13px;margin:12px 0 0"></p>
+    <div class="howto">
+      <b>Mouse or touch:</b> drag back from anywhere and let go, like a slingshot<br>
+      <b>Keyboard:</b> <kbd>←</kbd> <kbd>→</kbd> aim, <kbd>↑</kbd> <kbd>↓</kbd> power, <kbd>Space</kbd> shoot, <kbd>R</kbd> retry from last spot (+1)<br>
+      <b>Gamepad:</b> stick aims, d-pad ↑ ↓ or triggers set power, <kbd>A</kbd> shoots<br>
+      Lost in space? The ball comes back after a few seconds with a one-stroke penalty.
+    </div>
+  </div>
+</div>
+<div class="screen" id="card" hidden>
+  <div class="panel"><div class="big" id="cardTitle">Birdie!</div><p id="cardSub" style="margin:6px 0 0"></p><table id="cardTable"></table><div class="btns" id="cardBtns"></div></div>
+</div>
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = (id) => document.getElementById(id);
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+  const Snd = (() => {
+    let ac;
+    const ensure = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+    const tone = (f, d = .1, type = 'sine', v = .06, slide = 0) => { const a = ensure(); if (!a) return; const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02); };
+    return { ensure, hit: (p) => tone(300 + p * 300, .15, 'triangle', .08, 200), bounce: (k) => tone(180 + k * 200, .06, 'sine', Math.min(.06, .01 + k * .05)), cup: () => [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .06), i * 90)), lost: () => tone(500, .6, 'sine', .05, -400), suck: () => tone(900, .8, 'sawtooth', .04, -860) };
+  })();
+
+  // ---------- holes (designed on a 1000 x 640 field) ----------
+  // planet: [x, y, r, density, color, extras]
+  const HOLES = [
+    { name: 'First Orbit', par: 2, tee: [0, 0], cup: [1, Math.PI], planets: [[220, 330, 70, 1, 'earth'], [790, 300, 95, 1, 'moss']] },
+    { name: 'Up and Over', par: 3, tee: [0, -.3], cup: [2, Math.PI * .1], planets: [[150, 420, 60, 1, 'earth'], [500, 360, 130, 1.4, 'rust'], [850, 260, 60, 1, 'moss']] },
+    { name: 'Moon Run', par: 3, tee: [0, 0], cup: [1, Math.PI * .9], planets: [[170, 320, 65, 1, 'earth'], [760, 320, 90, 1, 'ice'], [760, 320, 26, .8, 'rock', { orbit: 175, speed: .55, ph: 2 }]] },
+    { name: 'Twin Stars', par: 3, tee: [0, -.4], cup: [3, -Math.PI / 2], planets: [[140, 470, 55, 1, 'earth'], [470, 250, 70, 1.3, 'sun'], [560, 430, 70, 1.3, 'sun'], [870, 200, 45, 1, 'moss']] },
+    { name: 'Event Horizon', par: 4, tee: [0, 0], cup: [1, Math.PI], planets: [[150, 320, 60, 1, 'earth'], [860, 320, 70, 1, 'ice'], [500, 320, 16, 45, 'hole']] },
+    { name: 'Asteroid Alley', par: 3, tee: [0, -.2], cup: [7, Math.PI * .85], planets: [[130, 380, 60, 1, 'earth'], [400, 150, 24, .5, 'rock'], [430, 300, 22, .5, 'rock'], [400, 460, 26, .5, 'rock'], [600, 200, 22, .5, 'rock'], [620, 380, 24, .5, 'rock'], [580, 540, 20, .5, 'rock'], [860, 330, 70, 1, 'moss']] },
+    { name: 'Gas Giant', par: 4, tee: [0, 0], cup: [2, Math.PI / 2], planets: [[110, 120, 50, 1, 'earth'], [520, 400, 170, 1.6, 'giant'], [880, 120, 35, 1, 'moss']] },
+    { name: 'Pinball Nebula', par: 4, tee: [0, 0], cup: [6, Math.PI], planets: [[110, 320, 55, 1, 'earth'], [330, 170, 30, .6, 'bumper'], [330, 470, 30, .6, 'bumper'], [520, 320, 34, .6, 'bumper'], [700, 160, 30, .6, 'bumper'], [700, 480, 30, .6, 'bumper'], [890, 320, 60, 1, 'moss']] },
+    { name: 'Grand Tour', par: 5, tee: [0, 0], cup: [4, 0], planets: [[100, 540, 50, 1, 'earth'], [500, 320, 90, 1.5, 'sun'], [500, 320, 30, .8, 'ice', { orbit: 210, speed: .4, ph: 0 }], [500, 320, 22, .8, 'rock', { orbit: 300, speed: -.3, ph: 2.5 }], [900, 90, 45, 1, 'moss'], [800, 520, 14, 30, 'hole']] },
+  ];
+  const STYLE = {
+    earth: ['#60a5fa', '#1e3a8a', '#4ade80'], moss: ['#a3e635', '#365314', '#d9f99d'], rust: ['#fb923c', '#7c2d12', '#fdba74'], ice: ['#bae6fd', '#0369a1', '#f0f9ff'], rock: ['#a8a29e', '#44403c', '#d6d3d1'],
+    sun: ['#fde047', '#ea580c', '#fef9c3'], giant: ['#f0abfc', '#6b21a8', '#fbcfe8'], bumper: ['#22d3ee', '#155e75', '#cffafe'], hole: ['#000', '#000', '#000'],
+  };
+  const GK = 260, BR = 7;
+
+  let W, H, dpr, S, OX, OY, FW = 1000, FH = 640, portrait = false;
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; const p = H > W * 1.1; if (G.hole && p !== portrait) loadHole(G.holeI, true); portrait = p; fit(); }
+  function fit() { FW = portrait ? 640 : 1000; FH = portrait ? 1000 : 640; const top = 64; S = Math.min(W / (FW + 20), (H - top - 12) / (FH + 20)); OX = (W - FW * S) / 2; OY = top + (H - top - FH * S) / 2 - 4; }
+  const G = { mode: 'menu', holeI: 0, hole: null, strokes: [], ball: null, aimA: 0, power: .5, t: 0, drag: null, trail: [], msg: null };
+  addEventListener('resize', resize);
+
+  function loadHole(i, keepState) {
+    const h = HOLES[i]; portrait = H > W * 1.1; fit();
+    const tx = (x, y) => (portrait ? [y, x] : [x, y]), ta = (a) => (portrait ? Math.PI / 2 - a : a);
+    const planets = h.planets.map(([x, y, r, dens, kind, ex = {}]) => { const [px, py] = tx(x, y); return { x: px, y: py, cx: px, cy: py, r, dens, kind, orbit: ex.orbit, speed: ex.orbit ? (portrait ? -ex.speed : ex.speed) : 0, ph: ex.ph ? ta(ex.ph) : 0, vx: 0, vy: 0, seed: i * 31 + r }; });
+    const prevBall = G.ball;
+    G.hole = { ...h, planets, cupP: h.cup[0], cupA: ta(h.cup[1]), teeP: h.tee[0], teeA: ta(h.tee[1]) };
+    G.holeI = i; G.t = 0; updatePlanets(0);
+    if (!keepState || !prevBall) { G.ball = restOn(G.hole.teeP, G.hole.teeA); G.cur = 0; G.aimA = G.hole.teeA; G.power = .55; G.last = { p: G.hole.teeP, a: G.hole.teeA }; }
+    else { G.ball = restOn(G.last.p, G.last.a); }
+    G.trail = [];
+  }
+  function restOn(pi, a) { const p = G.hole.planets[pi]; return { x: p.x + Math.cos(a) * (p.r + BR), y: p.y + Math.sin(a) * (p.r + BR), vx: 0, vy: 0, rest: { p: pi, a }, fly: 0, restT: 0 }; }
+  function updatePlanets(t) { for (const p of G.hole.planets) if (p.orbit) { const a = p.ph + t * p.speed, nx = p.cx + Math.cos(a) * p.orbit, ny = p.cy + Math.sin(a) * p.orbit; p.vx = -Math.sin(a) * p.orbit * p.speed; p.vy = Math.cos(a) * p.orbit * p.speed; p.x = nx; p.y = ny; } }
+
+  // ---------- physics ----------
+  function accel(x, y, planets) { let ax = 0, ay = 0; for (const p of planets) { const dx = p.x - x, dy = p.y - y, d2 = dx * dx + dy * dy, d = Math.sqrt(d2); const m = GK * p.dens * p.r * p.r; const a = m / Math.max(d2, p.r * p.r); ax += dx / d * a; ay += dy / d * a; } return [ax, ay]; }
+  // returns event string or null
+  function stepBall(b, dt, planets, sim) {
+    const [ax, ay] = accel(b.x, b.y, planets);
+    b.vx += ax * dt; b.vy += ay * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+    let touch = -1;
+    for (let i = 0; i < planets.length; i++) {
+      const p = planets[i], dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy);
+      if (p.kind === 'hole') { if (d < p.r + 3) return 'hole'; continue; }
+      if (d < p.r + BR) {
+        const nx = dx / d, ny = dy / d; b.x = p.x + nx * (p.r + BR); b.y = p.y + ny * (p.r + BR);
+        const rvx = b.vx - p.vx, rvy = b.vy - p.vy, vn = rvx * nx + rvy * ny;
+        const e = p.kind === 'bumper' ? 1.15 : .42;
+        if (vn < 0) { b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny; if (!sim && -vn > 40) Snd.bounce(Math.min(1, -vn / 500)); if (!sim && p.kind === 'bumper') p.flash = .3; }
+        if (p.kind !== 'bumper') { const tvx = (b.vx - p.vx) - ((b.vx - p.vx) * nx + (b.vy - p.vy) * ny) * nx, tvy = (b.vy - p.vy) - ((b.vx - p.vx) * nx + (b.vy - p.vy) * ny) * ny, f = Math.pow(.25, dt); b.vx -= tvx * (1 - f); b.vy -= tvy * (1 - f); }
+        touch = i;
+        if (i === G.hole.cupP) { const a = Math.atan2(dy, dx), da = Math.abs(Math.atan2(Math.sin(a - G.hole.cupA), Math.cos(a - G.hole.cupA))); if (da * p.r < 13 && Math.hypot(b.vx - p.vx, b.vy - p.vy) < 330) return 'cup'; }
+      }
+    }
+    b.touch = touch;
+    if (b.x < -240 || b.y < -240 || b.x > FW + 240 || b.y > FH + 240) return 'lost';
+    return null;
+  }
+
+  // ---------- input ----------
+  const keys = {};
+  addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (G.mode !== 'play') return;
+    if (/Arrow|Space/.test(e.code)) e.preventDefault();
+    if (e.code === 'Space' || e.code === 'Enter') shoot();
+    if (e.code === 'KeyR' && !G.ball.rest) lose('Reset');
+    if (e.code === 'Escape' || e.code === 'KeyP') openMenu();
+  });
+  addEventListener('keyup', (e) => { keys[e.code] = false; });
+  const toWorld = (cx, cy) => [(cx - OX) / S, (cy - OY) / S];
+  cv.addEventListener('pointerdown', (e) => { if (G.mode !== 'play' || !G.ball.rest) return; Snd.ensure(); G.drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch {} });
+  cv.addEventListener('pointermove', (e) => { if (!G.drag || G.drag.id !== e.pointerId) return; G.drag.x = e.clientX; G.drag.y = e.clientY; const dx = G.drag.sx - G.drag.x, dy = G.drag.sy - G.drag.y, m = Math.hypot(dx, dy); if (m > 6) { G.aimA = Math.atan2(dy, dx); G.power = Math.min(1, m / (Math.min(W, H) * .32)); } });
+  cv.addEventListener('pointerup', (e) => { if (!G.drag || G.drag.id !== e.pointerId) return; const dx = G.drag.sx - G.drag.x, dy = G.drag.sy - G.drag.y; G.drag = null; if (Math.hypot(dx, dy) > 14) shoot(); });
+  cv.addEventListener('pointercancel', () => { G.drag = null; });
+  let pm = {};
+  function pollPads(dt) {
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    const n = { a: false, st: false, up: false, down: false, y: false };
+    for (const p of pads) {
+      const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
+      if (G.mode === 'play' && G.ball?.rest && Math.hypot(ax, ay) > .5) G.aimA = Math.atan2(ay, ax);
+      if (G.mode === 'play') { if (p.buttons[12]?.pressed || p.buttons[7]?.pressed) G.power = Math.min(1, G.power + dt * .6); if (p.buttons[13]?.pressed || p.buttons[6]?.pressed) G.power = Math.max(.05, G.power - dt * .6); if (p.buttons[14]?.pressed) G.aimA -= dt * 1.2; if (p.buttons[15]?.pressed) G.aimA += dt * 1.2; }
+      n.a ||= p.buttons[0]?.pressed; n.st ||= p.buttons[9]?.pressed; n.y ||= p.buttons[3]?.pressed; n.up ||= p.buttons[12]?.pressed || ay < -.6; n.down ||= p.buttons[13]?.pressed || ay > .6;
+    }
+    if (G.mode === 'play') { if (n.a && !pm.a) shoot(); if (n.st && !pm.st) openMenu(); if (n.y && !pm.y && !G.ball.rest) lose('Reset'); }
+    else { const scr = [...document.querySelectorAll('.screen')].find((s) => !s.hidden); if (scr) { const bs = [...scr.querySelectorAll('button')].filter((b) => b.offsetParent); const i = bs.indexOf(document.activeElement); if (n.down && !pm.down) bs[(i + 1) % bs.length]?.focus(); if (n.up && !pm.up) bs[(i - 1 + bs.length) % bs.length]?.focus(); if (n.a && !pm.a) (i >= 0 ? bs[i] : bs[0])?.click(); } }
+    pm = n;
+  }
+  function shoot() {
+    const b = G.ball; if (!b.rest || G.mode !== 'play') return;
+    const p = G.hole.planets[b.rest.p], sp = 90 + G.power * 520;
+    b.vx = Math.cos(G.aimA) * sp + p.vx; b.vy = Math.sin(G.aimA) * sp + p.vy;
+    const nx = Math.cos(b.rest.a), ny = Math.sin(b.rest.a); if (b.vx * nx + b.vy * ny < 0) { /* aiming into the ground: slide along */ const vn = b.vx * nx + b.vy * ny; b.vx -= vn * nx * 1.2; b.vy -= vn * ny * 1.2; }
+    b.x += nx * 2; b.y += ny * 2;
+    G.last = { ...b.rest }; b.rest = null; b.fly = 0; b.restT = 0; G.cur++; G.trail = []; Snd.hit(G.power);
+  }
+  function lose(why) { G.cur++; G.msg = { text: why === 'hole' ? 'Swallowed! +1' : why === 'Reset' ? 'Reset +1' : 'Lost in space! +1', t: 1.6 }; if (why === 'hole') Snd.suck(); else Snd.lost(); G.ball = restOn(G.last.p, G.last.a); }
+
+  // ---------- flow ----------
+  function startRound() { Snd.ensure(); G.strokes = []; G.mode = 'play'; loadHole(0); show(null); }
+  function show(id) { for (const s of ['menu', 'card']) $(s).hidden = s !== id; $('pauseBtn').hidden = id !== null; }
+  const NAMES = { '-3': 'Albatross!', '-2': 'Eagle!', '-1': 'Birdie!', '0': 'Par', '1': 'Bogey', '2': 'Double bogey' };
+  function sunk() {
+    Snd.cup(); G.strokes[G.holeI] = G.cur; G.mode = 'sunk';
+    const d = G.cur - G.hole.par;
+    setTimeout(() => {
+      $('cardTitle').textContent = G.cur === 1 ? 'Hole in one!' : NAMES[d] || `+${d}`;
+      $('cardTitle').style.color = d < 0 || G.cur === 1 ? '#a3e635' : d === 0 ? '#fff' : '#f87171';
+      $('cardSub').textContent = `${G.hole.name} · ${G.cur} stroke${G.cur > 1 ? 's' : ''} · par ${G.hole.par}`;
+      renderCard(); const last = G.holeI === HOLES.length - 1, btns = $('cardBtns'); btns.innerHTML = '';
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = last ? 'Finish' : 'Next hole'; b.onclick = () => (last ? finishRound() : (G.mode = 'play', loadHole(G.holeI + 1), show(null))); btns.appendChild(b);
+      show('card'); b.focus();
+    }, 900);
+  }
+  function renderCard() {
+    const tot = G.strokes.reduce((a, b) => a + (b || 0), 0), par = HOLES.slice(0, G.strokes.length).reduce((a, h) => a + h.par, 0);
+    let html = '<tr><th>Hole</th>' + HOLES.map((_, i) => `<th>${i + 1}</th>`).join('') + '<th>Tot</th></tr><tr><th>Par</th>' + HOLES.map((h) => `<td>${h.par}</td>`).join('') + `<td>${HOLES.reduce((a, h) => a + h.par, 0)}</td></tr><tr><th>You</th>`;
+    html += HOLES.map((h, i) => { const s = G.strokes[i]; return s == null ? '<td>·</td>' : `<td class="${s < h.par ? 'u' : s > h.par ? 'o' : ''}">${s}</td>`; }).join('') + `<td>${tot}</td></tr>`;
+    $('cardTable').innerHTML = html; return { tot, par };
+  }
+  function finishRound() {
+    const { tot } = renderCard(), par = HOLES.reduce((a, h) => a + h.par, 0), d = tot - par;
+    const best = +store.get('gravity-golf-best') || 0; const nb = !best || tot < best; if (nb) store.set('gravity-golf-best', tot);
+    $('cardTitle').textContent = `${tot} strokes`; $('cardTitle').style.color = d <= 0 ? '#a3e635' : '#fff';
+    $('cardSub').textContent = `${d === 0 ? 'Even par' : d < 0 ? `${-d} under par` : `${d} over par`}${nb ? ' · New best!' : ` · Best ${best}`}`;
+    const btns = $('cardBtns'); btns.innerHTML = '';
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Play again'; b.onclick = startRound; btns.appendChild(b);
+    const m = document.createElement('button'); m.className = 'btn alt'; m.textContent = 'Menu'; m.onclick = () => { G.mode = 'menu'; bestLine(); show('menu'); }; btns.appendChild(m);
+    G.mode = 'done'; show('card'); b.focus();
+  }
+  function openMenu() {
+    G.mode = 'paused'; renderCard();
+    $('cardTitle').textContent = 'Paused'; $('cardTitle').style.color = '#fff'; $('cardSub').textContent = `Hole ${G.holeI + 1}: ${G.hole.name}`;
+    const btns = $('cardBtns'); btns.innerHTML = '';
+    [['Resume', () => { G.mode = 'play'; show(null); }], ['Restart round', startRound], ['Menu', () => { G.mode = 'menu'; bestLine(); show('menu'); }]].forEach(([t, f], i) => { const b = document.createElement('button'); b.className = i ? 'btn alt' : 'btn'; b.textContent = t; b.onclick = f; btns.appendChild(b); });
+    show('card'); btns.firstChild.focus();
+  }
+  function bestLine() { const b = store.get('gravity-golf-best'); $('bestLine').textContent = b ? `Best round: ${b} strokes (par ${HOLES.reduce((a, h) => a + h.par, 0)})` : ''; }
+  bestLine();
+  $('go').onclick = startRound; $('pauseBtn').onclick = () => { if (G.mode === 'play') openMenu(); };
+
+  // ---------- update ----------
+  function update(dt) {
+    if (!G.hole) return;
+    G.t += dt; updatePlanets(G.t);
+    if (G.msg) { G.msg.t -= dt; if (G.msg.t <= 0) G.msg = null; }
+    for (const p of G.hole.planets) if (p.flash) p.flash = Math.max(0, p.flash - dt);
+    if (G.mode !== 'play') return;
+    const b = G.ball;
+    if (b.rest) {
+      const p = G.hole.planets[b.rest.p]; b.x = p.x + Math.cos(b.rest.a) * (p.r + BR); b.y = p.y + Math.sin(b.rest.a) * (p.r + BR);
+      if (keys.ArrowLeft) G.aimA -= dt * 1.4; if (keys.ArrowRight) G.aimA += dt * 1.4;
+      if (keys.ArrowUp) G.power = Math.min(1, G.power + dt * .6); if (keys.ArrowDown) G.power = Math.max(.05, G.power - dt * .6);
+      return;
+    }
+    b.fly += dt;
+    const N = 8;
+    for (let k = 0; k < N; k++) {
+      const ev = stepBall(b, dt / N, G.hole.planets, false);
+      if (ev === 'cup') { b.vx = b.vy = 0; b.inCup = true; sunk(); return; }
+      if (ev === 'hole') { lose('hole'); return; }
+      if (ev === 'lost') { lose('lost'); return; }
+    }
+    if (b.fly > 10) { lose('lost'); return; }
+    G.trail.push([b.x, b.y]); if (G.trail.length > 90) G.trail.shift();
+    if (b.touch >= 0) {
+      const p = G.hole.planets[b.touch];
+      if (Math.hypot(b.vx - p.vx, b.vy - p.vy) < 26 && p.kind !== 'bumper') { b.restT += dt; if (b.restT > .3) { const a = Math.atan2(b.y - p.y, b.x - p.x); b.rest = { p: b.touch, a }; b.vx = b.vy = 0; G.aimA = a; } }
+      else b.restT = 0;
+    } else b.restT = 0;
+  }
+
+  // ---------- draw ----------
+  const stars = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.6 + .3, tw: Math.random() * 6 }));
+  function srand(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+  function drawPlanet(p) {
+    const st = STYLE[p.kind];
+    if (p.kind === 'hole') {
+      const g = ctx.createRadialGradient(p.x, p.y, p.r * .6, p.x, p.y, p.r * 5); g.addColorStop(0, '#000'); g.addColorStop(.25, '#7c3aed55'); g.addColorStop(1, '#7c3aed00'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 5, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(G.t * 1.5); ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(0, 0, p.r * (1.6 + i * .7), p.r * (.6 + i * .25), i, 0, 7); ctx.stroke(); } ctx.restore(); ctx.globalAlpha = 1;
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); ctx.strokeStyle = '#f0abfc'; ctx.lineWidth = 1.5; ctx.stroke(); return;
+    }
+    // gravity field hint
+    const glow = ctx.createRadialGradient(p.x, p.y, p.r, p.x, p.y, p.r * 1.5); glow.addColorStop(0, st[0] + '44'); glow.addColorStop(1, st[0] + '00'); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 1.5, 0, 7); ctx.fill();
+    const g = ctx.createRadialGradient(p.x - p.r * .35, p.y - p.r * .35, p.r * .1, p.x, p.y, p.r); g.addColorStop(0, st[2]); g.addColorStop(.45, st[0]); g.addColorStop(1, st[1]);
+    ctx.fillStyle = p.flash ? '#fff' : g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.clip();
+    const R = srand(p.seed * 999 + 7);
+    if (p.kind === 'giant' || p.kind === 'sun') { ctx.globalAlpha = .25; for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? st[1] : st[2]; ctx.fillRect(p.x - p.r, p.y - p.r + (i + R()) * p.r * .33, p.r * 2, p.r * .12); } }
+    else if (p.kind === 'earth' || p.kind === 'moss') { ctx.globalAlpha = .55; ctx.fillStyle = p.kind === 'earth' ? '#22c55e' : '#4d7c0f'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(p.x + (R() - .5) * p.r * 1.4, p.y + (R() - .5) * p.r * 1.4, p.r * (.2 + R() * .3), p.r * (.12 + R() * .2), R() * 3, 0, 7); ctx.fill(); } }
+    else { ctx.globalAlpha = .3; ctx.fillStyle = st[1]; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(p.x + (R() - .5) * p.r * 1.4, p.y + (R() - .5) * p.r * 1.4, p.r * (.08 + R() * .14), 0, 7); ctx.fill(); } }
+    ctx.globalAlpha = 1; ctx.restore();
+    if (p.kind === 'bumper') { ctx.strokeStyle = '#cffafe'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 4, 0, 7); ctx.stroke(); }
+  }
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#050816'; ctx.fillRect(0, 0, W, H);
+    const neb = ctx.createRadialGradient(W * .7, H * .3, 0, W * .7, H * .3, Math.max(W, H) * .7); neb.addColorStop(0, '#312e8155'); neb.addColorStop(1, '#05081600'); ctx.fillStyle = neb; ctx.fillRect(0, 0, W, H);
+    const neb2 = ctx.createRadialGradient(W * .2, H * .8, 0, W * .2, H * .8, Math.max(W, H) * .5); neb2.addColorStop(0, '#83184344'); neb2.addColorStop(1, '#05081600'); ctx.fillStyle = neb2; ctx.fillRect(0, 0, W, H);
+    for (const s of stars) { ctx.globalAlpha = .4 + Math.sin(G.t * 2 + s.tw) * .3; ctx.fillStyle = '#fff'; ctx.fillRect(s.x * W, s.y * H, s.s, s.s); } ctx.globalAlpha = 1;
+    if (!G.hole || G.mode === 'menu') return;
+    ctx.setTransform(dpr * S, 0, 0, dpr * S, dpr * OX, dpr * OY);
+    ctx.strokeStyle = '#ffffff10'; ctx.setLineDash([4, 8]); ctx.strokeRect(0, 0, FW, FH); ctx.setLineDash([]);
+    for (const p of G.hole.planets) if (p.orbit) { ctx.strokeStyle = '#ffffff12'; ctx.beginPath(); ctx.arc(p.cx, p.cy, p.orbit, 0, 7); ctx.stroke(); }
+    for (const p of G.hole.planets) drawPlanet(p);
+    // cup + flag
+    const cp = G.hole.planets[G.hole.cupP], ca = G.hole.cupA, cx = cp.x + Math.cos(ca) * cp.r, cy = cp.y + Math.sin(ca) * cp.r;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ca + Math.PI / 2);
+    ctx.fillStyle = '#0b0b10'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 4, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -46); ctx.stroke();
+    const wave = Math.sin(G.t * 6) * 3; ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.moveTo(0, -46); ctx.quadraticCurveTo(12, -42 + wave, 24, -40); ctx.lineTo(0, -32); ctx.fill();
+    ctx.restore();
+    // trail
+    if (G.trail.length > 1) { ctx.strokeStyle = '#ffffff55'; ctx.lineWidth = 2; ctx.beginPath(); G.trail.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
+    const b = G.ball;
+    // aim preview
+    if (b.rest && G.mode === 'play') {
+      const p = G.hole.planets[b.rest.p], sp = 90 + G.power * 520;
+      const sim = { x: b.x + Math.cos(b.rest.a) * 2, y: b.y + Math.sin(b.rest.a) * 2, vx: Math.cos(G.aimA) * sp + p.vx, vy: Math.sin(G.aimA) * sp + p.vy };
+      const nx = Math.cos(b.rest.a), ny = Math.sin(b.rest.a), vn = sim.vx * nx + sim.vy * ny; if (vn < 0) { sim.vx -= vn * nx * 1.2; sim.vy -= vn * ny * 1.2; }
+      ctx.fillStyle = '#ffffff'; const save = G.hole.cupP;
+      for (let i = 0; i < 46; i++) { for (let k = 0; k < 4; k++) if (stepBall(sim, 1 / 240, G.hole.planets, true)) { i = 99; break; } if (i < 99) { ctx.globalAlpha = 1 - i / 46; ctx.beginPath(); ctx.arc(sim.x, sim.y, 2.2, 0, 7); ctx.fill(); } }
+      ctx.globalAlpha = 1; G.hole.cupP = save;
+      // power arrow
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(G.aimA); const len = 20 + G.power * 60;
+      ctx.strokeStyle = `hsl(${120 - G.power * 120},90%,60%)`; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(len, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(len + 6, 0); ctx.lineTo(len - 4, -6); ctx.lineTo(len - 4, 6); ctx.closePath(); ctx.fillStyle = ctx.strokeStyle; ctx.fill(); ctx.restore();
+    }
+    if (!b.inCup) { ctx.fillStyle = '#fff'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; ctx.beginPath(); ctx.arc(b.x, b.y, BR, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(b.x + 2, b.y + 2, 2, 0, 7); ctx.fill(); }
+    // off-screen pointer
+    if (b.x < 0 || b.y < 0 || b.x > FW || b.y > FH) { const x = Math.max(12, Math.min(FW - 12, b.x)), y = Math.max(12, Math.min(FH - 12, b.y)); ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); }
+    // HUD
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.textBaseline = 'middle';
+    const tot = G.strokes.reduce((a, s) => a + (s || 0), 0), parSoFar = HOLES.slice(0, G.holeI).reduce((a, h) => a + h.par, 0), rel = tot - parSoFar;
+    ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '900 18px system-ui'; ctx.fillText(`Hole ${G.holeI + 1}/9 · ${G.hole.name}`, 16, 24);
+    ctx.font = '700 13px system-ui'; ctx.fillStyle = '#9aa6cf'; ctx.fillText(`Par ${G.hole.par} · Strokes ${G.cur} · Round ${rel === 0 ? 'E' : rel > 0 ? '+' + rel : rel}`, 16, 46);
+    if (G.msg) { ctx.textAlign = 'center'; ctx.globalAlpha = Math.min(1, G.msg.t); ctx.font = '900 28px system-ui'; ctx.fillStyle = '#fbbf24'; ctx.fillText(G.msg.text, W / 2, H * .2); ctx.globalAlpha = 1; }
+    if (b.rest && G.mode === 'play' && G.cur === 0 && G.holeI === 0) { ctx.textAlign = 'center'; ctx.font = '700 14px system-ui'; ctx.fillStyle = '#ffffffaa'; ctx.fillText('Drag back and release to shoot', W / 2, H - 24); }
+    if (G.drag) { ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(G.drag.sx, G.drag.sy); ctx.lineTo(G.drag.x, G.drag.y); ctx.stroke(); ctx.setLineDash([]); }
+  }
+
+  let last = 0;
+  function loop(now) { const dt = Math.min(.033, (now - last) / 1000 || 0); last = now; pollPads(dt); if (G.mode === 'menu') G.t += dt; else update(dt); draw(); requestAnimationFrame(loop); }
+  resize(); show('menu'); requestAnimationFrame(loop);
+  if (location.search.includes('debug')) window._gg = { G, HOLES, loadHole, stepBall, restOn, updatePlanets, BR };
+  if (location.search.includes('hole=')) { const h = +new URLSearchParams(location.search).get('hole') - 1; G.mode = 'play'; loadHole(Math.max(0, Math.min(8, h))); show(null); }
+})();
+</script>
+</body>
+</html>
