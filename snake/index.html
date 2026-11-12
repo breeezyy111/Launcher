@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Snake</title>
+<style>
+:root{
+  --bg:#e9ecef;--panel:#ffffff;--ink:#1b1e23;--muted:#5b6470;--line:#c9ced6;
+  --accent:#1f9d55;--accent-ink:#ffffff;--tileA:#8a8f98;--tileB:#111214;
+  --snake:#3ddc84;--head:#b6ffd3;--apple:#ff4d4f;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#16181c;--panel:#22252b;--ink:#eef0f3;--muted:#9aa3af;--line:#363a42;--accent:#3ddc84;--accent-ink:#0b1a11}
+}
+:root[data-theme="dark"]{--bg:#16181c;--panel:#22252b;--ink:#eef0f3;--muted:#9aa3af;--line:#363a42;--accent:#3ddc84;--accent-ink:#0b1a11}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;display:flex;justify-content:center;padding:16px}
+.app{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat{display:flex;flex-direction:column;font-size:12px;color:var(--muted)}
+.stat b{font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.stage{position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;touch-action:none}
+canvas{width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:0;background:rgba(10,12,15,.82);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;overflow:auto}
+.overlay h2{margin:0;font-size:26px}
+.overlay p{margin:0;color:#cfd5dd}
+.hidden{display:none}
+fieldset{border:0;margin:0;padding:0;width:100%;max-width:380px;text-align:left}
+legend{font-weight:700;margin-bottom:6px;padding:0;font-size:14px}
+.opts{display:flex;gap:6px;flex-wrap:wrap}
+.opts label{flex:1 1 0;min-width:70px}
+.opts input{position:absolute;opacity:0;pointer-events:none}
+.opts span{display:block;text-align:center;padding:8px 6px;border-radius:8px;border:1px solid #4a515c;background:#1d2127;color:#e8ebef;font-size:14px;cursor:pointer}
+.opts input:checked+span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.opts input:focus-visible+span{outline:3px solid #fff;outline-offset:2px}
+.hint{font-size:13px;color:var(--muted);text-align:center}
+.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,48px);gap:6px;justify-content:center}
+.pad button{padding:0;font-size:20px}
+.pad .u{grid-column:2}
+@media (hover:hover) and (pointer:fine){.pad{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <div class="stat">Time<b id="time">0:00.0</b></div>
+    <div class="stat">Score<b id="score">0</b></div>
+    <div class="stat">Best<b id="best">0</b></div>
+    <button id="openSettings" type="button">Settings</button>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="c" width="660" height="660"></canvas>
+
+    <div class="overlay" id="menu">
+      <h2>Settings</h2>
+      <fieldset><legend>Map size</legend><div class="opts" id="optSize"></div></fieldset>
+      <fieldset><legend>Speed</legend><div class="opts" id="optSpeed"></div></fieldset>
+      <fieldset><legend>Apples on the map</legend><div class="opts" id="optApples"></div></fieldset>
+      <button class="primary" id="startBtn" type="button">Start run</button>
+      <p>Arrow keys or WASD to steer. Space pauses.</p>
+    </div>
+
+    <div class="overlay hidden" id="over">
+      <h2 id="overTitle">Run over</h2>
+      <p id="overMsg"></p>
+      <div style="display:flex;gap:8px">
+        <button class="primary" id="againBtn" type="button">Play again</button>
+        <button id="menuBtn" type="button">Settings</button>
+      </div>
+    </div>
+  </div>
+  <div class="pad" aria-label="On-screen controls">
+    <button class="u" data-d="U" aria-label="Up">▲</button>
+    <button data-d="L" aria-label="Left" style="grid-row:2">◀</button>
+    <button data-d="D" aria-label="Down" style="grid-row:2">▼</button>
+    <button data-d="R" aria-label="Right" style="grid-row:2">▶</button>
+  </div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<script>
+(function(){
+  var SIZES=[["Small (10×10)",10],["Medium (16×16)",16],["Large (22×22)",22]];
+  var SPEEDS=[["Slow",190],["Medium",120],["Fast",70]];
+  var APPLES=[["1",1],["3",3],["5",5],["10",10]];
+  var cfg={size:1,speed:1,apples:0};
+  var cv=document.getElementById("c"),ctx=cv.getContext("2d");
+  var $=function(i){return document.getElementById(i)};
+
+  function build(id,list,key){
+    var h="";
+    list.forEach(function(o,i){
+      h+='<label><input type="radio" name="'+key+'" value="'+i+'"'+(cfg[key]===i?" checked":"")+'><span>'+o[0]+'</span></label>';
+    });
+    $(id).innerHTML=h;
+    $(id).addEventListener("change",function(e){cfg[key]=+e.target.value;});
+  }
+  build("optSize",SIZES,"size");build("optSpeed",SPEEDS,"speed");build("optApples",APPLES,"apples");
+
+  var N,snake,dir,queue,apples,score,alive,running,paused,timer,startT,elapsed,raf,lastKey,prev,lastStep,alpha=1,pausedAcc=0,crashing=false,crashStart=0,CRASH_MS=550;
+  var best={};
+  function bestKey(){return SIZES[cfg.size][1]+"-"+SPEEDS[cfg.speed][1]+"-"+APPLES[cfg.apples][1]}
+
+  function fmt(ms){
+    var t=Math.floor(ms/100),d=t%10,s=Math.floor(t/10)%60,m=Math.floor(t/600);
+    return m+":"+(s<10?"0":"")+s+"."+d;
+  }
+  function showTime(){$("time").textContent=fmt(elapsed)}
+
+  function spawn(){
+    var want=Math.min(APPLES[cfg.apples][1],N*N-snake.length);
+    var guard=0;
+    while(apples.length<want&&guard++<5000){
+      var x=Math.floor(Math.random()*N),y=Math.floor(Math.random()*N);
+      if(!snake.some(function(s){return s.x===x&&s.y===y})&&!apples.some(function(a){return a.x===x&&a.y===y}))apples.push({x:x,y:y});
+    }
+  }
+
+  function reset(){
+    N=SIZES[cfg.size][1];
+    var m=Math.floor(N/2);
+    snake=[{x:m,y:m},{x:m-1,y:m},{x:m-2,y:m}];
+    dir={x:1,y:0};queue=[];apples=[];score=0;alive=true;paused=false;elapsed=0;prev=snake.slice();alpha=1;crashing=false;
+    spawn();
+    $("score").textContent="0";
+    $("best").textContent=best[bestKey()]||0;
+    showTime();
+    $("hint").textContent=SIZES[cfg.size][0]+" · "+SPEEDS[cfg.speed][0]+" · "+APPLES[cfg.apples][0]+" apple"+(APPLES[cfg.apples][1]>1?"s":"");
+    draw();
+  }
+
+  function startRun(){
+    reset();
+    $("menu").classList.add("hidden");$("over").classList.add("hidden");
+    running=true;
+    startT=lastStep=performance.now();   // timer starts when the run starts
+    cancelAnimationFrame(raf);
+    raf=requestAnimationFrame(tick);
+  }
+
+  function tick(){
+    if(!running)return;
+    var iv=SPEEDS[cfg.speed][1];
+    if(!paused){
+      var n=performance.now();
+      elapsed=n-startT;showTime();
+      if(n-lastStep>iv*3)lastStep=n-iv;
+      while(n-lastStep>=iv&&running){step();lastStep+=iv;}
+      if(!running)return;
+      alpha=Math.min(1,(n-lastStep)/iv);
+    }
+    draw(alpha);
+    raf=requestAnimationFrame(tick);
+  }
+
+  function step(){
+    if(!running||paused)return;
+    prev=snake.slice();
+    if(queue.length)dir=queue.shift();
+    var h={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+    var eatIdx=apples.findIndex(function(a){return a.x===h.x&&a.y===h.y});
+    var grow=eatIdx>=0;
+    var body=grow?snake:snake.slice(0,-1);
+    if(h.x<0||h.y<0||h.x>=N||h.y>=N||body.some(function(s){return s.x===h.x&&s.y===h.y})){return end(false)}
+    snake.unshift(h);
+    if(grow){
+      apples.splice(eatIdx,1);score++;$("score").textContent=score;
+      spawn();
+    }else snake.pop();
+    if(snake.length>=N*N)return end(true);
+  }
+
+  function end(won){
+    running=false;clearInterval(timer);cancelAnimationFrame(raf);
+    elapsed=performance.now()-startT;showTime();   // timer stops when the run ends
+    var k=bestKey();
+    if(score>(best[k]||0)){best[k]=score;$("best").textContent=score}
+    $("overTitle").textContent=won?"You filled the map":"Run over";
+    $("overMsg").textContent="Score "+score+" in "+fmt(elapsed);
+    function showOver(){$("over").classList.remove("hidden");$("againBtn").focus();}
+    if(won){draw();showOver();return}
+    crashing=true;crashStart=performance.now();
+    (function loop(){
+      if(!crashing)return;
+      if(performance.now()-crashStart>=CRASH_MS){crashing=false;draw();showOver();return}
+      draw();raf=requestAnimationFrame(loop);
+    })();
+  }
+
+  function draw(a){
+    if(a===undefined)a=1;
+    var W=cv.width,s=W/N,cp=0;
+    ctx.save();
+    ctx.clearRect(0,0,W,W);
+    if(crashing){cp=Math.min(1,(performance.now()-crashStart)/CRASH_MS);ctx.translate((Math.random()-.5)*s*.2*(1-cp),(Math.random()-.5)*s*.2*(1-cp));}
+    for(var y=0;y<N;y++)for(var x=0;x<N;x++){
+      ctx.fillStyle=((x+y)%2===0)?"#9aa0a8":"#4a4e55";
+      ctx.fillRect(x*s,y*s,s+.5,s+.5);
+    }
+    apples.forEach(function(a){
+      ctx.fillStyle="#ff4d4f";ctx.beginPath();
+      ctx.arc((a.x+.5)*s,(a.y+.5)*s,s*.36,0,7);ctx.fill();
+      ctx.fillStyle="#2fbf6b";ctx.fillRect((a.x+.5)*s-1,(a.y+.1)*s,3,s*.18);
+    });
+    var L=snake.length,hp=prev[0]||snake[0],pts=[];
+    pts.push({x:hp.x+(snake[0].x-hp.x)*a,y:hp.y+(snake[0].y-hp.y)*a});
+    for(var k=1;k<L;k++)pts.push(snake[k]);
+    var tp=prev[L-1]||snake[L-1],tl=snake[L-1];
+    pts.push({x:tp.x+(tl.x-tp.x)*a,y:tp.y+(tl.y-tp.y)*a});
+    if(crashing){var ce=Math.min(1,cp/.25),adv=.3*(1-Math.pow(1-ce,3));pts[0]={x:pts[0].x+dir.x*adv,y:pts[0].y+dir.y*adv};}
+    ctx.lineJoin="round";ctx.lineCap="round";
+    ctx.beginPath();
+    for(var j=pts.length-1;j>=0;j--){
+      var q=pts[j],qx=(q.x+.5)*s,qy=(q.y+.5)*s;
+      if(j===pts.length-1)ctx.moveTo(qx,qy);else ctx.lineTo(qx,qy);
+    }
+    ctx.strokeStyle=(crashing&&cp<.6&&Math.floor(cp*12)%2===0)?"#ff6b6b":"#2fd477";ctx.lineWidth=s*.78;ctx.stroke();
+    ctx.beginPath();
+    ctx.arc((pts[0].x+.5)*s,(pts[0].y+.5)*s,s*.39,0,7);
+    ctx.fillStyle=(crashing&&cp<.6)?"#ff8a8a":"#b6ffd3";ctx.fill();
+    if(pts.length){
+      var h=pts[0];ctx.fillStyle="#111214";
+      var ex=dir.y!==0?[.3,.7]:[.62,.62],ey=dir.y!==0?[.55,.55]:[.3,.7];
+      for(var i=0;i<2;i++){ctx.beginPath();ctx.arc((h.x+ex[i])*s,(h.y+ey[i])*s,s*.07,0,7);ctx.fill()}
+    }
+    if(crashing&&cp<.5){ctx.beginPath();ctx.arc((pts[0].x+.5)*s,(pts[0].y+.5)*s,s*(.4+cp*1.4),0,7);ctx.strokeStyle="rgba(255,255,255,"+(.7*(1-cp*2))+")";ctx.lineWidth=3;ctx.stroke();}
+    ctx.restore();
+  }
+
+  function turn(d){
+    if(!running||paused)return;
+    var last=queue.length?queue[queue.length-1]:dir;
+    var nd={U:{x:0,y:-1},D:{x:0,y:1},L:{x:-1,y:0},R:{x:1,y:0}}[d];
+    if(nd.x===-last.x&&nd.y===-last.y)return;
+    if(nd.x===last.x&&nd.y===last.y)return;
+    if(queue.length<2)queue.push(nd);
+  }
+
+  function togglePause(){
+    if(!running)return;
+    paused=!paused;
+    var now=performance.now();
+    if(paused){elapsed=now-startT;pausedAcc=now-lastStep}
+    else{startT=now-elapsed;lastStep=now-pausedAcc}
+    $("hint").textContent=paused?"Paused — press Space to resume":$("hint").textContent;
+  }
+
+  function openMenu(){
+    crashing=false;cancelAnimationFrame(raf);
+    if(running){running=false;clearInterval(timer);cancelAnimationFrame(raf);elapsed=performance.now()-startT;showTime();}
+    $("over").classList.add("hidden");$("menu").classList.remove("hidden");
+  }
+
+  document.addEventListener("keydown",function(e){
+    var m={ArrowUp:"U",w:"U",W:"U",ArrowDown:"D",s:"D",S:"D",ArrowLeft:"L",a:"L",A:"L",ArrowRight:"R",d:"R",D:"R"};
+    if(m[e.key]){e.preventDefault();turn(m[e.key]);}
+    else if(e.key===" "&&running){e.preventDefault();togglePause();}
+  });
+  document.querySelectorAll(".pad button").forEach(function(b){
+    b.addEventListener("click",function(){turn(b.dataset.d)});
+  });
+  var tx,ty;
+  $("stage").addEventListener("touchstart",function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+  $("stage").addEventListener("touchend",function(e){
+    if(tx==null)return;
+    var dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;
+    turn(Math.abs(dx)>Math.abs(dy)?(dx>0?"R":"L"):(dy>0?"D":"U"));
+  },{passive:true});
+
+  $("startBtn").addEventListener("click",startRun);
+  $("againBtn").addEventListener("click",startRun);
+  $("menuBtn").addEventListener("click",openMenu);
+  $("openSettings").addEventListener("click",openMenu);
+
+  reset();
+})();
+</script>
+</body>
+</html>
