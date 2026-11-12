@@ -37,7 +37,7 @@ Edit **`apps.json`**:
 }
 ```
 
-You can also use **+ Add app** in the UI. Changes made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
+There is no add button in the UI: new apps go in `apps.json`. Edits made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
 
 ## Apps inside the launcher
 
@@ -46,6 +46,8 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 - **Project SuperInk** is still its own game with its own site and repo. The launcher just plays that site in the player.
 - **Stellar Forge** is built in too: the space sandbox from [breeezyy111/space](https://github.com/breeezyy111/space) lives in `stellar-forge/` (one self-contained `index.html`). To update it, copy that repo's `index.html` over it.
 - **Neon Drift**, **Fusion**, **Jot** and **Focus** are small built-in apps, each one self-contained `index.html` in its own folder (`neon-drift/`, `fusion/`, `jot/`, `focus/`). Scores, notes and timer counts are saved in the browser.
+- **Krazy Kombat** is a built-in one-on-one fighting game in `krazy-kombat/` (one self-contained `index.html`): six original fighters, vs CPU or 2 players on one keyboard, gamepads and touch controls. Add `?demo` to the URL to watch CPU vs CPU.
+- **Snake** (`snake/`) and **Stackfall** (`stackfall/`, a falling-block puzzler) are built-in single-file games. Snake lets you pick map size, speed and apple count; Stackfall has pixel/smooth styles and sound toggles.
 - **Comet** (`comet/`) is a built-in web browser: tabs, an address bar, back/forward/reload, and a home page of shortcuts you can star. Pages load directly in a frame, with no proxy. Sites that refuse to be framed (YouTube's home page, GitHub, Reddit, social apps and so on) show a clear "can't be shown here" card with an Open in new tab button, and YouTube watch links play through the official embed player.
 - **Orca** is built in: its chat page lives in `orca/`. It talks to the Cloudflare Worker from [breeezyy111/Orca](https://github.com/breeezyy111/Orca). The Worker address is set in `orca/config.js` (`apiUrl`).
 
@@ -55,7 +57,7 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 - Search across name, description, tags and URL. Press `/` to focus it, use the arrow keys to move, and press `Enter` to launch.
 - Category filters with counts, plus status badges (live, beta, dev, archived)
 - Pin favourites. Recently launched apps move to the front.
-- Add, edit and delete apps in the UI, with JSON import and export
+- Edit and delete apps in the UI, with JSON import and export
 - Five styles you can switch in the **⋯** menu: Cards, Springboard (a phone home screen), Poster, Arcade (neon) and Terminal (a list). The choice is remembered, and `?skin=arcade` in the URL forces one.
 - Light and dark themes, works on phones, and keeps working offline once loaded
 

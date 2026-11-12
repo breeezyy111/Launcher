@@ -18,6 +18,23 @@
       "embed": true
     },
     {
+      "id": "krazy-kombat",
+      "name": "Krazy Kombat",
+      "description": "One-on-one arcade fighter: six original brawlers, specials, supers and silly finishers. Play the CPU or a friend.",
+      "url": "krazy-kombat/",
+      "icon": "icons/krazy-kombat.svg",
+      "color": "#f0369a",
+      "category": "Games",
+      "tags": [
+        "fighting",
+        "game",
+        "2-player",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "orca",
       "name": "Orca",
       "description": "Friendly AI chat and coding assistant, built into the launcher.",
@@ -82,6 +99,42 @@
       ],
       "status": "live",
       "embed": true
+    },
+    {
+      "id": "snake",
+      "name": "Snake",
+      "description": "Classic snake with picks for map size, speed and how many apples. Smooth moves and a best score per setup.",
+      "url": "snake/",
+      "icon": "icons/snake.svg",
+      "color": "#2fd477",
+      "category": "Games",
+      "tags": [
+        "arcade",
+        "game",
+        "classic",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
+    },
+    {
+      "id": "stackfall",
+      "name": "Stackfall",
+      "description": "Falling-block puzzler: rotate, drop and clear lines as the speed climbs. Pixel or smooth style, with retro sound.",
+      "url": "stackfall/",
+      "icon": "icons/stackfall.svg",
+      "color": "#e879f9",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "blocks",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
     },
     {
       "id": "jot",

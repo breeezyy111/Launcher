@@ -314,7 +314,7 @@ body:not(.settled) .tile, body:not(.settled) .hero { animation: rise .45s var(--
 
 .empty { color: var(--muted); text-align: center; padding: 48px 16px; display: grid; justify-items: center; gap: 4px; }
 .empty .i { width: 32px; height: 32px; opacity: .6; }
-.empty p { margin: 4px 0 12px; font-size: 17px; }
+.empty p { margin: 4px 0 0; font-size: 17px; }
 
 .hint { margin: 40px 0 0; text-align: center; color: var(--muted); font-size: 13px; }
 .hint kbd { margin: 0 2px; }
@@ -350,7 +350,6 @@ dialog input[type=color] { height: 44px; width: 100%; border: 1px solid var(--bo
 
 @media (max-width: 520px) {
   .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  #addBtn { width: 44px; padding: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -539,3 +538,6 @@ body.playing { overflow: hidden; }
 .player iframe { flex: 1; width: 100%; border: 0; background: #000; }
 .player:fullscreen .player-bar { display: none; }
 body[data-skin]:not([data-skin="cards"]) kbd { background: transparent; }
+
+/* Custom label pill from apps.json "label" (e.g. SK), solid blue in every style */
+body .tile .badge.label { background: #2563eb; color: #fff; border: 0; letter-spacing: .04em; box-shadow: none; }
