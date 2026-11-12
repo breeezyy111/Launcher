@@ -24,9 +24,6 @@
         <kbd aria-hidden="true">/</kbd>
       </label>
       <div class="actions">
-        <button id="addBtn" class="btn primary" type="button">
-          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="btn-label">Add app</span>
-        </button>
         <button id="menuBtn" class="btn icon" type="button" aria-label="Style and settings" aria-haspopup="true" aria-expanded="false">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
         </button>
@@ -81,7 +78,6 @@
       <div id="empty" class="empty" hidden>
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <p>No apps match that.</p>
-        <button type="button" class="btn" id="emptyAdd">Add an app</button>
       </div>
     </section>
 
@@ -90,7 +86,7 @@
 
   <dialog id="editor">
     <form id="editorForm" method="dialog">
-      <h2 id="editorTitle">Add app</h2>
+      <h2 id="editorTitle">Edit app</h2>
       <label>Name <input name="name" required maxlength="60" /></label>
       <label>URL <input name="url" required placeholder="https://…" /></label>
       <label>Description <input name="description" maxlength="140" /></label>
@@ -115,7 +111,7 @@
       <label class="check"><input name="newTab" type="checkbox" checked /> Otherwise open in a new tab</label>
       <datalist id="categoryList"></datalist>
       <div class="dialog-actions">
-        <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+        <button type="button" class="btn danger" id="deleteBtn">Delete</button>
         <span class="spacer"></span>
         <button type="button" class="btn" id="cancelBtn">Cancel</button>
         <button type="submit" class="btn primary">Save</button>

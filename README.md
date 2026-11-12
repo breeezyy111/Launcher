@@ -37,7 +37,7 @@ Edit **`apps.json`**:
 }
 ```
 
-You can also use **+ Add app** in the UI. Changes made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
+There is no add button in the UI: new apps go in `apps.json`. Edits made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
 
 ## Apps inside the launcher
 
@@ -56,7 +56,7 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 - Search across name, description, tags and URL. Press `/` to focus it, use the arrow keys to move, and press `Enter` to launch.
 - Category filters with counts, plus status badges (live, beta, dev, archived)
 - Pin favourites. Recently launched apps move to the front.
-- Add, edit and delete apps in the UI, with JSON import and export
+- Edit and delete apps in the UI, with JSON import and export
 - Five styles you can switch in the **⋯** menu: Cards, Springboard (a phone home screen), Poster, Arcade (neon) and Terminal (a list). The choice is remembered, and `?skin=arcade` in the URL forces one.
 - Light and dark themes, works on phones, and keeps working offline once loaded
 
