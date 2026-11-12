@@ -1,6 +1,6 @@
 // Network-first for everything, so updates show up right away; the cache is only the offline fallback.
-const CACHE = 'launcher-v10';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/superink.svg', 'orca/icons/icon.svg', 'icons/stellar-forge.svg', 'icons/neon-drift.svg', 'icons/fusion.svg', 'icons/jot.svg', 'icons/focus.svg', 'icons/krazy-kombat.svg'];
+const CACHE = 'launcher-v12';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/superink.svg', 'orca/icons/icon.svg', 'icons/stellar-forge.svg', 'icons/neon-drift.svg', 'icons/fusion.svg', 'icons/jot.svg', 'icons/focus.svg', 'icons/krazy-kombat.svg', 'icons/snake.svg', 'icons/stackfall.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
