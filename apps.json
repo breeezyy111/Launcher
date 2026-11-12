@@ -18,6 +18,23 @@
       "embed": true
     },
     {
+      "id": "krazy-kombat",
+      "name": "Krazy Kombat",
+      "description": "One-on-one arcade fighter: six original brawlers, specials, supers and silly finishers. Play the CPU or a friend.",
+      "url": "krazy-kombat/",
+      "icon": "icons/krazy-kombat.svg",
+      "color": "#f0369a",
+      "category": "Games",
+      "tags": [
+        "fighting",
+        "game",
+        "2-player",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "orca",
       "name": "Orca",
       "description": "Friendly AI chat and coding assistant, built into the launcher.",
