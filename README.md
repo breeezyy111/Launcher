@@ -48,6 +48,7 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 - **Neon Drift**, **Fusion**, **Jot** and **Focus** are small built-in apps, each one self-contained `index.html` in its own folder (`neon-drift/`, `fusion/`, `jot/`, `focus/`). Scores, notes and timer counts are saved in the browser.
 - **Krazy Kombat** is a built-in one-on-one fighting game in `krazy-kombat/` (one self-contained `index.html`): six original fighters, vs CPU or 2 players on one keyboard, gamepads and touch controls. Add `?demo` to the URL to watch CPU vs CPU.
 - **Snake** (`snake/`) and **Stackfall** (`stackfall/`, a falling-block puzzler) are built-in single-file games. Snake lets you pick map size, speed and apple count; Stackfall has pixel/smooth styles and sound toggles.
+- **Comet** (`comet/`) is a built-in web browser: tabs, an address bar, back/forward/reload, and a home page of shortcuts you can star. Pages load directly in a frame, with no proxy. Sites that refuse to be framed (YouTube's home page, GitHub, Reddit, social apps and so on) show a clear "can't be shown here" card with an Open in new tab button, and YouTube watch links play through the official embed player.
 - **Orca** is built in: its chat page lives in `orca/`. It talks to the Cloudflare Worker from [breeezyy111/Orca](https://github.com/breeezyy111/Orca). The Worker address is set in `orca/config.js` (`apiUrl`).
 
 ## Features
