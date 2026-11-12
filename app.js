@@ -151,6 +151,7 @@
     meta.className = 'meta';
     if (app.status) meta.append(badge(app.status, STATUS[app.status] || app.status));
     if (app.category) meta.append(badge('', app.category));
+    if (app.label) meta.append(badge('label', app.label));
     const cta = document.createElement('span');
     cta.className = 'tile-cta';
     cta.setAttribute('aria-hidden', 'true');
@@ -292,10 +293,10 @@
   const form = $('#editorForm');
   let editingId = null;
 
+  // Edit-only: apps are added in apps.json, not from the UI.
   function openEditor(app) {
-    editingId = app?.id ?? null;
-    $('#editorTitle').textContent = app ? 'Edit app' : 'Add app';
-    $('#deleteBtn').hidden = !app;
+    if (!app) return;
+    editingId = app.id;
     form.reset();
     const f = form.elements;
     f.name.value = app?.name ?? '';
@@ -315,12 +316,8 @@
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = form.elements;
-    const existing = new Set(allApps().map((a) => a.id));
-    let id = editingId;
-    if (!id) {
-      id = slug(f.name.value);
-      for (let n = 2; existing.has(id); n++) id = `${slug(f.name.value)}-${n}`;
-    }
+    const id = editingId;
+    if (!id) return;
     const app = {
       name: f.name.value.trim(),
       url: normalizeUrl(f.url.value),
@@ -337,7 +334,7 @@
     saveLocal();
     dialog.close();
     render();
-    toast(editingId ? 'Saved' : `Added ${app.name}`);
+    toast('Saved');
   });
 
   $('#cancelBtn').addEventListener('click', () => dialog.close());
@@ -470,9 +467,6 @@
     else if (e.key === 'Enter' && ts[selected]) { e.preventDefault(); ts[selected].click(); }
     else if (e.key === 'Escape') { search.value = ''; query = ''; render(); }
   });
-
-  $('#addBtn').addEventListener('click', () => openEditor(null));
-  $('#emptyAdd').addEventListener('click', () => openEditor(null));
 
   // ---------- boot ----------
   async function boot() {

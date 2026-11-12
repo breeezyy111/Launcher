@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comet</title>
+<style>
+  :root {
+    --bg:#f5f6fa; --surface:#fff; --surface-2:#eef0f6; --text:#0f172a; --muted:#5b6475;
+    --border:#e3e6ee; --accent:#0ea5e9; --accent-2:#5b5bf0; --accent-text:#fff; --ring:#0ea5e9;
+    --warn-bg:#fff7e6; --warn-fg:#7c4a03; --warn-line:#f5d9a6;
+    --shadow:0 1px 2px rgba(15,23,42,.05),0 8px 24px -6px rgba(15,23,42,.10);
+    --font:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#090c13; --surface:#121722; --surface-2:#1b2130; --text:#eef1f7; --muted:#9aa3b5;
+      --border:#232a3a; --accent:#38bdf8; --accent-2:#8b8cff; --accent-text:#04131c; --ring:#7dd3fc;
+      --warn-bg:#2a2010; --warn-fg:#fcd9a0; --warn-line:#4a3815;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -10px rgba(0,0,0,.6);
+      color-scheme:dark;
+    }
+  }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:var(--font); }
+  body { display:flex; flex-direction:column; overflow:hidden; }
+  button, input { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+  .i { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+
+  /* tabs */
+  .tabs { display:flex; align-items:flex-end; gap:4px; padding:8px 8px 0; background:var(--surface-2); overflow-x:auto; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { display:flex; align-items:center; gap:8px; min-width:120px; max-width:220px; flex:0 1 200px; height:38px; padding:0 6px 0 12px;
+         border-radius:12px 12px 0 0; background:transparent; color:var(--muted); cursor:pointer; border:0; font-size:13px; user-select:none; }
+  .tab:hover { background:color-mix(in srgb, var(--surface) 55%, transparent); }
+  .tab[aria-selected=true] { background:var(--surface); color:var(--text); box-shadow:0 -1px 0 var(--border) inset; }
+  .tab img, .tab .dot { width:16px; height:16px; border-radius:4px; flex:none; }
+  .tab .dot { background:linear-gradient(135deg,var(--accent),var(--accent-2)); }
+  .tab span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+  .tab .x { display:grid; place-items:center; width:24px; height:24px; border-radius:7px; border:0; background:none; cursor:pointer; color:var(--muted); }
+  .tab .x:hover { background:var(--surface-2); color:var(--text); }
+  .newtab { width:34px; height:34px; margin-bottom:2px; border-radius:10px; border:0; background:none; color:var(--muted); cursor:pointer; display:grid; place-items:center; flex:none; }
+  .newtab:hover { background:var(--surface); color:var(--text); }
+
+  /* toolbar */
+  .bar { display:flex; align-items:center; gap:4px; padding:8px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .ib { width:40px; height:40px; display:grid; place-items:center; border-radius:12px; border:0; background:none; cursor:pointer; color:var(--text); flex:none; text-decoration:none; }
+  .ib:hover:not(:disabled) { background:var(--surface-2); }
+  .ib:disabled { opacity:.35; cursor:default; }
+  .ib.on { color:#f59e0b; }
+  .ib.on .i { fill:#f59e0b; }
+  form.addr { flex:1; min-width:0; display:flex; align-items:center; gap:8px; height:40px; padding:0 14px; border-radius:999px; background:var(--surface-2); border:1px solid transparent; }
+  form.addr:focus-within { border-color:var(--ring); background:var(--surface); }
+  form.addr input { flex:1; min-width:0; border:0; background:none; outline:none; font-size:15px; }
+  form.addr .lock { color:var(--muted); }
+
+  /* notice for sites that might refuse to load */
+  .note { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--warn-bg); color:var(--warn-fg); border-bottom:1px solid var(--warn-line); font-size:13px; }
+  .note p { margin:0; flex:1; }
+  .note a, .note button.link { font-weight:600; color:inherit; white-space:nowrap; }
+  .note button.link { border:0; background:none; text-decoration:underline; cursor:pointer; padding:0; }
+  .note .ib { width:30px; height:30px; color:inherit; }
+
+  /* views */
+  main { position:relative; flex:1; min-height:0; }
+  main > * { position:absolute; inset:0; }
+  iframe { width:100%; height:100%; border:0; background:#fff; }
+
+  .home { overflow:auto; padding:clamp(24px,8vh,80px) 16px 40px; background:
+          radial-gradient(60% 50% at 20% 0%, color-mix(in srgb,var(--accent) 16%, transparent), transparent 70%),
+          radial-gradient(50% 40% at 90% 10%, color-mix(in srgb,var(--accent-2) 14%, transparent), transparent 70%), var(--bg); }
+  .home-in { max-width:720px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:28px; }
+  .brand { display:flex; align-items:center; gap:12px; font-size:clamp(28px,6vw,40px); font-weight:800; letter-spacing:-.03em; }
+  .brand svg { width:52px; height:52px; border-radius:14px; box-shadow:var(--shadow); }
+  .home form { width:100%; display:flex; align-items:center; gap:10px; height:56px; padding:0 8px 0 20px; border-radius:999px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); }
+  .home form:focus-within { border-color:var(--ring); }
+  .home form input { flex:1; min-width:0; border:0; background:none; outline:none; font-size:17px; }
+  .home form button { height:42px; padding:0 18px; border-radius:999px; border:0; background:var(--accent); color:var(--accent-text); font-weight:700; cursor:pointer; }
+  .home h2 { align-self:flex-start; margin:0 0 -14px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .grid { width:100%; display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:12px; }
+  .sc { position:relative; display:flex; flex-direction:column; align-items:center; gap:10px; padding:16px 8px 14px; border-radius:18px; background:var(--surface);
+        border:1px solid var(--border); cursor:pointer; color:var(--text); text-decoration:none; font-size:13px; font-weight:600; transition:transform .15s, box-shadow .15s; }
+  .sc:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+  .sc .ic { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; color:#fff; font-size:20px; font-weight:800; }
+  .sc .ic img { width:28px; height:28px; }
+  .sc span.n { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sc .ext { position:absolute; top:8px; right:8px; color:var(--muted); }
+  .sc .ext .i { width:14px; height:14px; }
+  .sc .rm { position:absolute; top:4px; left:4px; width:24px; height:24px; border-radius:8px; border:0; background:var(--surface-2); color:var(--muted); cursor:pointer; display:none; place-items:center; }
+  .sc:hover .rm, .sc:focus-within .rm { display:grid; }
+  .tip { color:var(--muted); font-size:13px; text-align:center; max-width:520px; line-height:1.5; margin:0; }
+
+  /* can't-show card */
+  .blocked { display:grid; place-items:center; padding:24px 16px; background:var(--bg); overflow:auto; }
+  .card { max-width:440px; text-align:center; background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:32px 24px; box-shadow:var(--shadow); }
+  .card .big { width:56px; height:56px; margin:0 auto 14px; border-radius:16px; display:grid; place-items:center; background:var(--surface-2); color:var(--muted); }
+  .card .big .i { width:28px; height:28px; }
+  .card h1 { font-size:20px; margin:0 0 8px; letter-spacing:-.01em; }
+  .card p { color:var(--muted); margin:0 0 20px; line-height:1.5; font-size:14px; word-break:break-word; }
+  .card .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .btn { display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 18px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text);
+         font-weight:600; text-decoration:none; cursor:pointer; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-text); }
+
+  @media (max-width:560px) {
+    .bar .hide-sm { display:none; }
+    .bar { gap:2px; padding:6px; }
+    .ib { width:36px; }
+    form.addr { padding:0 10px; }
+    form.addr .lock { display:none; }
+    .tab { min-width:96px; }
+  }
+</style>
+</head>
+<body>
+  <div class="tabs" role="tablist" aria-label="Tabs" id="tabs">
+    <button class="newtab" id="newTab" title="New tab (Alt+T)" aria-label="New tab"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+
+  <div class="bar">
+    <button class="ib" id="back" title="Back (Alt+←)" aria-label="Back"><svg class="i" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+    <button class="ib" id="fwd" title="Forward (Alt+→)" aria-label="Forward"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <button class="ib" id="reload" title="Reload (Alt+R)" aria-label="Reload"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button>
+    <button class="ib" id="home" title="Home" aria-label="Home"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg></button>
+    <form class="addr" id="addrForm" role="search">
+      <svg class="i lock" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="addr" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search or type a web address" aria-label="Address">
+    </form>
+    <button class="ib hide-sm" id="star" title="Add to home page" aria-label="Add to home page"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg></button>
+    <a class="ib" id="ext" target="_blank" rel="noopener" title="Open this page in a new browser tab" aria-label="Open in a new browser tab"><svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M10 14 20 4M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
+  </div>
+
+  <div class="note" id="note" hidden role="status">
+    <p>Some sites don't allow being shown inside other pages. If this one stays blank, open it in a new tab.</p>
+    <a id="noteOpen" target="_blank" rel="noopener">Open in new tab</a>
+    <button class="ib" id="noteClose" aria-label="Dismiss for this site" title="Don't show again for this site"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+
+  <main id="main">
+    <section class="home" id="homeView">
+      <div class="home-in">
+        <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#logo"/></svg>Comet</div>
+        <form id="homeForm" role="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="homeQ" type="text" autocomplete="off" spellcheck="false" placeholder="Search the web or type an address" aria-label="Search or address"><button>Go</button></form>
+        <h2>Shortcuts</h2>
+        <div class="grid" id="grid"></div>
+        <p class="tip">Sites load right here. Some big sites (YouTube's home page, GitHub, Reddit, social apps) refuse to be shown inside other pages; those open in a new tab instead, marked with ↗. Star any page to pin it here.</p>
+      </div>
+    </section>
+    <section class="blocked" id="blockedView" hidden>
+      <div class="card">
+        <div class="big"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l6 0"/></svg></div>
+        <h1>This site can't be shown here</h1>
+        <p><b id="blockedHost"></b> doesn't allow other pages to display it, so it needs its own browser tab.</p>
+        <div class="row">
+          <a class="btn primary" id="blockedOpen" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M10 14 20 4M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>Open in new tab</a>
+          <button class="btn" id="blockedHome">Back to home</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#6366f1"/></linearGradient>
+      <symbol id="logo" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="url(#cg)"/><path d="M14 50 34 30" stroke="#fff" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/><path d="M18 40 30 28M26 52l12-12" stroke="#fff" stroke-opacity=".3" stroke-width="3" stroke-linecap="round"/><circle cx="40" cy="24" r="10" fill="#fff"/></symbol>
+    </defs>
+  </svg>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s) => document.getElementById(s);
+  const store = {
+    get(k, d) { try { const v = JSON.parse(localStorage.getItem('comet-' + k)); return v ?? d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('comet-' + k, JSON.stringify(v)); } catch {} },
+  };
+
+  // Sites known to refuse being framed (X-Frame-Options / CSP frame-ancestors). We don't try to get around this;
+  // we show a clear card with a button that opens the real site in a normal browser tab.
+  const BLOCKED = ['youtube.com','youtu.be','github.com','reddit.com','x.com','twitter.com','facebook.com','instagram.com','tiktok.com',
+    'discord.com','linkedin.com','amazon.com','netflix.com','twitch.tv','spotify.com','chatgpt.com','openai.com','claude.ai',
+    'mail.google.com','docs.google.com','drive.google.com','accounts.google.com','classroom.google.com','gmail.com','outlook.com',
+    'live.com','microsoft.com','apple.com','duckduckgo.com','pinterest.com','tumblr.com','stackoverflow.com','paypal.com','ebay.com','roblox.com'];
+  // Hosts that are known to load fine inside a frame: skip the "might stay blank" hint for these.
+  const FRAMEABLE = ['wikipedia.org','wikimedia.org','youtube-nocookie.com','openstreetmap.org','example.com','google.com', location.hostname];
+
+  const hostOf = (u) => { try { return new URL(u, location.href).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const matches = (host, list) => list.some((d) => d && (host === d || host.endsWith('.' + d)));
+  const isBlocked = (u) => { const h = hostOf(u); if (/youtube-nocookie\.com$/.test(h) || /^(www\.)?youtube\.com\/embed\//.test(u.replace(/^https?:\/\//, ''))) return false;
+    if (h === 'google.com' && /[?&]igu=1/.test(u)) return false; return matches(h, BLOCKED); };
+  const sameOrigin = (u) => { try { return new URL(u, location.href).origin === location.origin; } catch { return false; } };
+
+  // Google serves a frame-friendly results page when igu=1 is set, so searches stay inside the browser.
+  const searchUrl = (q) => 'https://www.google.com/search?igu=1&q=' + encodeURIComponent(q);
+
+  // Turn whatever was typed into a URL. YouTube watch links become the official embed player.
+  function toUrl(input) {
+    const s = input.trim();
+    if (!s) return null;
+    if (/^(https?:)\/\//i.test(s)) return tidy(s);
+    const looksLikeHost = !/\s/.test(s) && (/^[^\s/]+\.[a-z]{2,}(?::\d+)?(\/.*)?$/i.test(s) || /^localhost(:\d+)?(\/|$)/i.test(s));
+    return looksLikeHost ? tidy('https://' + s) : searchUrl(s);
+  }
+  function tidy(u) {
+    let url; try { url = new URL(u); } catch { return u; }
+    if (url.protocol === 'http:' && url.hostname !== 'localhost') url.protocol = 'https:'; // http pages can't load inside an https page
+    const h = url.hostname.replace(/^(www\.|m\.)/, '');
+    let id = null;
+    if (h === 'youtube.com' && url.pathname === '/watch') id = url.searchParams.get('v');
+    else if (h === 'youtube.com' && url.pathname.startsWith('/shorts/')) id = url.pathname.split('/')[2];
+    else if (h === 'youtu.be') id = url.pathname.slice(1);
+    if (id && /^[\w-]{6,20}$/.test(id)) return 'https://www.youtube-nocookie.com/embed/' + id;
+    return url.href;
+  }
+  const pretty = (u) => (u ? u.replace(/^https:\/\//, '').replace(/\/$/, '') : '');
+  const title = (u) => {
+    const m = /google\.com\/search\?.*[?&]q=([^&]*)/.exec(u); if (m) return decodeURIComponent(m[1].replace(/\+/g, ' ')) + ' - Search';
+    if (/youtube-nocookie\.com\/embed\//.test(u)) return 'YouTube video';
+    return hostOf(u) || 'New tab';
+  };
+
+  const DEFAULT_SHORTCUTS = [
+    { name:'Google', url:'https://www.google.com/webhp?igu=1', color:'#4285f4' },
+    { name:'Wikipedia', url:'https://en.wikipedia.org/', color:'#334155' },
+    { name:'Maps', url:'https://www.openstreetmap.org/export/embed.html?bbox=-125,24,-66,50&layer=mapnik', color:'#16a34a' },
+    { name:'YouTube', url:'https://www.youtube.com/', color:'#ef4444' },
+    { name:'GitHub', url:'https://github.com/', color:'#111827' },
+    { name:'Reddit', url:'https://www.reddit.com/', color:'#ff4500' },
+    { name:'Jot', url:'../jot/', color:'#10b981', icon:'../icons/jot.svg' },
+    { name:'Focus', url:'../focus/', color:'#f97362', icon:'../icons/focus.svg' },
+  ];
+  let shortcuts = store.get('shortcuts', DEFAULT_SHORTCUTS);
+  let dismissed = store.get('dismissed', []);
+
+  // ---- tabs ----
+  // Each tab keeps its own history stack of pages opened from the address bar, links, or shortcuts.
+  // Cross-origin pages can't tell us when you click links inside them, so back/forward walk this stack.
+  let tabs = [], active = null, seq = 0;
+  const main = $('main'), tabsEl = $('tabs');
+
+  function newTab(url, focus = true) {
+    const t = { id: ++seq, hist: [], idx: -1, frame: null, el: null };
+    tabs.push(t);
+    t.el = document.createElement('div');
+    t.el.className = 'tab'; t.el.setAttribute('role', 'tab'); t.el.tabIndex = 0;
+    t.el.innerHTML = '<i class="dot"></i><span></span><button class="x" aria-label="Close tab" title="Close tab (Alt+W)"><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
+    t.el.addEventListener('click', (e) => { if (e.target.closest('.x')) closeTab(t); else select(t); });
+    t.el.addEventListener('auxclick', (e) => { if (e.button === 1) closeTab(t); });
+    t.el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(t); } });
+    tabsEl.insertBefore(t.el, $('newTab'));
+    if (url) go(url, t);
+    if (focus) select(t);
+    if (!url && focus) setTimeout(() => $('homeQ').focus(), 0);
+    save();
+    return t;
+  }
+  function closeTab(t) {
+    const i = tabs.indexOf(t);
+    t.el.remove(); t.frame?.remove();
+    tabs.splice(i, 1);
+    if (!tabs.length) newTab();
+    else if (t === active) select(tabs[Math.min(i, tabs.length - 1)]);
+    save();
+  }
+  function select(t) {
+    active = t;
+    tabs.forEach((x) => { x.el.setAttribute('aria-selected', String(x === t)); if (x.frame) x.frame.hidden = x !== t || isBlocked(cur(x) || ''); });
+    t.el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    paint();
+  }
+  const cur = (t) => t.hist[t.idx] || null;
+
+  function go(input, t = active) {
+    const url = typeof input === 'string' && /^(https?:\/\/|\.\.?\/)/.test(input) ? tidy(new URL(input, location.href).href) : toUrl(input);
+    if (!url) return;
+    t.hist = t.hist.slice(0, t.idx + 1); t.hist.push(url); t.idx = t.hist.length - 1;
+    load(t);
+  }
+  function load(t) {
+    const url = cur(t);
+    if (!url) { t.frame?.remove(); t.frame = null; if (t === active) paint(); save(); return; }
+    if (isBlocked(url)) { if (t.frame) { t.frame.src = 'about:blank'; t.frame.hidden = true; } t.title = null; if (t === active) paint(); save(); return; }
+    if (!t.frame) {
+      t.frame = document.createElement('iframe');
+      t.frame.title = 'Web page';
+      t.frame.allow = 'fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture; geolocation';
+      t.frame.allowFullscreen = true;
+      t.frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      t.frame.addEventListener('load', () => onFrameLoad(t));
+      main.append(t.frame);
+    }
+    t.title = null;
+    t.frame.src = url;
+    if (t === active) paint();
+    save();
+  }
+  // Same-origin pages (the launcher's own apps) let us read their real address and title; others don't.
+  function onFrameLoad(t) {
+    let href = null, docTitle = '';
+    try { href = t.frame.contentWindow.location.href; docTitle = t.frame.contentDocument.title; } catch {}
+    if (href && href !== 'about:blank' && cur(t) && href !== new URL(cur(t), location.href).href) { t.hist = t.hist.slice(0, t.idx + 1); t.hist.push(href); t.idx++; }
+    t.title = docTitle || null;
+    if (t === active) paint(); else label(t);
+    save();
+  }
+
+  function label(t) {
+    const url = cur(t);
+    const span = t.el.querySelector('span'), old = t.el.firstElementChild;
+    span.textContent = t.title || (url ? title(url) : 'New tab');
+    t.el.title = url ? pretty(url) : 'New tab';
+    const h = url && hostOf(url);
+    if (h && !sameOrigin(url)) {
+      if (old.tagName !== 'IMG' || old.dataset.h !== h) {
+        const img = new Image(); img.alt = ''; img.dataset.h = h; img.referrerPolicy = 'no-referrer';
+        img.src = 'https://icons.duckduckgo.com/ip3/' + h + '.ico';
+        img.onerror = () => img.replaceWith(Object.assign(document.createElement('i'), { className: 'dot' }));
+        old.replaceWith(img);
+      }
+    } else if (old.tagName === 'IMG') old.replaceWith(Object.assign(document.createElement('i'), { className: 'dot' }));
+  }
+
+  function paint() {
+    const t = active, url = cur(t), blocked = !!url && isBlocked(url);
+    tabs.forEach(label);
+    $('homeView').hidden = !!url;
+    $('blockedView').hidden = !blocked;
+    if (t.frame) t.frame.hidden = !url || blocked;
+    if (document.activeElement !== $('addr')) $('addr').value = url ? pretty(url) : '';
+    $('back').disabled = t.idx < 0;
+    $('fwd').disabled = t.idx >= t.hist.length - 1;
+    $('reload').disabled = !url;
+    const ext = $('ext');
+    if (url) ext.href = url; else ext.removeAttribute('href');
+    ext.style.visibility = url ? '' : 'hidden';
+    if (blocked) { $('blockedHost').textContent = hostOf(url); $('blockedOpen').href = url; }
+    const h = url && hostOf(url);
+    const showNote = url && !blocked && !sameOrigin(url) && !matches(h, FRAMEABLE) && !dismissed.includes(h);
+    $('note').hidden = !showNote;
+    if (showNote) $('noteOpen').href = url;
+    const starred = url && shortcuts.some((s) => s.url === url);
+    $('star').classList.toggle('on', !!starred);
+    $('star').disabled = !url;
+    $('star').title = starred ? 'Remove from home page' : 'Add to home page';
+    document.title = (t.title || (url ? title(url) : 'New tab')) + ' · Comet';
+  }
+
+  // ---- home shortcuts ----
+  function renderGrid() {
+    $('grid').replaceChildren(...shortcuts.map((s, i) => {
+      const blocked = isBlocked(s.url);
+      const a = document.createElement('a');
+      a.className = 'sc'; a.href = new URL(s.url, location.href).href;
+      if (blocked) { a.target = '_blank'; a.rel = 'noopener'; a.title = s.name + ' opens in a new tab'; }
+      const ic = document.createElement('span'); ic.className = 'ic'; ic.style.background = s.color || 'var(--accent)';
+      if (s.icon) { const im = new Image(); im.src = s.icon; im.alt = ''; ic.append(im); ic.style.background = 'none'; im.style.cssText = 'width:44px;height:44px;border-radius:12px'; }
+      else ic.textContent = (s.name || '?').trim()[0].toUpperCase();
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = s.name;
+      a.append(ic, n);
+      if (blocked) a.insertAdjacentHTML('beforeend', '<span class="ext" aria-label="opens in new tab"><svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M10 14 20 4"/></svg></span>');
+      const rm = document.createElement('button'); rm.className = 'rm'; rm.type = 'button'; rm.title = 'Remove shortcut'; rm.setAttribute('aria-label', 'Remove ' + s.name);
+      rm.innerHTML = '<svg class="i" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+      rm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); shortcuts.splice(i, 1); store.set('shortcuts', shortcuts); renderGrid(); });
+      a.append(rm);
+      a.addEventListener('click', (e) => { if (blocked || e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); go(s.url); });
+      return a;
+    }));
+  }
+
+  // ---- persistence ----
+  function save() {
+    store.set('tabs', { tabs: tabs.map((t) => ({ hist: t.hist.slice(-30), idx: Math.min(t.idx, 29) })), active: tabs.indexOf(active) });
+  }
+  function restore() {
+    const s = store.get('tabs', null);
+    if (!s || !Array.isArray(s.tabs) || !s.tabs.length) return newTab();
+    s.tabs.forEach((st) => {
+      const t = newTab(null, false);
+      t.hist = (st.hist || []).filter((u) => u === null || typeof u === 'string'); t.idx = Math.min(st.idx ?? -1, t.hist.length - 1);
+      if (cur(t)) load(t);
+    });
+    select(tabs[Math.max(0, Math.min(s.active || 0, tabs.length - 1))]);
+  }
+
+  // ---- wiring ----
+  $('addrForm').addEventListener('submit', (e) => { e.preventDefault(); go($('addr').value); $('addr').blur(); });
+  $('addr').addEventListener('focus', () => $('addr').select());
+  $('addr').addEventListener('blur', () => setTimeout(paint, 0));
+  $('homeForm').addEventListener('submit', (e) => { e.preventDefault(); go($('homeQ').value); $('homeQ').value = ''; });
+  $('back').onclick = () => { const t = active; if (t.idx < 0) return; t.idx--; load(t); };
+  $('fwd').onclick = () => { const t = active; if (t.idx >= t.hist.length - 1) return; t.idx++; load(t); };
+  $('reload').onclick = () => load(active);
+  // Going home is a history entry too (stored as null), so Back returns to the page you left.
+  $('home').onclick = $('blockedHome').onclick = () => { const t = active; if (!cur(t)) return $('homeQ').focus();
+    t.hist = t.hist.slice(0, t.idx + 1); t.hist.push(null); t.idx++; t.title = null; load(t); $('homeQ').focus(); };
+  $('newTab').onclick = () => newTab();
+  $('star').onclick = () => {
+    const url = cur(active); if (!url) return;
+    const i = shortcuts.findIndex((s) => s.url === url);
+    if (i >= 0) shortcuts.splice(i, 1);
+    else shortcuts.push({ name: (active.title || title(url)).slice(0, 24), url });
+    store.set('shortcuts', shortcuts); renderGrid(); paint();
+  };
+  $('noteClose').onclick = () => { const h = hostOf(cur(active) || ''); if (h) { dismissed.push(h); store.set('dismissed', dismissed.slice(-200)); } paint(); };
+
+  // Alt-based shortcuts so they don't collide with the real browser's Ctrl+T / Ctrl+W.
+  addEventListener('keydown', (e) => {
+    if (!e.altKey || e.ctrlKey || e.metaKey) return;
+    const k = e.key.toLowerCase(), map = { arrowleft: 'back', arrowright: 'fwd', r: 'reload', t: 'newTab', d: 'addr', l: 'addr' };
+    if (k === 'w') { e.preventDefault(); closeTab(active); return; }
+    if (/^[1-9]$/.test(k)) { e.preventDefault(); const t = tabs[Math.min(+k, tabs.length) - 1]; if (t) select(t); return; }
+    const id = map[k]; if (!id) return;
+    e.preventDefault();
+    if (id === 'addr') $('addr').focus(); else if (!$(id).disabled) $(id).click();
+  });
+
+  renderGrid();
+  restore();
+})();
+</script>
+</body>
+</html>

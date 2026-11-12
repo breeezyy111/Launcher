@@ -236,6 +236,42 @@
       "embed": true
     },
     {
+      "id": "snake",
+      "name": "Snake",
+      "description": "Classic snake with picks for map size, speed and how many apples. Smooth moves and a best score per setup.",
+      "url": "snake/",
+      "icon": "icons/snake.svg",
+      "color": "#2fd477",
+      "category": "Games",
+      "tags": [
+        "arcade",
+        "game",
+        "classic",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
+    },
+    {
+      "id": "stackfall",
+      "name": "Stackfall",
+      "description": "Falling-block puzzler: rotate, drop and clear lines as the speed climbs. Pixel or smooth style, with retro sound.",
+      "url": "stackfall/",
+      "icon": "icons/stackfall.svg",
+      "color": "#e879f9",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "blocks",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
+    },
+    {
       "id": "jot",
       "name": "Jot",
       "description": "Quick notes that save as you type. Search everything, first line is the title.",
@@ -264,6 +300,22 @@
         "productivity"
       ],
       "status": "live",
+      "embed": true
+    },
+    {
+      "id": "comet",
+      "name": "Comet",
+      "description": "Built-in web browser with tabs, an address bar and a home page of shortcuts. Sites that refuse to load inside other pages open in a new tab.",
+      "url": "comet/",
+      "icon": "icons/comet.svg",
+      "color": "#0ea5e9",
+      "category": "Tools",
+      "tags": [
+        "browser",
+        "web",
+        "tabs"
+      ],
+      "status": "beta",
       "embed": true
     }
   ]
