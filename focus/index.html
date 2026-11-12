@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Focus</title>
+<style>
+  :root { --bg:#fff7f3; --fg:#2b1d1a; --muted:#8a7570; --track:#f1dfd8; --accent:#f97362; --soft:#ffe9e2; }
+  :root.break { --bg:#f2fbf7; --fg:#15281f; --muted:#6c857a; --track:#d6eee3; --accent:#22b07d; --soft:#ddf5ea; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1a1312; --fg:#f7ece9; --muted:#b09d98; --track:#3a2a27; --accent:#ff8a7a; --soft:#2c201e; }
+    :root.break { --bg:#101a16; --fg:#e7f6ef; --muted:#93b2a5; --track:#21362d; --accent:#43d29c; --soft:#18271f; }
+  }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; transition:background .4s; }
+  body { display:grid; place-items:center; padding:20px 16px; }
+  main { width:min(380px,100%); text-align:center; }
+  .modes { display:inline-flex; gap:4px; padding:4px; background:var(--soft); border-radius:999px; margin-bottom:28px; }
+  .modes button { background:transparent; color:var(--muted); padding:0 16px; }
+  .modes button[aria-pressed=true] { background:var(--accent); color:#fff; }
+  button { font:inherit; font-weight:700; border:0; border-radius:999px; cursor:pointer; min-height:44px; }
+  button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  .ring { position:relative; width:min(300px,78vw); aspect-ratio:1; margin:0 auto 28px; }
+  svg { width:100%; height:100%; transform:rotate(-90deg); }
+  circle { fill:none; stroke-width:10; }
+  .track { stroke:var(--track); } .prog { stroke:var(--accent); stroke-linecap:round; transition:stroke-dashoffset .5s linear, stroke .4s; }
+  .time { position:absolute; inset:0; display:grid; place-content:center; }
+  .time b { font-size:clamp(52px,16vw,72px); font-weight:800; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  .time span { color:var(--muted); font-size:14px; margin-top:2px; }
+  .ctrl { display:flex; justify-content:center; gap:12px; }
+  .main { background:var(--accent); color:#fff; padding:0 40px; font-size:18px; min-height:56px; box-shadow:0 10px 28px -10px var(--accent); }
+  .sec { background:var(--soft); color:var(--fg); width:56px; min-height:56px; font-size:20px; }
+  .dots { margin-top:26px; color:var(--muted); font-size:14px; }
+  .dots i { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--track); margin:0 3px; vertical-align:middle; }
+  .dots i.on { background:var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .prog, html, body { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="modes" role="group" aria-label="Timer mode">
+    <button data-m="focus" aria-pressed="true">Focus</button><button data-m="short" aria-pressed="false">Short break</button><button data-m="long" aria-pressed="false">Long break</button>
+  </div>
+  <div class="ring">
+    <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"/><circle class="prog" id="prog" cx="60" cy="60" r="52"/></svg>
+    <div class="time" aria-live="polite"><b id="t">25:00</b><span id="lbl">Time to focus</span></div>
+  </div>
+  <div class="ctrl"><button class="sec" id="reset" aria-label="Reset" title="Reset">↺</button><button class="main" id="go">Start</button><button class="sec" id="skip" aria-label="Skip to next" title="Skip">⏭</button></div>
+  <div class="dots" id="dots"></div>
+</main>
+<script>
+(() => {
+  const MODES = { focus:{ m:25, lbl:'Time to focus' }, short:{ m:5, lbl:'Short break' }, long:{ m:15, lbl:'Long break' } };
+  const C = 2 * Math.PI * 52, prog = document.getElementById('prog'); prog.style.strokeDasharray = C;
+  const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+  const today = new Date().toDateString();
+  let done = store.get('focus-day') === today ? +store.get('focus-done') || 0 : 0;
+  let mode = 'focus', total, left, endAt = null, timer = null;
+  const $ = (id) => document.getElementById(id);
+
+  function set(m){ mode = m; total = left = MODES[m].m * 60; endAt = null; clearInterval(timer); timer = null;
+    document.documentElement.classList.toggle('break', m !== 'focus');
+    document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === m)));
+    $('lbl').textContent = MODES[m].lbl; draw(); }
+  function fmt(s){ return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+  function draw(){ $('t').textContent = fmt(left); prog.style.strokeDashoffset = C * (1 - left/total); $('go').textContent = timer ? 'Pause' : (left < total ? 'Resume' : 'Start');
+    document.title = timer ? `${fmt(left)} · Focus` : 'Focus';
+    const n = done % 4; $('dots').innerHTML = [0,1,2,3].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('') + `<div style="margin-top:8px">${done} focus session${done === 1 ? '' : 's'} today</div>`; }
+  function tick(){ left = Math.max(0, Math.round((endAt - Date.now())/1000)); if (left === 0) finish(); draw(); }
+  function toggle(){ if (timer) { clearInterval(timer); timer = null; endAt = null; } else { endAt = Date.now() + left*1000; timer = setInterval(tick, 250); } draw(); }
+  function chime(){ try { const a = new (window.AudioContext || window.webkitAudioContext)(); [0, .18, .36].forEach((d, i) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = [660, 880, 1046][i]; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(.0001, a.currentTime + d); g.gain.exponentialRampToValueAtTime(.25, a.currentTime + d + .02); g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + d + .5); o.start(a.currentTime + d); o.stop(a.currentTime + d + .55); }); } catch {} }
+  function finish(){ clearInterval(timer); timer = null; chime();
+    if (mode === 'focus') { done++; store.set('focus-done', done); store.set('focus-day', today); set(done % 4 === 0 ? 'long' : 'short'); } else set('focus'); }
+  $('go').onclick = toggle; $('reset').onclick = () => set(mode);
+  $('skip').onclick = () => { if (mode === 'focus') set(done % 4 === 3 ? 'long' : 'short'); else set('focus'); };
+  document.querySelectorAll('.modes button').forEach(b => b.onclick = () => set(b.dataset.m));
+  addEventListener('keydown', e => { if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); toggle(); } });
+  set('focus');
+})();
+</script>
+</body>
+</html>

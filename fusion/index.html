@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fusion</title>
+<style>
+  :root { --bg:#faf7f2; --fg:#2a2433; --muted:#7a7287; --board:#e7e0d6; --cell:#f2ece4; --btn:#2a2433; --btnfg:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#13111a; --fg:#f2eff8; --muted:#9a93ab; --board:#221e2c; --cell:#2c2738; --btn:#f2eff8; --btnfg:#13111a; } }
+  * { box-sizing:border-box; margin:0; }
+  html, body { min-height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; justify-content:center; padding:20px 16px; touch-action:none; overscroll-behavior:none; }
+  main { width:min(440px,100%); }
+  header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  h1 { font-size:34px; letter-spacing:-.03em; flex:1; }
+  .box { background:var(--board); border-radius:12px; padding:6px 12px; text-align:center; min-width:72px; }
+  .box small { display:block; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .box b { font-size:20px; font-variant-numeric:tabular-nums; }
+  .sub { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; color:var(--muted); font-size:14px; }
+  button { font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 16px; background:var(--btn); color:var(--btnfg); cursor:pointer; min-height:44px; }
+  button:focus-visible { outline:3px solid #f59e0b; outline-offset:2px; }
+  .board { position:relative; background:var(--board); border-radius:16px; padding:10px; aspect-ratio:1; }
+  .grid, .tiles { position:absolute; inset:10px; display:grid; grid-template:repeat(4,1fr)/repeat(4,1fr); gap:10px; }
+  .grid div { background:var(--cell); border-radius:10px; }
+  .tiles { display:block; }
+  .t { position:absolute; width:calc((100% - 30px)/4); height:calc((100% - 30px)/4); border-radius:10px; display:grid; place-items:center; font-weight:800; font-size:clamp(20px,7vw,34px); transition:transform 110ms ease-out; color:#fff; }
+  .t.new { animation:pop 160ms ease-out; } .t.merged { animation:bump 180ms ease-out; }
+  @keyframes pop { from { scale:.3; opacity:0; } } @keyframes bump { 50% { scale:1.14; } }
+  .msg { position:absolute; inset:0; border-radius:16px; display:grid; place-items:center; text-align:center; background:color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter:blur(3px); }
+  .msg[hidden] { display:none; }
+  .msg h2 { font-size:32px; margin-bottom:12px; }
+  @media (prefers-reduced-motion: reduce) { .t { transition:none; animation:none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Fusion</h1><div class="box"><small>Score</small><b id="score">0</b></div><div class="box"><small>Best</small><b id="best">0</b></div></header>
+  <div class="sub"><span>Swipe or use arrow keys. Fuse matching orbs up to 2048.</span><button id="new">New game</button></div>
+  <div class="board" id="board">
+    <div class="grid"></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="msg" id="msg" hidden><div><h2 id="msgT">Game over</h2><button id="again">Try again</button></div></div>
+  </div>
+</main>
+<script>
+(() => {
+  const N = 4, COLORS = { 2:'#7dd3fc', 4:'#38bdf8', 8:'#818cf8', 16:'#a78bfa', 32:'#c084fc', 64:'#e879f9', 128:'#f472b6', 256:'#fb7185', 512:'#f97316', 1024:'#f59e0b', 2048:'#eab308' };
+  const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+  const $tiles = document.getElementById('tiles'), $score = document.getElementById('score'), $best = document.getElementById('best'), $msg = document.getElementById('msg'), $msgT = document.getElementById('msgT');
+  document.querySelector('.grid').innerHTML = '<div></div>'.repeat(16);
+  let grid, score, best = +store.get('fusion-best') || 0, won, id = 0;
+  $best.textContent = best;
+
+  const empty = () => { const out = []; for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (!grid[r][c]) out.push([r,c]); return out; };
+  function add(){ const e = empty(); if (!e.length) return; const [r,c] = e[Math.floor(Math.random()*e.length)]; grid[r][c] = { v: Math.random() < .9 ? 2 : 4, id: ++id, isNew: true }; }
+  function start(){ grid = Array.from({length:N}, () => Array(N).fill(null)); score = 0; won = false; add(); add(); $msg.hidden = true; render(); save(); }
+
+  function render(){
+    const seen = new Set();
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++) { const t = grid[r][c]; if (!t) continue; seen.add(String(t.id));
+      let el = $tiles.querySelector(`[data-id="${t.id}"]`);
+      if (!el) { el = document.createElement('div'); el.className = 't'; el.dataset.id = t.id; $tiles.append(el); }
+      el.classList.toggle('new', !!t.isNew); el.classList.toggle('merged', !!t.merged);
+      el.textContent = t.v; el.style.background = COLORS[t.v] || '#1f2937'; el.style.fontSize = t.v >= 1024 ? 'clamp(16px,5.5vw,26px)' : '';
+      el.style.transform = `translate(calc(${c} * (100% + 10px)), calc(${r} * (100% + 10px)))`;
+      t.isNew = t.merged = false;
+    }
+    for (const el of [...$tiles.children]) if (!seen.has(el.dataset.id)) el.remove();
+    $score.textContent = score;
+    if (score > best) { best = score; $best.textContent = best; store.set('fusion-best', best); }
+  }
+
+  function move(dir){ // 0 left 1 up 2 right 3 down
+    if (!$msg.hidden) return;
+    let moved = false;
+    for (let i=0;i<N;i++) {
+      const cells = [...Array(N)].map((_,j) => dir===0?[i,j]:dir===2?[i,N-1-j]:dir===1?[j,i]:[N-1-j,i]);
+      const line = cells.map(([r,c]) => grid[r][c]).filter(Boolean), out = [];
+      for (let k=0;k<line.length;k++) {
+        if (line[k+1] && line[k+1].v === line[k].v) { const v = line[k].v*2; out.push({ v, id: line[k].id, merged: true }); score += v; if (v === 2048 && !won) { won = true; setTimeout(() => { $msgT.textContent = 'You hit 2048!'; document.getElementById('again').textContent = 'Keep going'; $msg.hidden = false; }, 200); } k++; }
+        else out.push(line[k]);
+      }
+      cells.forEach(([r,c],j) => { const nv = out[j] || null; if ((grid[r][c] && grid[r][c].id) !== (nv && nv.id) || (nv && nv.merged)) moved = true; grid[r][c] = nv; });
+    }
+    if (!moved) return;
+    add(); render(); save();
+    if (!canMove()) setTimeout(() => { $msgT.textContent = 'Game over'; document.getElementById('again').textContent = 'Try again'; $msg.hidden = false; }, 250);
+  }
+  function canMove(){ if (empty().length) return true; for (let r=0;r<N;r++) for (let c=0;c<N;c++) { const v = grid[r][c].v; if ((c<N-1 && grid[r][c+1].v===v) || (r<N-1 && grid[r+1][c].v===v)) return true; } return false; }
+  function save(){ store.set('fusion-state', JSON.stringify({ g: grid.map(r => r.map(t => t ? t.v : 0)), score, won })); }
+  function load(){ try { const s = JSON.parse(store.get('fusion-state')); if (!s) return false; grid = s.g.map(r => r.map(v => v ? { v, id: ++id } : null)); score = s.score; won = s.won; render(); if (!canMove()) $msg.hidden = false; return true; } catch { return false; } }
+
+  addEventListener('keydown', e => { const d = { ArrowLeft:0, ArrowUp:1, ArrowRight:2, ArrowDown:3, a:0, w:1, d:2, s:3 }[e.key]; if (d !== undefined) { e.preventDefault(); move(d); } });
+  let sx, sy; const board = document.getElementById('board');
+  board.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
+  addEventListener('pointerup', e => { if (sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.max(Math.abs(dx),Math.abs(dy)) < 24) return; move(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 0 : 2) : (dy < 0 ? 1 : 3)); });
+  document.getElementById('new').onclick = start;
+  document.getElementById('again').onclick = () => { if (won && canMove() && $msgT.textContent.startsWith('You')) $msg.hidden = true; else start(); };
+  if (!load()) start();
+})();
+</script>
+</body>
+</html>

@@ -50,6 +50,69 @@
       ],
       "status": "live",
       "embed": true
+    },
+    {
+      "id": "neon-drift",
+      "name": "Neon Drift",
+      "description": "Arcade dodger: steer through a neon storm, grab orbs, chase your best score.",
+      "url": "neon-drift/",
+      "icon": "icons/neon-drift.svg",
+      "color": "#22d3ee",
+      "category": "Games",
+      "tags": [
+        "arcade",
+        "game",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "fusion",
+      "name": "Fusion",
+      "description": "Swipe to fuse matching orbs. Reach 2048 without filling the board.",
+      "url": "fusion/",
+      "icon": "icons/fusion.svg",
+      "color": "#a78bfa",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "2048"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "jot",
+      "name": "Jot",
+      "description": "Quick notes that save as you type. Search everything, first line is the title.",
+      "url": "jot/",
+      "icon": "icons/jot.svg",
+      "color": "#10b981",
+      "category": "Tools",
+      "tags": [
+        "notes",
+        "productivity"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "focus",
+      "name": "Focus",
+      "description": "Pomodoro timer with breaks, a chime, and a count of today's sessions.",
+      "url": "focus/",
+      "icon": "icons/focus.svg",
+      "color": "#f97362",
+      "category": "Tools",
+      "tags": [
+        "timer",
+        "pomodoro",
+        "productivity"
+      ],
+      "status": "live",
+      "embed": true
     }
   ]
 }
