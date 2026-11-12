@@ -18,6 +18,23 @@
       "embed": true
     },
     {
+      "id": "krazy-kombat",
+      "name": "Krazy Kombat",
+      "description": "One-on-one arcade fighter: six original brawlers, specials, supers and silly finishers. Play the CPU or a friend.",
+      "url": "krazy-kombat/",
+      "icon": "icons/krazy-kombat.svg",
+      "color": "#f0369a",
+      "category": "Games",
+      "tags": [
+        "fighting",
+        "game",
+        "2-player",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "orca",
       "name": "Orca",
       "description": "Friendly AI chat and coding assistant, built into the launcher.",
@@ -47,6 +64,105 @@
         "physics",
         "sandbox",
         "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "neon-drift",
+      "name": "Neon Drift",
+      "description": "Arcade dodger: steer through a neon storm, grab orbs, chase your best score.",
+      "url": "neon-drift/",
+      "icon": "icons/neon-drift.svg",
+      "color": "#22d3ee",
+      "category": "Games",
+      "tags": [
+        "arcade",
+        "game",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "fusion",
+      "name": "Fusion",
+      "description": "Swipe to fuse matching orbs. Reach 2048 without filling the board.",
+      "url": "fusion/",
+      "icon": "icons/fusion.svg",
+      "color": "#a78bfa",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "2048"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "snake",
+      "name": "Snake",
+      "description": "Classic snake with picks for map size, speed and how many apples. Smooth moves and a best score per setup.",
+      "url": "snake/",
+      "icon": "icons/snake.svg",
+      "color": "#2fd477",
+      "category": "Games",
+      "tags": [
+        "arcade",
+        "game",
+        "classic",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
+    },
+    {
+      "id": "stackfall",
+      "name": "Stackfall",
+      "description": "Falling-block puzzler: rotate, drop and clear lines as the speed climbs. Pixel or smooth style, with retro sound.",
+      "url": "stackfall/",
+      "icon": "icons/stackfall.svg",
+      "color": "#e879f9",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "blocks",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
+    },
+    {
+      "id": "jot",
+      "name": "Jot",
+      "description": "Quick notes that save as you type. Search everything, first line is the title.",
+      "url": "jot/",
+      "icon": "icons/jot.svg",
+      "color": "#10b981",
+      "category": "Tools",
+      "tags": [
+        "notes",
+        "productivity"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
+      "id": "focus",
+      "name": "Focus",
+      "description": "Pomodoro timer with breaks, a chime, and a count of today's sessions.",
+      "url": "focus/",
+      "icon": "icons/focus.svg",
+      "color": "#f97362",
+      "category": "Tools",
+      "tags": [
+        "timer",
+        "pomodoro",
+        "productivity"
       ],
       "status": "live",
       "embed": true

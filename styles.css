@@ -538,3 +538,6 @@ body.playing { overflow: hidden; }
 .player iframe { flex: 1; width: 100%; border: 0; background: #000; }
 .player:fullscreen .player-bar { display: none; }
 body[data-skin]:not([data-skin="cards"]) kbd { background: transparent; }
+
+/* Custom label pill from apps.json "label" (e.g. SK), solid blue in every style */
+body .tile .badge.label { background: #2563eb; color: #fff; border: 0; letter-spacing: .04em; box-shadow: none; }

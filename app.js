@@ -151,6 +151,7 @@
     meta.className = 'meta';
     if (app.status) meta.append(badge(app.status, STATUS[app.status] || app.status));
     if (app.category) meta.append(badge('', app.category));
+    if (app.label) meta.append(badge('label', app.label));
     const cta = document.createElement('span');
     cta.className = 'tile-cta';
     cta.setAttribute('aria-hidden', 'true');
