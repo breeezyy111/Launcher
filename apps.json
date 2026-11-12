@@ -115,7 +115,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "label": "SK"
     },
     {
       "id": "stackfall",
@@ -132,7 +133,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "label": "SK"
     },
     {
       "id": "jot",
