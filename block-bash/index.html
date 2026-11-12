@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0a14">
+<title>Block Bash Arena</title>
+<style>
+  :root { --bg:#0b0a14; --fg:#fbf9ff; --muted:#a9a4c9; --y:#facc15; --c:#22d3ee; --m:#f43f5e; --g:#84cc16; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+  canvas { display:block; width:100%; height:100%; }
+  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 30%, #2b1d0ecc, #0b0a14f2 70%); padding:16px; overflow:auto; z-index:5; }
+  .screen[hidden] { display:none; }
+  .panel { text-align:center; max-width:460px; width:100%; margin:auto; }
+  h1 { font-size:clamp(44px,12vw,82px); line-height:.86; font-weight:900; text-transform:uppercase; font-style:italic; letter-spacing:-.02em; color:var(--y); text-shadow:0 5px 0 #b45309, 0 10px 0 #451a03, 0 0 40px #facc1555; }
+  h1 span { display:block; font-size:.5em; color:#fff; text-shadow:0 4px 0 #b91c1c; letter-spacing:.12em; }
+  p { color:var(--muted); margin:16px 0; line-height:1.5; font-size:15px; }
+  .btns { display:flex; flex-direction:column; gap:10px; align-items:stretch; max-width:300px; margin:20px auto 0; }
+  .btn { font:inherit; font-weight:900; font-size:17px; letter-spacing:.06em; text-transform:uppercase; color:#1c1206; background:linear-gradient(180deg,#fde047,#f59e0b); border:0; border-radius:14px; padding:14px 20px; cursor:pointer; box-shadow:0 5px 0 #92400e; }
+  .btn.alt { color:var(--fg); background:#ffffff14; box-shadow:0 5px 0 #00000066, inset 0 0 0 1.5px #ffffff2a; }
+  .btn:active { transform:translateY(3px); box-shadow:0 2px 0 #92400e; }
+  .btn:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+  .howto { text-align:left; background:#ffffff0a; border-radius:14px; padding:12px 16px; margin-top:18px; font-size:13px; line-height:1.65; color:#d9d5f2; }
+  .howto b { color:var(--y); }
+  kbd { font:inherit; font-size:12px; font-weight:700; border:1px solid #ffffff40; border-bottom-width:2px; border-radius:6px; padding:0 5px; background:#ffffff0d; }
+  .big { font-size:clamp(34px,9vw,60px); font-weight:900; font-style:italic; text-transform:uppercase; }
+  #pauseBtn { position:fixed; top:max(10px, env(safe-area-inset-top)); left:50%; transform:translateX(-50%); width:40px; height:40px; border-radius:12px; border:0; background:#ffffff1a; color:#fff; font-weight:900; z-index:4; cursor:pointer; }
+  #pauseBtn[hidden] { display:none; }
+  .boost { position:fixed; width:84px; height:84px; border-radius:50%; border:2px solid #ffffff55; background:#ffffff16; color:#fff; font-weight:900; font-size:14px; letter-spacing:.05em; z-index:3; touch-action:none; display:flex; align-items:center; justify-content:center; }
+  .boost.on { background:#ffffff44; transform:scale(.94); }
+  .boost[hidden] { display:none; }
+  #b0 { right:max(18px, env(safe-area-inset-right)); bottom:max(22px, env(safe-area-inset-bottom)); }
+  #b1 { left:max(18px, env(safe-area-inset-left)); top:max(22px, env(safe-area-inset-top)); transform:rotate(180deg); }
+  #b1.on { transform:rotate(180deg) scale(.94); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="pauseBtn" aria-label="Pause" hidden>II</button>
+<div class="boost" id="b0" hidden>BASH</div>
+<div class="boost" id="b1" hidden>BASH</div>
+<div class="screen" id="menu">
+  <div class="panel">
+    <h1>Block Bash<span>Arena</span></h1>
+    <p>Ram your rivals off the edge. The stage shrinks every second. Last bumper standing takes the round, first to 3 rounds wins.</p>
+    <div class="btns">
+      <button class="btn" data-mode="1">1 Player vs CPU</button>
+      <button class="btn alt" data-mode="1x3">1 Player vs 3 CPUs</button>
+      <button class="btn alt" data-mode="2">2 Players</button>
+      <button class="btn alt" data-mode="2x2">2 Players + 2 CPUs</button>
+    </div>
+    <div class="howto">
+      <b>Player 1:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>Space</kbd> bash<br>
+      <b>Player 2:</b> arrow keys move, <kbd>Enter</kbd> or <kbd>/</kbd> bash<br>
+      <b>Gamepads:</b> stick to move, <kbd>A</kbd> or <kbd>RB</kbd> to bash, Start to pause<br>
+      <b>Phone:</b> drag anywhere to steer, tap BASH. For 2 players, lay the phone flat: each player gets their own half.<br>
+      <b>Pickups:</b> ⬢ Mega makes you huge and heavy, ⚡ Zip makes you fast.
+    </div>
+  </div>
+</div>
+<div class="screen" id="over" hidden>
+  <div class="panel">
+    <div class="big" id="winText">Winner!</div>
+    <p id="winSub"></p>
+    <div class="btns"><button class="btn" id="again">Rematch</button><button class="btn alt" id="toMenu">Menu</button></div>
+  </div>
+</div>
+<div class="screen" id="paused" hidden>
+  <div class="panel"><div class="big">Paused</div><div class="btns"><button class="btn" id="resume">Resume</button><button class="btn alt" id="quit">Quit to menu</button></div></div>
+</div>
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = (id) => document.getElementById(id);
+  const isTouch = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+  const Snd = (() => {
+    let ac;
+    const ensure = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+    const tone = (f, d = .1, type = 'square', v = .05, slide = 0) => { const a = ensure(); if (!a) return; const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02); };
+    const noise = (d = .15, v = .08, f = 800) => { const a = ensure(); if (!a) return; const n = a.createBufferSource(), b = a.createBuffer(1, a.sampleRate * d, a.sampleRate), ch = b.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length); n.buffer = b; const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = f; const g = a.createGain(); g.gain.value = v; n.connect(fl).connect(g).connect(a.destination); n.start(); };
+    return { ensure, bump: (k) => { noise(.12, Math.min(.2, .04 + k * .12), 500 + k * 1500); tone(90 + k * 80, .1, 'square', .04); }, dash: () => tone(220, .18, 'sawtooth', .04, 400), fall: () => tone(600, .8, 'triangle', .07, -540), beep: (hi) => tone(hi ? 880 : 440, hi ? .4 : .14, 'square', .05), pick: () => { tone(660, .08); setTimeout(() => tone(990, .12), 70); }, win: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .2, 'square', .05), i * 110)) };
+  })();
+
+  const ROSTER = [
+    { name: 'Volt', c: '#facc15', d: '#a16207' },
+    { name: 'Fizz', c: '#22d3ee', d: '#0e7490' },
+    { name: 'Rumble', c: '#f43f5e', d: '#9f1239' },
+    { name: 'Clank', c: '#84cc16', d: '#3f6212' },
+  ];
+  const R0 = 330, RMIN = 120, WIN = 3;
+  let W, H, dpr, S, CX, CY;
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; S = Math.min(W, H) / (R0 * 2 + 90); CX = W / 2; CY = H / 2; }
+  addEventListener('resize', resize); resize();
+
+  const G = { mode: 'menu', humans: 1, n: 2, cars: [], wins: [], arenaR: R0, t: 0, phase: 'count', phaseT: 0, picks: [], parts: [], paused: false, lastMode: '1', shake: 0, msg: '', round: 1 };
+
+  function newCar(i, x, y) { return { i, x, y, vx: 0, vy: 0, r: 26, m: 1, ang: Math.atan2(-y, -x), alive: true, fall: 0, dash: 0, cd: 0, mega: 0, zip: 0, hitT: 0, lastHit: -1, cpuT: 0, tx: 0, ty: 0, human: false }; }
+  function setupMatch(mode) {
+    G.lastMode = mode;
+    G.humans = mode.startsWith('2') ? 2 : 1;
+    G.n = mode.includes('x') ? 4 : 2;
+    G.wins = Array(G.n).fill(0); G.round = 1;
+    startRound();
+    showScreen(null); G.mode = 'play';
+  }
+  function startRound() {
+    G.cars = [];
+    for (let i = 0; i < G.n; i++) { const a = Math.PI + i * Math.PI * 2 / G.n + (G.n === 2 ? 0 : Math.PI / 4); const c = newCar(i, Math.cos(a) * R0 * .6, Math.sin(a) * R0 * .6); c.human = i < G.humans; G.cars.push(c); }
+    G.arenaR = R0; G.t = 0; G.phase = 'count'; G.phaseT = 3; G.picks = []; G.pickT = 5; G.lastBeep = 4;
+  }
+  function showScreen(id) { for (const s of ['menu', 'over', 'paused']) $(s).hidden = s !== id; $('pauseBtn').hidden = id !== null; const tb = id === null && isTouch; $('b0').hidden = !tb; $('b1').hidden = !(tb && G.humans === 2); }
+
+  // ---------- input ----------
+  const keys = {};
+  const KB = [{ u: ['KeyW'], d: ['KeyS'], l: ['KeyA'], r: ['KeyD'], b: ['Space', 'KeyF'] }, { u: ['ArrowUp'], d: ['ArrowDown'], l: ['ArrowLeft'], r: ['ArrowRight'], b: ['Enter', 'Slash', 'ShiftRight', 'NumpadEnter'] }];
+  addEventListener('keydown', (e) => {
+    if (G.mode === 'play' && (e.code === 'Escape' || e.code === 'KeyP')) { togglePause(); return; }
+    if (G.mode === 'play' && /Arrow|Space/.test(e.code)) e.preventDefault();
+    keys[e.code] = true;
+  });
+  addEventListener('keyup', (e) => { keys[e.code] = false; });
+  addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (G.mode === 'play' && !G.paused) togglePause(); });
+  const touchSt = [{ id: null, ox: 0, oy: 0, x: 0, y: 0, boost: false }, { id: null, ox: 0, oy: 0, x: 0, y: 0, boost: false }];
+  const whoAt = (y) => (G.humans === 2 && y < H / 2 ? 1 : 0);
+  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' || G.mode !== 'play') return; Snd.ensure(); const s = touchSt[whoAt(e.clientY)]; if (s.id !== null) return; s.id = e.pointerId; s.ox = s.x = e.clientX; s.oy = s.y = e.clientY; });
+  cv.addEventListener('pointermove', (e) => { for (const s of touchSt) if (s.id === e.pointerId) { s.x = e.clientX; s.y = e.clientY; const dx = s.x - s.ox, dy = s.y - s.oy, m = Math.hypot(dx, dy); if (m > 70) { s.ox = s.x - dx / m * 70; s.oy = s.y - dy / m * 70; } } });
+  const tEnd = (e) => { for (const s of touchSt) if (s.id === e.pointerId) s.id = null; };
+  cv.addEventListener('pointerup', tEnd); cv.addEventListener('pointercancel', tEnd);
+  [0, 1].forEach((i) => { const b = $('b' + i); b.addEventListener('pointerdown', (e) => { e.preventDefault(); Snd.ensure(); touchSt[i].boost = true; b.classList.add('on'); }); const u = () => { touchSt[i].boost = false; b.classList.remove('on'); }; b.addEventListener('pointerup', u); b.addEventListener('pointercancel', u); b.addEventListener('pointerleave', u); });
+  let padPrev = [];
+  function readHuman(i) {
+    let x = 0, y = 0, b = false;
+    const sets = G.humans === 1 ? KB : [KB[i]];
+    for (const k of sets) { if (k.l.some((c) => keys[c])) x -= 1; if (k.r.some((c) => keys[c])) x += 1; if (k.u.some((c) => keys[c])) y -= 1; if (k.d.some((c) => keys[c])) y += 1; if (k.b.some((c) => keys[c])) b = true; }
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    const p = G.humans === 1 ? pads[0] : pads[i];
+    if (p) { const ax = p.axes[0] || 0, ay = p.axes[1] || 0; if (Math.hypot(ax, ay) > .2) { x += ax; y += ay; } if (p.buttons[14]?.pressed) x -= 1; if (p.buttons[15]?.pressed) x += 1; if (p.buttons[12]?.pressed) y -= 1; if (p.buttons[13]?.pressed) y += 1; if (p.buttons[0]?.pressed || p.buttons[5]?.pressed || p.buttons[7]?.pressed) b = true; }
+    const t = touchSt[i];
+    if (t.id !== null) { const dx = t.x - t.ox, dy = t.y - t.oy, m = Math.hypot(dx, dy); if (m > 8) { x += dx / 70; y += dy / 70; } }
+    if (t.boost) b = true;
+    const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+    return { x, y, b };
+  }
+  function pollMeta() {
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    pads.forEach((p, i) => { const st = p.buttons[9]?.pressed; if (st && !padPrev[i] && G.mode === 'play') togglePause(); padPrev[i] = st; });
+    padMenu(pads);
+  }
+  // gamepad menu navigation: d-pad/stick moves focus between visible buttons, A presses
+  const pm = { prev: {} };
+  function padMenu(pads) {
+    const scr = [...document.querySelectorAll('.screen')].find((s) => !s.hidden);
+    const now = { up: false, down: false, a: false };
+    for (const p of pads) { const ay = p.axes[1] || 0; now.up ||= p.buttons[12]?.pressed || ay < -.6; now.down ||= p.buttons[13]?.pressed || ay > .6; now.a ||= p.buttons[0]?.pressed; }
+    if (scr) {
+      const bs = [...scr.querySelectorAll('button')].filter((b) => b.offsetParent);
+      let i = bs.indexOf(document.activeElement);
+      if (now.down && !pm.prev.down) bs[(i + 1) % bs.length]?.focus();
+      if (now.up && !pm.prev.up) bs[(i - 1 + bs.length) % bs.length]?.focus();
+      if (now.a && !pm.prev.a) (i >= 0 ? bs[i] : bs[0])?.click();
+    }
+    pm.prev = now;
+  }
+
+  // ---------- menu wiring ----------
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { Snd.ensure(); setupMatch(b.dataset.mode); }));
+  $('again').addEventListener('click', () => setupMatch(G.lastMode));
+  $('toMenu').addEventListener('click', () => { G.mode = 'menu'; showScreen('menu'); });
+  $('resume').addEventListener('click', () => togglePause());
+  $('quit').addEventListener('click', () => { G.paused = false; G.mode = 'menu'; showScreen('menu'); });
+  $('pauseBtn').addEventListener('click', () => togglePause());
+  function togglePause() { G.paused = !G.paused; showScreen(G.paused ? 'paused' : null); if (G.paused) $('resume').focus(); }
+
+  // ---------- CPU ----------
+  function cpu(c, dt) {
+    c.cpuT -= dt;
+    const foes = G.cars.filter((o) => o !== c && o.alive && !o.fall);
+    let x = 0, y = 0, b = false;
+    const dc = Math.hypot(c.x, c.y);
+    if (!foes.length) return { x: -c.x / (dc || 1), y: -c.y / (dc || 1), b: false };
+    let tgt = foes[0], bd = 1e9;
+    for (const o of foes) { const d = Math.hypot(o.x - c.x, o.y - c.y) - Math.hypot(o.x, o.y) * .6; if (d < bd) { bd = d; tgt = o; } }
+    // get "behind" the target (between target and arena center), then charge outward through it
+    const od = Math.hypot(tgt.x, tgt.y) || 1, ox = tgt.x / od, oy = tgt.y / od;
+    const bx = tgt.x - ox * 70, by = tgt.y - oy * 70;
+    const toB = Math.hypot(bx - c.x, by - c.y), toT = Math.hypot(tgt.x - c.x, tgt.y - c.y);
+    const aligned = ((tgt.x - c.x) * ox + (tgt.y - c.y) * oy) / (toT || 1);
+    if (toB > 50 && aligned < .4) { x = bx - c.x; y = by - c.y; } else { x = tgt.x - c.x; y = tgt.y - c.y; if (toT < 150 && aligned > .5 && c.cd <= 0 && Math.random() < dt * 4) b = true; }
+    // stay away from the edge
+    if (dc > G.arenaR - 75) { const k = (dc - (G.arenaR - 75)) / 40; x = x / (Math.hypot(x, y) || 1) - c.x / dc * k * 2; y = y / (Math.hypot(x, y) || 1) - c.y / dc * k * 2; }
+    // grab nearby pickups
+    for (const p of G.picks) if (Math.hypot(p.x - c.x, p.y - c.y) < 160 && Math.hypot(p.x, p.y) < G.arenaR - 60) { x = p.x - c.x; y = p.y - c.y; }
+    const m = Math.hypot(x, y) || 1;
+    return { x: x / m, y: y / m, b };
+  }
+
+  // ---------- simulation ----------
+  function burst(x, y, col, n, sp = 260) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, s = 40 + Math.random() * sp; G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .3 + Math.random() * .5, col }); } }
+  function step(dt) {
+    G.t += dt;
+    for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .93; p.vy *= .93; p.life -= dt; }
+    G.parts = G.parts.filter((p) => p.life > 0);
+    G.shake = Math.max(0, G.shake - dt * 40);
+    if (G.phase === 'count') {
+      G.phaseT -= dt; const n = Math.ceil(G.phaseT);
+      if (n < G.lastBeep) { G.lastBeep = n; Snd.beep(n <= 0); }
+      if (G.phaseT <= 0) { G.phase = 'fight'; G.phaseT = 0; }
+      return;
+    }
+    if (G.phase === 'end') { G.phaseT -= dt; updateCars(dt, true); if (G.phaseT <= 0) nextRound(); return; }
+    G.arenaR = Math.max(RMIN, G.arenaR - dt * (G.t < 8 ? 2 : 5.2));
+    G.pickT -= dt;
+    if (G.pickT <= 0 && G.picks.length < 2) { G.pickT = 6 + Math.random() * 4; const a = Math.random() * 7, r = Math.random() * (G.arenaR - 70); G.picks.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, k: Math.random() < .5 ? 'mega' : 'zip', t: 0 }); }
+    updateCars(dt, false);
+    const alive = G.cars.filter((c) => c.alive);
+    const humansAlive = alive.filter((c) => c.human).length;
+    if (alive.length <= 1 || (humansAlive === 0 && G.humans > 0 && G.n > 2 && false)) {
+      G.phase = 'end'; G.phaseT = 2.2;
+      if (alive.length === 1) { const w = alive[0]; G.wins[w.i]++; G.msg = `${label(w)} takes the round!`; G.msgCol = ROSTER[w.i].c; Snd.beep(true); }
+      else { G.msg = 'Double knockout!'; G.msgCol = '#fff'; }
+    }
+  }
+  function label(c) { return c.human ? (G.humans === 2 ? `P${c.i + 1} ${ROSTER[c.i].name}` : ROSTER[c.i].name + ' (you)') : ROSTER[c.i].name; }
+  function nextRound() {
+    const champ = G.wins.findIndex((w) => w >= WIN);
+    if (champ >= 0) {
+      G.mode = 'over'; Snd.win();
+      const c = G.cars[champ];
+      $('winText').textContent = c.human ? (G.humans === 2 ? `Player ${champ + 1} wins!` : 'You win!') : `${ROSTER[champ].name} wins`;
+      $('winText').style.color = ROSTER[champ].c;
+      $('winSub').textContent = G.wins.map((w, i) => `${ROSTER[i].name} ${w}`).join(' · ');
+      showScreen('over'); $('again').focus(); return;
+    }
+    G.round++; startRound();
+  }
+  function updateCars(dt, frozen) {
+    for (const c of G.cars) {
+      if (!c.alive) continue;
+      if (c.fall) { c.fall += dt; c.x += c.vx * dt * .5; c.y += c.vy * dt * .5; if (c.fall > 1) c.alive = false; continue; }
+      c.cd = Math.max(0, c.cd - dt); c.dash = Math.max(0, c.dash - dt); c.mega = Math.max(0, c.mega - dt); c.zip = Math.max(0, c.zip - dt); c.hitT = Math.max(0, c.hitT - dt);
+      c.r += ((c.mega ? 40 : 26) - c.r) * Math.min(1, dt * 8); c.m = c.mega ? 2.6 : 1;
+      const inp = frozen ? { x: 0, y: 0, b: false } : c.human ? readHuman(c.i) : cpu(c, dt);
+      const acc = (c.zip ? 1500 : 980) / (c.mega ? 1.3 : 1);
+      c.vx += inp.x * acc * dt; c.vy += inp.y * acc * dt;
+      if (Math.hypot(inp.x, inp.y) > .2) { const ta = Math.atan2(inp.y, inp.x); let d = ta - c.ang; d = Math.atan2(Math.sin(d), Math.cos(d)); c.ang += d * Math.min(1, dt * 10); }
+      if (inp.b && c.cd <= 0) { const dx = Math.hypot(inp.x, inp.y) > .2 ? inp.x : Math.cos(c.ang), dy = Math.hypot(inp.x, inp.y) > .2 ? inp.y : Math.sin(c.ang), m = Math.hypot(dx, dy) || 1; c.vx += dx / m * 620; c.vy += dy / m * 620; c.dash = .35; c.cd = 1.4; Snd.dash(); burst(c.x, c.y, ROSTER[c.i].c, 10, 120); }
+      const fr = Math.pow(c.dash ? .5 : .14, dt); c.vx *= fr; c.vy *= fr;
+      const max = c.dash ? 900 : c.zip ? 420 : 300, sp = Math.hypot(c.vx, c.vy); if (sp > max) { c.vx *= max / sp; c.vy *= max / sp; }
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      if (Math.hypot(c.x, c.y) > G.arenaR + c.r * .2) { c.fall = .001; Snd.fall(); G.shake = 10; burst(c.x, c.y, ROSTER[c.i].c, 24); }
+      for (const p of G.picks) if (!p.got && Math.hypot(p.x - c.x, p.y - c.y) < c.r + 18) { p.got = true; c[p.k] = 6; Snd.pick(); burst(p.x, p.y, p.k === 'mega' ? '#c084fc' : '#facc15', 18); }
+    }
+    G.picks = G.picks.filter((p) => !p.got);
+    for (const p of G.picks) p.t += dt;
+    // collisions
+    const live = G.cars.filter((c) => c.alive && !c.fall);
+    for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+      const a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
+      if (d >= min || d === 0) continue;
+      const nx = dx / d, ny = dy / d, ov = min - d, tm = a.m + b.m;
+      a.x -= nx * ov * b.m / tm; a.y -= ny * ov * b.m / tm; b.x += nx * ov * a.m / tm; b.y += ny * ov * a.m / tm;
+      const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      if (rv > 0) continue;
+      const e = 1.35 + (a.dash || b.dash ? .5 : 0);
+      const jimp = -(1 + e) * rv / (1 / a.m + 1 / b.m);
+      a.vx -= jimp * nx / a.m; a.vy -= jimp * ny / a.m; b.vx += jimp * nx / b.m; b.vy += jimp * ny / b.m;
+      const k = Math.min(1, -rv / 900);
+      Snd.bump(k); G.shake = Math.max(G.shake, k * 14); a.hitT = b.hitT = .25;
+      burst(a.x + nx * a.r, a.y + ny * a.r, '#fff', 6 + k * 20, 200 + k * 300);
+    }
+  }
+
+  // ---------- render ----------
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.max(W, H) * .7); bg.addColorStop(0, '#1d1530'); bg.addColorStop(1, '#07060d'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // void sparkles
+    ctx.fillStyle = '#ffffff22'; for (let i = 0; i < 60; i++) { const a = i * 2.39996, r = ((i * 97) % 100) / 100 * Math.max(W, H) * .8 + (G.t * 6) % 40; ctx.fillRect(CX + Math.cos(a + G.t * .02) * r, CY + Math.sin(a + G.t * .02) * r, 2, 2); }
+    const sh = G.shake ? (Math.random() - .5) * G.shake : 0, sh2 = G.shake ? (Math.random() - .5) * G.shake : 0;
+    ctx.setTransform(dpr * S, 0, 0, dpr * S, dpr * (CX + sh), dpr * (CY + sh2));
+    const R = G.arenaR;
+    // arena side
+    ctx.fillStyle = '#3b2a17'; ctx.beginPath(); ctx.ellipse(0, 16, R, R, 0, 0, 7); ctx.fill();
+    // tiles
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.clip();
+    ctx.fillStyle = '#e7e2d6'; ctx.fillRect(-R, -R, R * 2, R * 2);
+    const T = 60; for (let x = -6; x < 6; x++) for (let y = -6; y < 6; y++) { if ((x + y) & 1) { ctx.fillStyle = '#d6cfbf'; ctx.fillRect(x * T, y * T, T, T); } }
+    ctx.restore();
+    // hazard ring
+    ctx.lineWidth = 14; ctx.strokeStyle = '#facc15'; ctx.beginPath(); ctx.arc(0, 0, R - 7, 0, 7); ctx.stroke();
+    ctx.strokeStyle = '#111'; ctx.setLineDash([18, 18]); ctx.lineDashOffset = -G.t * 30; ctx.beginPath(); ctx.arc(0, 0, R - 7, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    // center logo
+    ctx.globalAlpha = .12; ctx.fillStyle = '#000'; ctx.font = '900 italic 64px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BASH', 0, 0); ctx.globalAlpha = 1;
+    // pickups
+    for (const p of G.picks) {
+      const bob = Math.sin(p.t * 5) * 4; ctx.save(); ctx.translate(p.x, p.y + bob);
+      ctx.fillStyle = '#0003'; ctx.beginPath(); ctx.ellipse(0, 18 - bob, 14, 5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = p.k === 'mega' ? '#a855f7' : '#f59e0b'; ctx.beginPath(); for (let i = 0; i < 6; i++) ctx.lineTo(Math.cos(i * Math.PI / 3) * 17, Math.sin(i * Math.PI / 3) * 17); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '900 18px system-ui'; ctx.fillText(p.k === 'mega' ? 'M' : '⚡', 0, 1); ctx.restore();
+    }
+    // cars (sorted by y for overlap)
+    const cs = G.cars.filter((c) => c.alive).sort((a, b) => a.y - b.y);
+    for (const c of cs) drawCar(c);
+    // particles
+    for (const p of G.parts) { ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.col; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
+    ctx.globalAlpha = 1;
+    // hud
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (G.mode !== 'menu') {
+      const corners = [[16, H - 16, 'left', 'bottom'], [W - 16, 16 + 48, 'right', 'top'], [W - 16, H - 16, 'right', 'bottom'], [16, 16 + 48, 'left', 'top']];
+      const order = G.humans === 2 ? [0, 1, 2, 3] : [0, 1, 2, 3];
+      G.cars.forEach((c, i) => {
+        const [x, y, al] = corners[order[i]]; ctx.textAlign = al; ctx.textBaseline = 'alphabetic';
+        ctx.font = '800 14px system-ui'; ctx.fillStyle = ROSTER[i].c; ctx.fillText(label(c), x, y - 22);
+        for (let k = 0; k < WIN; k++) { const px = al === 'left' ? x + k * 22 + 8 : x - k * 22 - 8; ctx.beginPath(); ctx.arc(px, y - 8, 7, 0, 7); ctx.fillStyle = k < G.wins[i] ? ROSTER[i].c : '#ffffff22'; ctx.fill(); }
+      });
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (G.phase === 'count' && G.mode === 'play') {
+        const n = Math.ceil(G.phaseT); ctx.font = `900 italic ${Math.min(W, H) * .18}px system-ui`; ctx.fillStyle = '#facc15'; ctx.strokeStyle = '#000'; ctx.lineWidth = 8;
+        const s = n > 0 ? String(n) : 'BASH!'; ctx.strokeText(s, CX, CY); ctx.fillText(s, CX, CY);
+        ctx.font = '800 16px system-ui'; ctx.fillStyle = '#fff'; ctx.fillText(`ROUND ${G.round}`, CX, CY - Math.min(W, H) * .13);
+      }
+      if (G.phase === 'count' && G.phaseT < .4 && G.mode === 'play') {}
+      if (G.phase === 'end') { ctx.font = `900 italic ${Math.min(42, W / 14)}px system-ui`; ctx.fillStyle = G.msgCol; ctx.strokeStyle = '#000'; ctx.lineWidth = 7; ctx.strokeText(G.msg, CX, CY); ctx.fillText(G.msg, CX, CY); }
+      // touch sticks
+      for (const s of touchSt) if (s.id !== null) { ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.ox, s.oy, 70, 0, 7); ctx.stroke(); ctx.fillStyle = '#ffffff33'; ctx.beginPath(); ctx.arc(s.x, s.y, 28, 0, 7); ctx.fill(); }
+    }
+  }
+  function drawCar(c) {
+    const col = ROSTER[c.i], f = c.fall ? Math.max(0, 1 - c.fall) : 1;
+    ctx.save(); ctx.translate(c.x, c.y + (c.fall ? c.fall * 60 : 0)); ctx.scale(f, f);
+    if (!c.fall) { ctx.fillStyle = '#0004'; ctx.beginPath(); ctx.ellipse(0, c.r * .5, c.r * 1.05, c.r * .7, 0, 0, 7); ctx.fill(); }
+    if (c.dash) { ctx.strokeStyle = col.c; ctx.globalAlpha = .5; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(-c.vx * .03, -c.vy * .03, c.r, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    // bumper ring
+    ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.arc(0, 4, c.r, 0, 7); ctx.fill();
+    ctx.fillStyle = c.hitT ? '#fff' : col.d; ctx.beginPath(); ctx.arc(0, 0, c.r, 0, 7); ctx.fill();
+    ctx.fillStyle = col.c; ctx.beginPath(); ctx.arc(0, -3, c.r * .78, 0, 7); ctx.fill();
+    // body block
+    ctx.rotate(c.ang);
+    ctx.fillStyle = '#ffffff55'; ctx.fillRect(-c.r * .45, -c.r * .5, c.r * .5, c.r);
+    ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-c.r * .1, -c.r * .45, c.r * .5, c.r * .9, 5) : ctx.rect(-c.r * .1, -c.r * .45, c.r * .5, c.r * .9); ctx.fill();
+    // eyes (headlights)
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(c.r * .55, -c.r * .3, c.r * .17, 0, 7); ctx.arc(c.r * .55, c.r * .3, c.r * .17, 0, 7); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(c.r * .62, -c.r * .3, c.r * .08, 0, 7); ctx.arc(c.r * .62, c.r * .3, c.r * .08, 0, 7); ctx.fill();
+    if (c.cd > 0) { ctx.rotate(-c.ang); ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, c.r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - c.cd / 1.4)); ctx.stroke(); }
+    ctx.restore();
+    if (c.human && !c.fall) { ctx.fillStyle = col.c; ctx.font = '900 13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(G.humans === 2 ? 'P' + (c.i + 1) : 'YOU', c.x, c.y - c.r - 14); }
+  }
+
+  let last = 0;
+  function loop(now) {
+    const dt = Math.min(.033, (now - last) / 1000 || 0); last = now;
+    pollMeta();
+    if (G.mode === 'play' && !G.paused) step(dt);
+    else if (G.mode === 'menu') { G.t += dt; }
+    draw(); requestAnimationFrame(loop);
+  }
+  showScreen('menu'); G.n = 4; G.cars = [0, 1, 2, 3].map((i) => { const a = i * Math.PI / 2 + .6; return newCar(i, Math.cos(a) * 150, Math.sin(a) * 150); });
+  G.mode = 'menu'; G.phase = 'menu'; G.wins = [0, 0, 0, 0];
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
