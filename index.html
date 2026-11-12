@@ -5,48 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Launcher</title>
   <meta name="description" content="One place to open every app I'm building." />
-  <meta name="theme-color" content="#0b0f17" />
+  <meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#090c13" media="(prefers-color-scheme: dark)" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="ambient" aria-hidden="true"></div>
+
   <header class="top">
-    <h1 class="brand"><img src="icons/icon.svg" alt="" width="28" height="28" /> Launcher</h1>
-    <div class="search-wrap">
-      <input id="search" type="search" placeholder="Search apps…  ( / )" autocomplete="off" aria-label="Search apps" />
-    </div>
-    <div class="actions">
-      <button id="addBtn" class="btn primary" type="button">+ Add app</button>
-      <button id="menuBtn" class="btn icon" type="button" aria-label="More" aria-haspopup="true">⋯</button>
-      <div id="menu" class="menu" hidden>
-        <div class="menu-label">Style</div>
-        <button type="button" role="menuitemradio" data-skin="cards">Cards</button>
-        <button type="button" role="menuitemradio" data-skin="springboard">Springboard</button>
-        <button type="button" role="menuitemradio" data-skin="poster">Poster</button>
-        <button type="button" role="menuitemradio" data-skin="arcade">Arcade</button>
-        <button type="button" role="menuitemradio" data-skin="terminal">Terminal</button>
-        <hr />
-        <button type="button" data-action="export">Export apps (JSON)</button>
-        <button type="button" data-action="import">Import apps (JSON)</button>
-        <button type="button" data-action="reset">Reset local changes</button>
+    <div class="top-inner">
+      <a class="brand" href="./" aria-label="Launcher home"><img src="icons/icon.svg" alt="" width="32" height="32" /><span>Launcher</span></a>
+      <label class="search-wrap">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="Search apps" autocomplete="off" aria-label="Search apps" />
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <div class="actions">
+        <button id="addBtn" class="btn primary" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="btn-label">Add app</span>
+        </button>
+        <button id="menuBtn" class="btn icon" type="button" aria-label="Style and settings" aria-haspopup="true" aria-expanded="false">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+        </button>
+        <div id="menu" class="menu" hidden>
+          <div class="menu-label">Style</div>
+          <button type="button" role="menuitemradio" data-skin="cards">Cards</button>
+          <button type="button" role="menuitemradio" data-skin="springboard">Springboard</button>
+          <button type="button" role="menuitemradio" data-skin="poster">Poster</button>
+          <button type="button" role="menuitemradio" data-skin="arcade">Arcade</button>
+          <button type="button" role="menuitemradio" data-skin="terminal">Terminal</button>
+          <hr />
+          <button type="button" data-action="export">Export apps (JSON)</button>
+          <button type="button" data-action="import">Import apps (JSON)</button>
+          <button type="button" data-action="reset">Reset local changes</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <nav id="filters" class="filters" aria-label="Categories"></nav>
-
   <main>
+    <section class="intro" id="intro">
+      <p class="greeting" id="greeting">Welcome back</p>
+      <p class="summary" id="summary"></p>
+    </section>
+
+    <section id="hero" class="hero" hidden aria-labelledby="heroName">
+      <div class="hero-text">
+        <p class="eyebrow" id="heroEyebrow">Featured</p>
+        <h2 class="hero-name" id="heroName"></h2>
+        <p class="hero-desc" id="heroDesc"></p>
+        <div class="hero-actions">
+          <a id="heroPlay" class="btn hero-btn" href="#">
+            <svg class="i fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span id="heroPlayLabel">Play</span>
+          </a>
+          <a id="heroTab" class="btn hero-ghost" href="#" target="_blank" rel="noopener">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 14 20 4M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg><span>New tab</span>
+          </a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true"><div class="hero-icon" id="heroIcon"></div></div>
+    </section>
+
+    <nav id="filters" class="filters" aria-label="Categories"></nav>
+
     <section id="pinnedSection" hidden>
       <h2 class="section-title">Pinned</h2>
       <div id="pinned" class="grid"></div>
     </section>
     <section>
-      <h2 class="section-title" id="allTitle">All apps</h2>
+      <h2 class="section-title"><span id="allTitle">All apps</span> <span class="count" id="allCount"></span></h2>
       <div id="grid" class="grid"></div>
-      <p id="empty" class="empty" hidden>No apps match. <button type="button" class="link" id="emptyAdd">Add one?</button></p>
+      <div id="empty" class="empty" hidden>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <p>No apps match that.</p>
+        <button type="button" class="btn" id="emptyAdd">Add an app</button>
+      </div>
     </section>
+
+    <p class="hint"><kbd>/</kbd> search · <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> open</p>
   </main>
 
   <dialog id="editor">
@@ -86,12 +125,18 @@
 
   <div id="player" class="player" hidden>
     <div class="player-bar">
-      <button id="playerBack" class="btn" type="button" aria-label="Back to launcher">← Launcher</button>
-      <img id="playerIcon" alt="" width="24" height="24" />
+      <button id="playerBack" class="btn" type="button" aria-label="Back to launcher">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg><span class="btn-label">Launcher</span>
+      </button>
+      <img id="playerIcon" alt="" width="28" height="28" />
       <strong id="playerName"></strong>
       <span class="spacer"></span>
-      <button id="playerFull" class="btn icon" type="button" title="Full screen" aria-label="Full screen">⛶</button>
-      <a id="playerOpen" class="btn icon" target="_blank" rel="noopener" title="Open in its own tab" aria-label="Open in its own tab">↗</a>
+      <button id="playerFull" class="btn icon" type="button" title="Full screen" aria-label="Full screen">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+      <a id="playerOpen" class="btn icon" target="_blank" rel="noopener" title="Open in its own tab" aria-label="Open in its own tab">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 14 20 4M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>
+      </a>
     </div>
     <iframe id="playerFrame" title="App" allow="fullscreen; gamepad; autoplay; clipboard-write; pointer-lock" allowfullscreen></iframe>
   </div>

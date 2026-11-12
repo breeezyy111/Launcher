@@ -86,6 +86,42 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
   }
 
+  // Small inline SVG icons (stroke style), so nothing depends on emoji glyphs.
+  const ICONS = {
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+    edit: '<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    play: '<path d="M7 4.5v15l12-7.5z"/>',
+  };
+  function icon(name, fill) {
+    const span = document.createElement('span');
+    span.innerHTML = `<svg class="i${fill ? ' fill' : ''}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+    return span.firstChild;
+  }
+
+  const STATUS = { live: 'Live', beta: 'Beta', dev: 'In dev', archived: 'Archived' };
+  const ctaLabel = (app) => (app.embed ? (/game/i.test(app.category || '') ? 'Play' : 'Open') : 'Visit');
+
+  function launch(app, el, e) {
+    recordLaunch(app.id);
+    // Plain clicks on embeddable apps play inside the launcher; ctrl/cmd-click still opens a tab.
+    if (app.embed && el.getAttribute('href') !== '#' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      location.hash = '#/play/' + encodeURIComponent(app.id);
+    }
+  }
+
+  function setIcon(box, app) {
+    box.replaceChildren();
+    if (isImage(app.icon)) {
+      const img = document.createElement('img');
+      img.src = app.icon; img.alt = ''; img.loading = 'lazy';
+      box.append(img);
+    } else {
+      box.textContent = app.icon || app.name.slice(0, 1).toUpperCase();
+    }
+  }
+
   // ---------- rendering ----------
   function tile(app) {
     const a = document.createElement('a');
@@ -97,13 +133,7 @@
 
     const ico = document.createElement('div');
     ico.className = 'ico';
-    if (isImage(app.icon)) {
-      const img = document.createElement('img');
-      img.src = app.icon; img.alt = ''; img.loading = 'lazy';
-      ico.append(img);
-    } else {
-      ico.textContent = app.icon || app.name.slice(0, 1).toUpperCase();
-    }
+    setIcon(ico, app);
 
     const name = document.createElement('div');
     name.className = 'name';
@@ -119,27 +149,25 @@
 
     const meta = document.createElement('div');
     meta.className = 'meta';
-    if (app.status) meta.append(badge(app.status, { live: 'Live', beta: 'Beta', dev: 'In dev', archived: 'Archived' }[app.status] || app.status));
+    if (app.status) meta.append(badge(app.status, STATUS[app.status] || app.status));
     if (app.category) meta.append(badge('', app.category));
+    const cta = document.createElement('span');
+    cta.className = 'tile-cta';
+    cta.setAttribute('aria-hidden', 'true');
+    cta.append(ctaLabel(app), icon('arrow'));
+    meta.append(cta);
     a.append(meta);
 
     const tools = document.createElement('div');
     tools.className = 'tile-tools';
     const pinned = local.pinned.includes(app.id);
     tools.append(
-      toolBtn(pinned ? '★' : '☆', pinned ? 'Unpin' : 'Pin', () => togglePin(app.id), pinned),
-      toolBtn('✎', 'Edit', () => openEditor(app))
+      toolBtn(icon('star', pinned), pinned ? 'Unpin' : 'Pin', () => togglePin(app.id), pinned),
+      toolBtn(icon('edit'), 'Edit', () => openEditor(app))
     );
     a.append(tools);
 
-    a.addEventListener('click', (e) => {
-      recordLaunch(app.id);
-      // Plain clicks on embeddable apps play inside the launcher; ctrl/cmd-click still opens a tab.
-      if (app.embed && a.getAttribute('href') !== '#' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        location.hash = '#/play/' + encodeURIComponent(app.id);
-      }
-    });
+    a.addEventListener('click', (e) => launch(app, a, e));
     return a;
   }
 
@@ -153,7 +181,7 @@
   function toolBtn(label, title, onClick, pressed) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = label;
+    b.append(label);
     b.title = title;
     b.setAttribute('aria-label', title);
     if (pressed !== undefined) b.setAttribute('aria-pressed', String(pressed));
@@ -172,7 +200,11 @@
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip';
-      b.textContent = c;
+      const n = c === 'All' ? apps.length : apps.filter((a) => a.category === c).length;
+      const count = document.createElement('span');
+      count.className = 'chip-count';
+      count.textContent = n;
+      b.append(c, count);
       b.setAttribute('aria-pressed', String(c === category));
       b.addEventListener('click', () => { category = c; selected = 0; render(); });
       return b;
@@ -188,11 +220,49 @@
     $('#pinnedSection').hidden = pinned.length === 0;
     $('#pinned').replaceChildren(...pinned.map(tile));
     $('#grid').replaceChildren(...rest.map(tile));
-    $('#allTitle').hidden = rest.length === 0 && pinned.length > 0;
-    $('#allTitle').textContent = pinned.length ? 'Everything else' : 'All apps';
+    $('#allTitle').parentElement.hidden = rest.length === 0 && pinned.length > 0;
+    $('#allTitle').textContent = pinned.length ? 'Everything else' : (category === 'All' ? 'All apps' : category);
+    $('#allCount').textContent = rest.length || '';
     $('#empty').hidden = visible.length > 0;
+    tiles().forEach((t, i) => t.style.setProperty('--i', i));
 
+    renderIntro(apps);
+    renderHero(apps);
     highlight();
+  }
+
+  function renderIntro(apps) {
+    const h = new Date().getHours();
+    $('#greeting').textContent = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const live = apps.filter((a) => a.status === 'live').length;
+    $('#summary').textContent = `${apps.length} app${apps.length === 1 ? '' : 's'}` + (live ? `, ${live} live` : '') + '. Pick one and go.';
+  }
+
+  /** The big banner: the app you used last, else your first pin, else the first live app. */
+  function renderHero(apps) {
+    const hero = $('#hero');
+    const l = local.launches;
+    const recent = [...apps].sort((a, b) => (l[b.id]?.last || 0) - (l[a.id]?.last || 0))[0];
+    const used = recent && l[recent.id];
+    const app = used ? recent
+      : apps.find((a) => local.pinned[0] === a.id) || apps.find((a) => a.status === 'live') || apps[0];
+    hero.hidden = !app || !!query || category !== 'All';
+    if (hero.hidden) return;
+    hero.style.setProperty('--tile-color', app.color || '');
+    $('#heroEyebrow').textContent = used ? 'Jump back in' : 'Featured';
+    $('#heroName').textContent = app.name;
+    $('#heroDesc').textContent = app.description || '';
+    setIcon($('#heroIcon'), app);
+    const href = safeHref(app.url);
+    const play = $('#heroPlay');
+    play.href = href;
+    play.onclick = (e) => launch(app, play, e);
+    if (!app.embed && app.newTab !== false) { play.target = '_blank'; play.rel = 'noopener'; }
+    else { play.removeAttribute('target'); play.removeAttribute('rel'); }
+    $('#heroPlayLabel').textContent = ctaLabel(app);
+    const tab = $('#heroTab');
+    tab.href = href;
+    tab.hidden = !app.embed;
   }
 
   function tiles() { return [...document.querySelectorAll('.tile')]; }
@@ -283,8 +353,11 @@
 
   // ---------- menu: import / export / reset ----------
   const menu = $('#menu');
-  $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
-  document.addEventListener('click', () => { menu.hidden = true; });
+  const menuBtn = $('#menuBtn');
+  function setMenu(open) { menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); }
+  menuBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(menu.hidden); });
+  document.addEventListener('click', () => setMenu(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); menuBtn.focus(); } });
 
   menu.addEventListener('click', (e) => {
     const skin = e.target.closest('button')?.dataset.skin;
@@ -414,6 +487,8 @@
     }
     render();
     syncPlayer();
+    // Cards rise in once on load, not on every search keystroke.
+    setTimeout(() => document.body.classList.add('settled'), 900);
   }
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {

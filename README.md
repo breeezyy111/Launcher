@@ -48,8 +48,9 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 
 ## Features
 
+- A featured banner up top for the app you used last (or your first pin, or the first live app), with Play and New tab buttons
 - Search across name, description, tags and URL. Press `/` to focus it, use the arrow keys to move, and press `Enter` to launch.
-- Category filters, plus status badges (live, beta, dev, archived)
+- Category filters with counts, plus status badges (live, beta, dev, archived)
 - Pin favourites. Recently launched apps move to the front.
 - Add, edit and delete apps in the UI, with JSON import and export
 - Five styles you can switch in the **⋯** menu: Cards, Springboard (a phone home screen), Poster, Arcade (neon) and Terminal (a list). The choice is remembered, and `?skin=arcade` in the URL forces one.

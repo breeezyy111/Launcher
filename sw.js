@@ -1,5 +1,5 @@
 // Network-first for the registry (so new apps show up), cache-first for the shell.
-const CACHE = 'launcher-v5';
+const CACHE = 'launcher-v6';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/superink.svg', 'orca/icons/icon.svg'];
 
 self.addEventListener('install', (e) => {
