@@ -24,8 +24,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Collect site files
         run: |
+          # Copy everything except repo-only files, so new app folders deploy automatically.
           mkdir _site
-          cp -r index.html app.js styles.css apps.json sw.js manifest.webmanifest icons orca _site/
+          for f in *; do [ "$f" = _site ] || [ "$f" = README.md ] || cp -r "$f" _site/; done
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
