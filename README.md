@@ -46,6 +46,7 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 - **Project SuperInk** is still its own game with its own site and repo. The launcher just plays that site in the player.
 - **Stellar Forge** is built in too: the space sandbox from [breeezyy111/space](https://github.com/breeezyy111/space) lives in `stellar-forge/` (one self-contained `index.html`). To update it, copy that repo's `index.html` over it.
 - **Neon Drift**, **Fusion**, **Jot** and **Focus** are small built-in apps, each one self-contained `index.html` in its own folder (`neon-drift/`, `fusion/`, `jot/`, `focus/`). Scores, notes and timer counts are saved in the browser.
+- **Comet** (`comet/`) is a built-in web browser: tabs, an address bar, back/forward/reload, and a home page of shortcuts you can star. Pages load directly in a frame, with no proxy. Sites that refuse to be framed (YouTube's home page, GitHub, Reddit, social apps and so on) show a clear "can't be shown here" card with an Open in new tab button, and YouTube watch links play through the official embed player.
 - **Orca** is built in: its chat page lives in `orca/`. It talks to the Cloudflare Worker from [breeezyy111/Orca](https://github.com/breeezyy111/Orca). The Worker address is set in `orca/config.js` (`apiUrl`).
 
 ## Features

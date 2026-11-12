@@ -113,6 +113,22 @@
       ],
       "status": "live",
       "embed": true
+    },
+    {
+      "id": "comet",
+      "name": "Comet",
+      "description": "Built-in web browser with tabs, an address bar and a home page of shortcuts. Sites that refuse to load inside other pages open in a new tab.",
+      "url": "comet/",
+      "icon": "icons/comet.svg",
+      "color": "#0ea5e9",
+      "category": "Tools",
+      "tags": [
+        "browser",
+        "web",
+        "tabs"
+      ],
+      "status": "beta",
+      "embed": true
     }
   ]
 }
