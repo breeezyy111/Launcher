@@ -1,5 +1,5 @@
-// Network-first for the registry (so new apps show up), cache-first for the shell.
-const CACHE = 'launcher-v8';
+// Network-first for everything, so updates show up right away; the cache is only the offline fallback.
+const CACHE = 'launcher-v9';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/superink.svg', 'orca/icons/icon.svg', 'icons/stellar-forge.svg', 'icons/neon-drift.svg', 'icons/fusion.svg', 'icons/jot.svg', 'icons/focus.svg'];
 
 self.addEventListener('install', (e) => {
@@ -17,13 +17,13 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  if (url.pathname.endsWith('apps.json')) {
-    e.respondWith(
-      fetch(e.request)
-        .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res; })
-        .catch(() => caches.match(e.request))
-    );
-    return;
-  }
-  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
+  // 'no-cache' makes the browser re-check with the server instead of trusting its saved copy.
+  e.respondWith(
+    fetch(e.request.url, { cache: 'no-cache' })
+      .then((res) => {
+        if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+        return res;
+      })
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
+  );
 });
