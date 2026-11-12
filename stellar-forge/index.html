@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stellar Forge — Space Simulation</title>
+<style>
+  :root {
+    --bg: #05060e;
+    --panel: rgba(13, 17, 33, 0.88);
+    --panel-border: rgba(90, 120, 220, 0.25);
+    --text: #cdd6f4;
+    --dim: #7b86a8;
+    --accent: #7aa2ff;
+    --danger: #ff6b7a;
+    --ok: #7dffb0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); }
+  #space { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+
+  .panel {
+    position: fixed; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(8px);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5); font-size: 12px; z-index: 10;
+  }
+  #hud { top: 12px; left: 12px; min-width: 210px; }
+  #hud h1 { font-size: 15px; letter-spacing: 2px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+  #hud .stat { display: flex; justify-content: space-between; padding: 2px 0; }
+  #hud .stat .v { font-variant-numeric: tabular-nums; color: #fff; }
+  #hud .big { font-size: 20px; font-weight: 700; color: var(--ok); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+
+  #controls { top: 12px; right: 12px; width: 224px; max-height: calc(100vh - 24px); overflow-y: auto; }
+  #controls h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin: 10px 0 6px; }
+  #controls h2:first-child { margin-top: 0; }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  button {
+    background: rgba(60, 80, 160, 0.25); color: var(--text); border: 1px solid var(--panel-border);
+    border-radius: 6px; padding: 7px 6px; font-size: 11.5px; cursor: pointer; transition: background 0.15s, transform 0.05s;
+    font-family: inherit;
+  }
+  button:hover { background: rgba(90, 120, 220, 0.4); }
+  button:active { transform: scale(0.96); }
+  button.event { background: rgba(160, 70, 60, 0.25); border-color: rgba(255, 120, 100, 0.3); }
+  button.event:hover { background: rgba(220, 90, 70, 0.45); }
+  button.danger { background: rgba(160, 40, 55, 0.3); border-color: rgba(255, 100, 120, 0.35); color: #ffb3bd; }
+  button.danger:hover { background: rgba(220, 50, 70, 0.5); }
+  button.wide { grid-column: 1 / -1; }
+  button.toggled { background: rgba(90, 200, 140, 0.35); border-color: rgba(120, 255, 170, 0.5); color: #dfffef; }
+
+  .mode-row { display: flex; gap: 6px; margin-bottom: 4px; }
+  .mode-row button { flex: 1; }
+  .mode-row button.active { background: rgba(122, 162, 255, 0.45); border-color: var(--accent); color: #fff; }
+
+  #eventlog {
+    bottom: 12px; left: 12px; width: 320px; max-height: 180px; overflow-y: auto;
+    font-size: 11px; line-height: 1.6;
+  }
+  #eventlog h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin-bottom: 4px; }
+  #eventlog .entry { color: var(--text); opacity: 0.9; }
+  #eventlog .entry .t { color: var(--dim); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  #eventlog .entry.warn { color: #ffcf87; }
+  #eventlog .entry.bad { color: var(--danger); }
+
+  #help { bottom: 12px; right: 12px; font-size: 11px; color: var(--dim); line-height: 1.7; text-align: right; }
+  #help b { color: var(--text); }
+
+  #banner {
+    position: fixed; top: 18%; left: 50%; transform: translateX(-50%);
+    font-size: 26px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+    color: #fff; text-shadow: 0 0 24px var(--accent), 0 0 60px var(--accent);
+    opacity: 0; pointer-events: none; transition: opacity 0.4s; z-index: 20;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(122,162,255,0.3); border-radius: 3px; }
+</style>
+</head>
+<body>
+<canvas id="space"></canvas>
+
+<div id="hud" class="panel">
+  <h1>Stellar Forge</h1>
+  <div class="stat"><span>Objects</span><span class="v big" id="s-total">0</span></div>
+  <div class="stat"><span><span class="dot" style="background:#9aa3b5"></span>Asteroids</span><span class="v" id="s-asteroid">0</span></div>
+  <div class="stat"><span><span class="dot" style="background:#8f97ff"></span>Dust</span><span class="v" id="s-dust">0</span></div>
+  <div class="stat"><span><span class="dot" style="background:#7dffb0"></span>Ships</span><span class="v" id="s-ship">0</span></div>
+  <div class="stat"><span><span class="dot" style="background:#9fe8ff"></span>Comets</span><span class="v" id="s-comet">0</span></div>
+  <div class="stat"><span><span class="dot" style="background:#ffb36b"></span>Planets</span><span class="v" id="s-planet">0</span></div>
+  <div class="stat"><span><span class="dot" style="background:#c07dff"></span>Black holes</span><span class="v" id="s-blackhole">0</span></div>
+  <div class="stat" style="margin-top:6px;border-top:1px solid var(--panel-border);padding-top:6px"><span>FPS</span><span class="v" id="s-fps">—</span></div>
+  <div class="stat"><span>Sim speed</span><span class="v" id="s-speed">1.0×</span></div>
+</div>
+
+<div id="controls" class="panel">
+  <h2>Click mode</h2>
+  <div class="mode-row">
+    <button id="mode-spawn" class="active" onclick="setMode('spawn')">Spawn</button>
+    <button id="mode-remove" onclick="setMode('remove')">Remove</button>
+  </div>
+
+  <h2>Spawn objects</h2>
+  <div class="btn-grid">
+    <button onclick="spawnBatch('asteroid', 100)">+100 Asteroids</button>
+    <button onclick="spawnBatch('asteroid', 1000)">+1000 Asteroids</button>
+    <button onclick="spawnBatch('dust', 500)">+500 Dust</button>
+    <button onclick="spawnBatch('ship', 25)">+25 Ships</button>
+    <button onclick="spawnBatch('comet', 10)">+10 Comets</button>
+    <button onclick="spawnBatch('planet', 1)">+1 Planet</button>
+  </div>
+
+  <h2>Trigger events</h2>
+  <div class="btn-grid">
+    <button class="event" onclick="triggerEvent('supernova')">Supernova</button>
+    <button class="event" onclick="triggerEvent('blackhole')">Black Hole</button>
+    <button class="event" onclick="triggerEvent('shower')">Meteor Shower</button>
+    <button class="event" onclick="triggerEvent('flare')">Solar Flare</button>
+    <button class="event" onclick="triggerEvent('wormhole')">Wormhole</button>
+    <button class="event" onclick="triggerEvent('fleet')">Fleet Arrival</button>
+    <button class="event wide" id="btn-auto" onclick="toggleAutoEvents()">Random events: ON</button>
+  </div>
+
+  <h2>Remove objects</h2>
+  <div class="btn-grid">
+    <button class="danger" onclick="removeRandom(500)">−500 Random</button>
+    <button class="danger" onclick="removeType('asteroid')">All asteroids</button>
+    <button class="danger" onclick="removeType('ship')">All ships</button>
+    <button class="danger" onclick="removeType('comet')">All comets</button>
+    <button class="danger wide" onclick="removeAll()">Purge everything</button>
+  </div>
+
+  <h2>Simulation</h2>
+  <div class="btn-grid">
+    <button onclick="setSpeed(-1)">◀ Slower</button>
+    <button onclick="setSpeed(1)">Faster ▶</button>
+    <button id="btn-pause" onclick="togglePause()">Pause</button>
+    <button onclick="resetSim()">Reset sim</button>
+  </div>
+</div>
+
+<div id="eventlog" class="panel">
+  <h2>Event Log</h2>
+  <div id="log-entries"></div>
+</div>
+
+<div id="help" class="panel">
+  <b>Click</b> spawn / remove (per mode) &nbsp;·&nbsp; <b>Drag</b> pan<br>
+  <b>Wheel</b> zoom &nbsp;·&nbsp; <b>Space</b> pause &nbsp;·&nbsp; <b>1–6</b> spawn type
+</div>
+
+<div id="banner"></div>
+
+<script>
+'use strict';
+// ============================================================
+// Stellar Forge — a space simulation sandbox
+// Thousands of bodies under central gravity, with spawnable
+// objects, dynamic events, and click-to-remove.
+// ============================================================
+
+const canvas = document.getElementById('space');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---------- World & camera ----------
+const SUN = { x: 0, y: 0, mass: 90000, r: 26 };
+const G = 1.0;
+const cam = { x: 0, y: 0, zoom: 0.42 };
+
+function worldToScreen(x, y) { return [ (x - cam.x) * cam.zoom + W / 2, (y - cam.y) * cam.zoom + H / 2 ]; }
+function screenToWorld(sx, sy) { return [ (sx - W / 2) / cam.zoom + cam.x, (sy - H / 2) / cam.zoom + cam.y ]; }
+
+// ---------- Object storage (struct-of-arrays for speed) ----------
+const MAX = 40000;
+const px = new Float32Array(MAX), py = new Float32Array(MAX);
+const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
+const rad = new Float32Array(MAX);
+const kind = new Uint8Array(MAX);     // 0 dead, 1 asteroid, 2 dust, 3 ship, 4 comet, 5 planet
+const hue = new Float32Array(MAX);
+let count = 0;                        // high-water mark into arrays
+let alive = 0;
+const freeList = [];
+
+const KIND = { asteroid: 1, dust: 2, ship: 3, comet: 4, planet: 5 };
+const KIND_NAME = ['dead', 'asteroid', 'dust', 'ship', 'comet', 'planet'];
+const counts = { asteroid: 0, dust: 0, ship: 0, comet: 0, planet: 0 };
+
+const KIND_STYLE = {
+  1: { color: '#9aa3b5' },
+  2: { color: '#8f97ff' },
+  3: { color: '#7dffb0' },
+  4: { color: '#9fe8ff' },
+  5: { color: '#ffb36b' },
+};
+
+function allocSlot() {
+  if (freeList.length) return freeList.pop();
+  if (count < MAX) return count++;
+  return -1;
+}
+
+function spawn(type, x, y, ivx, ivy, r) {
+  const i = allocSlot();
+  if (i < 0) return -1;
+  px[i] = x; py[i] = y; vx[i] = ivx; vy[i] = ivy;
+  rad[i] = r; kind[i] = KIND[type]; hue[i] = Math.random();
+  alive++; counts[type]++;
+  return i;
+}
+
+function kill(i) {
+  if (kind[i] === 0) return;
+  counts[KIND_NAME[kind[i]]]--;
+  kind[i] = 0;
+  freeList.push(i);
+  alive--;
+}
+
+// Circular-orbit velocity at distance d from the sun.
+function orbitalSpeed(d) { return Math.sqrt(G * SUN.mass / Math.max(d, 30)); }
+
+function spawnOrbiting(type, dist, spread, r) {
+  const a = Math.random() * Math.PI * 2;
+  const d = dist + (Math.random() - 0.5) * spread;
+  const x = Math.cos(a) * d, y = Math.sin(a) * d;
+  const sp = orbitalSpeed(d) * (0.94 + Math.random() * 0.12);
+  return spawn(type, x, y, -Math.sin(a) * sp, Math.cos(a) * sp, r);
+}
+
+function spawnBatch(type, n, atX, atY) {
+  let made = 0;
+  for (let k = 0; k < n; k++) {
+    let i = -1;
+    if (atX !== undefined) {
+      // cluster around a point, in local orbit around the sun
+      const jx = atX + (Math.random() - 0.5) * 120, jy = atY + (Math.random() - 0.5) * 120;
+      const d = Math.hypot(jx, jy) || 1;
+      const sp = orbitalSpeed(d) * (0.9 + Math.random() * 0.2);
+      i = spawn(type, jx, jy, -jy / d * sp, jx / d * sp, sizeFor(type));
+    } else {
+      i = spawnOrbiting(type, distFor(type), spreadFor(type), sizeFor(type));
+    }
+    if (i >= 0) made++;
+  }
+  if (made) log(`Spawned ${made} ${type}${made > 1 ? 's' : ''}`);
+  return made;
+}
+
+function sizeFor(t) {
+  switch (t) {
+    case 'asteroid': return 1.2 + Math.random() * 2.2;
+    case 'dust': return 0.6 + Math.random() * 0.8;
+    case 'ship': return 2.2 + Math.random() * 1.2;
+    case 'comet': return 1.8 + Math.random() * 1.6;
+    case 'planet': return 9 + Math.random() * 8;
+  }
+  return 2;
+}
+function distFor(t) {
+  switch (t) {
+    case 'asteroid': return 620 + Math.random() * 340;
+    case 'dust': return 300 + Math.random() * 900;
+    case 'ship': return 350 + Math.random() * 500;
+    case 'comet': return 1000 + Math.random() * 500;
+    case 'planet': return 250 + Math.random() * 950;
+  }
+  return 500;
+}
+function spreadFor(t) { return t === 'asteroid' ? 260 : 160; }
+
+// ---------- Black holes (special attractors) ----------
+const blackHoles = []; // {x, y, vx, vy, mass, r, life}
+
+// ---------- Visual effects ----------
+const shockwaves = []; // {x, y, r, maxR, speed, push, killR, hue}
+const flashes = [];    // {x, y, r, life, maxLife, color}
+const wormholes = [];  // {ax, ay, bx, by, r, life, maxLife}
+
+// ---------- Event system ----------
+let autoEvents = true;
+let nextAutoEvent = 12; // seconds
+const logEl = document.getElementById('log-entries');
+let simClock = 0;
+
+function log(msg, cls) {
+  const div = document.createElement('div');
+  div.className = 'entry' + (cls ? ' ' + cls : '');
+  const m = Math.floor(simClock / 60), s = Math.floor(simClock % 60);
+  div.innerHTML = `<span class="t">T+${m}:${String(s).padStart(2, '0')}</span>${msg}`;
+  logEl.prepend(div);
+  while (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
+}
+
+function banner(text) {
+  const b = document.getElementById('banner');
+  b.textContent = text;
+  b.style.opacity = 1;
+  clearTimeout(banner._t);
+  banner._t = setTimeout(() => b.style.opacity = 0, 1800);
+}
+
+function randomFieldPoint(minD, maxD) {
+  const a = Math.random() * Math.PI * 2;
+  const d = minD + Math.random() * (maxD - minD);
+  return [Math.cos(a) * d, Math.sin(a) * d];
+}
+
+const EVENTS = {
+  supernova(x, y) {
+    if (x === undefined) [x, y] = randomFieldPoint(400, 1100);
+    shockwaves.push({ x, y, r: 10, maxR: 900, speed: 420, push: 260, killR: 130, hue: 18 });
+    flashes.push({ x, y, r: 160, life: 1.2, maxLife: 1.2, color: '255,200,140' });
+    banner('Supernova');
+    log(`💥 Supernova detonated at (${x | 0}, ${y | 0})`, 'bad');
+  },
+  blackhole(x, y) {
+    if (x === undefined) [x, y] = randomFieldPoint(450, 1000);
+    const d = Math.hypot(x, y) || 1;
+    const sp = orbitalSpeed(d) * 0.9;
+    blackHoles.push({ x, y, vx: -y / d * sp, vy: x / d * sp, mass: 42000, r: 13, life: 22 });
+    banner('Black Hole');
+    log(`🕳️ Black hole formed — devouring everything nearby for 22s`, 'bad');
+  },
+  shower() {
+    const a = Math.random() * Math.PI * 2;
+    const ox = Math.cos(a) * 1600, oy = Math.sin(a) * 1600;
+    let made = 0;
+    for (let k = 0; k < 400; k++) {
+      const jx = ox + (Math.random() - 0.5) * 500, jy = oy + (Math.random() - 0.5) * 500;
+      const toward = Math.atan2(-jy, -jx) + (Math.random() - 0.5) * 0.35;
+      const sp = 180 + Math.random() * 120;
+      if (spawn('asteroid', jx, jy, Math.cos(toward) * sp, Math.sin(toward) * sp, 1 + Math.random() * 2) >= 0) made++;
+    }
+    banner('Meteor Shower');
+    log(`☄️ Meteor shower — ${made} rocks inbound from deep space`, 'warn');
+  },
+  flare() {
+    shockwaves.push({ x: 0, y: 0, r: SUN.r, maxR: 620, speed: 520, push: 200, killR: 70, hue: 45 });
+    flashes.push({ x: 0, y: 0, r: 220, life: 0.9, maxLife: 0.9, color: '255,230,150' });
+    banner('Solar Flare');
+    log('🔆 Solar flare — the sun ejects a burning shockwave', 'warn');
+  },
+  wormhole() {
+    const [ax, ay] = randomFieldPoint(350, 900);
+    const [bx, by] = randomFieldPoint(350, 1200);
+    wormholes.push({ ax, ay, bx, by, r: 120, life: 8, maxLife: 8 });
+    banner('Wormhole');
+    log(`🌀 Wormhole opened — teleporting objects across ${Math.hypot(bx - ax, by - ay) | 0} units`, 'warn');
+  },
+  fleet() {
+    const [x, y] = randomFieldPoint(500, 900);
+    let made = 0;
+    for (let k = 0; k < 40; k++) {
+      const jx = x + (Math.random() - 0.5) * 200, jy = y + (Math.random() - 0.5) * 200;
+      const d = Math.hypot(jx, jy) || 1;
+      const sp = orbitalSpeed(d);
+      if (spawn('ship', jx, jy, -jy / d * sp, jx / d * sp, 2.4 + Math.random()) >= 0) made++;
+    }
+    flashes.push({ x, y, r: 120, life: 0.8, maxLife: 0.8, color: '140,255,190' });
+    banner('Fleet Arrival');
+    log(`🚀 A fleet of ${made} ships warped into the system`);
+  },
+};
+
+function triggerEvent(name, x, y) { EVENTS[name](x, y); }
+
+function toggleAutoEvents() {
+  autoEvents = !autoEvents;
+  document.getElementById('btn-auto').textContent = 'Random events: ' + (autoEvents ? 'ON' : 'OFF');
+  log('Random events ' + (autoEvents ? 'enabled' : 'disabled'));
+}
+
+// ---------- Removal ----------
+function removeRandom(n) {
+  let removed = 0;
+  for (let i = 0; i < count && removed < n; i++) {
+    if (kind[i] !== 0 && Math.random() < 0.5) { kill(i); removed++; }
+  }
+  log(`Removed ${removed} random objects`, 'warn');
+}
+function removeType(type) {
+  const k = KIND[type];
+  let removed = 0;
+  for (let i = 0; i < count; i++) if (kind[i] === k) { kill(i); removed++; }
+  log(`Removed all ${type}s (${removed})`, 'warn');
+}
+function removeAll() {
+  let removed = alive;
+  for (let i = 0; i < count; i++) if (kind[i] !== 0) kill(i);
+  blackHoles.length = 0;
+  log(`☠️ Purged the entire system (${removed} objects)`, 'bad');
+  banner('System Purged');
+}
+function removeNear(x, y, r) {
+  const r2 = r * r;
+  let removed = 0;
+  for (let i = 0; i < count; i++) {
+    if (kind[i] === 0) continue;
+    const dx = px[i] - x, dy = py[i] - y;
+    if (dx * dx + dy * dy < r2) { kill(i); removed++; }
+  }
+  if (removed) {
+    flashes.push({ x, y, r, life: 0.4, maxLife: 0.4, color: '255,110,130' });
+    log(`Vaporized ${removed} objects`, 'warn');
+  }
+  return removed;
+}
+
+// ---------- Simulation ----------
+let timeScale = 1.0;
+let paused = false;
+const SPEEDS = [0.25, 0.5, 1.0, 2.0, 4.0];
+let speedIdx = 2;
+
+function setSpeed(dir) {
+  speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, speedIdx + dir));
+  timeScale = SPEEDS[speedIdx];
+  document.getElementById('s-speed').textContent = timeScale.toFixed(2).replace(/\.?0+$/, '') + '×';
+}
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  document.getElementById('btn-pause').classList.toggle('toggled', paused);
+}
+
+function step(dt) {
+  simClock += dt;
+
+  // Black hole lifecycle & motion
+  for (let b = blackHoles.length - 1; b >= 0; b--) {
+    const bh = blackHoles[b];
+    const d = Math.hypot(bh.x, bh.y) || 1;
+    const acc = G * SUN.mass / (d * d + 2000);
+    bh.vx += -bh.x / d * acc * dt; bh.vy += -bh.y / d * acc * dt;
+    bh.x += bh.vx * dt; bh.y += bh.vy * dt;
+    bh.life -= dt;
+    if (bh.life <= 0) {
+      flashes.push({ x: bh.x, y: bh.y, r: 150, life: 1.0, maxLife: 1.0, color: '200,140,255' });
+      blackHoles.splice(b, 1);
+      log('🕳️ Black hole evaporated (Hawking radiation wins again)');
+    }
+  }
+
+  const nBH = blackHoles.length;
+  const removeQueue = [];
+
+  for (let i = 0; i < count; i++) {
+    if (kind[i] === 0) continue;
+    let x = px[i], y = py[i];
+
+    // Central gravity (softened)
+    let dx = -x, dy = -y;
+    let d2 = dx * dx + dy * dy + 900;
+    let inv = 1 / Math.sqrt(d2);
+    let acc = G * SUN.mass * inv * inv;
+    let ax = dx * inv * acc, ay = dy * inv * acc;
+
+    // Sun consumes what falls in
+    if (d2 < (SUN.r + rad[i]) * (SUN.r + rad[i]) + 900) { removeQueue.push(i); continue; }
+
+    // Black hole gravity + event horizon
+    for (let b = 0; b < nBH; b++) {
+      const bh = blackHoles[b];
+      dx = bh.x - x; dy = bh.y - y;
+      d2 = dx * dx + dy * dy + 400;
+      if (d2 < (bh.r + 6) * (bh.r + 6) + 400) { removeQueue.push(i); flashes.push({ x, y, r: 8, life: 0.25, maxLife: 0.25, color: '200,140,255' }); break; }
+      inv = 1 / Math.sqrt(d2);
+      acc = G * bh.mass * inv * inv;
+      ax += dx * inv * acc; ay += dy * inv * acc;
+    }
+    if (removeQueue.length && removeQueue[removeQueue.length - 1] === i) continue;
+
+    vx[i] += ax * dt; vy[i] += ay * dt;
+    px[i] += vx[i] * dt; py[i] += vy[i] * dt;
+
+    // Drop objects flung far outside the system
+    if (px[i] * px[i] + py[i] * py[i] > 3200 * 3200) removeQueue.push(i);
+  }
+
+  // Shockwaves: expanding rings that push and destroy
+  for (let s = shockwaves.length - 1; s >= 0; s--) {
+    const w = shockwaves[s];
+    const prevR = w.r;
+    w.r += w.speed * dt;
+    const band = w.r - prevR + 26;
+    for (let i = 0; i < count; i++) {
+      if (kind[i] === 0) continue;
+      const dx = px[i] - w.x, dy = py[i] - w.y;
+      const d = Math.hypot(dx, dy);
+      if (d < w.killR && w.r < w.killR * 1.5) { removeQueue.push(i); continue; }
+      if (d >= prevR - 6 && d <= prevR + band && d > 1) {
+        const f = w.push * (1 - w.r / w.maxR);
+        vx[i] += dx / d * f; vy[i] += dy / d * f;
+      }
+    }
+    if (w.r >= w.maxR) shockwaves.splice(s, 1);
+  }
+
+  // Wormholes: teleport objects entering endpoint A to endpoint B
+  for (let s = wormholes.length - 1; s >= 0; s--) {
+    const wh = wormholes[s];
+    wh.life -= dt;
+    const r2 = wh.r * wh.r;
+    let ported = 0;
+    for (let i = 0; i < count; i++) {
+      if (kind[i] === 0) continue;
+      const dx = px[i] - wh.ax, dy = py[i] - wh.ay;
+      if (dx * dx + dy * dy < r2) {
+        px[i] = wh.bx + dx; py[i] = wh.by + dy;
+        // re-orbit at the destination so things don't just fall into the sun
+        const d = Math.hypot(px[i], py[i]) || 1;
+        const sp = orbitalSpeed(d) * (0.95 + Math.random() * 0.1);
+        vx[i] = -py[i] / d * sp; vy[i] = px[i] / d * sp;
+        ported++;
+      }
+    }
+    if (ported > 50) flashes.push({ x: wh.bx, y: wh.by, r: 80, life: 0.5, maxLife: 0.5, color: '150,220,255' });
+    if (wh.life <= 0) wormholes.splice(s, 1);
+  }
+
+  // Apply queued removals (dedup handled by kill's dead-check)
+  for (const i of removeQueue) kill(i);
+
+  // Flashes decay
+  for (let f = flashes.length - 1; f >= 0; f--) {
+    flashes[f].life -= dt;
+    if (flashes[f].life <= 0) flashes.splice(f, 1);
+  }
+
+  // Auto events
+  if (autoEvents) {
+    nextAutoEvent -= dt;
+    if (nextAutoEvent <= 0) {
+      const pool = ['supernova', 'shower', 'flare', 'wormhole', 'fleet', 'blackhole'];
+      const pick = pool[(Math.random() * pool.length) | 0];
+      EVENTS[pick]();
+      nextAutoEvent = 14 + Math.random() * 18;
+    }
+  }
+}
+
+// ---------- Rendering ----------
+const starfield = [];
+for (let i = 0; i < 400; i++) starfield.push({ x: Math.random(), y: Math.random(), s: Math.random() * 1.4 + 0.3, tw: Math.random() * 6 });
+
+function render(t) {
+  ctx.fillStyle = '#05060e';
+  ctx.fillRect(0, 0, W, H);
+
+  // Background starfield (screen-space, parallax-free — distant stars)
+  ctx.fillStyle = '#ffffff';
+  for (const s of starfield) {
+    const a = 0.35 + 0.3 * Math.sin(t * 0.001 + s.tw);
+    ctx.globalAlpha = a;
+    ctx.fillRect(s.x * W, s.y * H, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+
+  const z = cam.zoom;
+
+  // Wormholes
+  for (const wh of wormholes) {
+    const a = Math.min(1, wh.life / wh.maxLife * 2);
+    for (const [ex, ey, col] of [[wh.ax, wh.ay, '110,190,255'], [wh.bx, wh.by, '190,130,255']]) {
+      const [sx, sy] = worldToScreen(ex, ey);
+      const sr = wh.r * z;
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+      g.addColorStop(0, `rgba(${col},${0.5 * a})`);
+      g.addColorStop(0.7, `rgba(${col},${0.15 * a})`);
+      g.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
+      ctx.strokeStyle = `rgba(${col},${0.8 * a})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(sx, sy, sr * (0.8 + 0.15 * Math.sin(t * 0.004)), 0, 7); ctx.stroke();
+    }
+  }
+
+  // Sun
+  {
+    const [sx, sy] = worldToScreen(0, 0);
+    const sr = SUN.r * z;
+    const glow = ctx.createRadialGradient(sx, sy, sr * 0.4, sx, sy, sr * 5);
+    glow.addColorStop(0, 'rgba(255,220,140,0.9)');
+    glow.addColorStop(0.3, 'rgba(255,160,60,0.25)');
+    glow.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(sx, sy, sr * 5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff3d6';
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
+  }
+
+  // Objects — batched per kind to minimize style switches
+  const halfW = W / 2 + 20, halfH = H / 2 + 20;
+  for (let k = 1; k <= 5; k++) {
+    ctx.fillStyle = KIND_STYLE[k].color;
+    ctx.beginPath();
+    for (let i = 0; i < count; i++) {
+      if (kind[i] !== k) continue;
+      const sx = (px[i] - cam.x) * z + W / 2;
+      const sy = (py[i] - cam.y) * z + H / 2;
+      if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
+      const sr = Math.max(rad[i] * z, k === 2 ? 0.5 : 0.9);
+      if (sr < 1.6) {
+        ctx.rect(sx - sr, sy - sr, sr * 2, sr * 2);
+      } else {
+        ctx.moveTo(sx + sr, sy);
+        ctx.arc(sx, sy, sr, 0, 7);
+      }
+    }
+    ctx.fill();
+  }
+
+  // Comet tails (drawn separately, only for visible comets)
+  ctx.strokeStyle = 'rgba(159,232,255,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < count; i++) {
+    if (kind[i] !== 4) continue;
+    const sx = (px[i] - cam.x) * z + W / 2;
+    const sy = (py[i] - cam.y) * z + H / 2;
+    if (sx < -40 || sx > W + 40 || sy < -40 || sy > H + 40) continue;
+    const sp = Math.hypot(vx[i], vy[i]) || 1;
+    const len = Math.min(30, sp * 0.12) * z * 4;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx - vx[i] / sp * len, sy - vy[i] / sp * len);
+  }
+  ctx.stroke();
+
+  // Black holes
+  for (const bh of blackHoles) {
+    const [sx, sy] = worldToScreen(bh.x, bh.y);
+    const sr = bh.r * z;
+    const g = ctx.createRadialGradient(sx, sy, sr, sx, sy, sr * 6);
+    g.addColorStop(0, 'rgba(190,120,255,0.5)');
+    g.addColorStop(0.5, 'rgba(120,60,200,0.15)');
+    g.addColorStop(1, 'rgba(80,40,160,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sx, sy, sr * 6, 0, 7); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(210,160,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(sx, sy, sr + 1.5, 0, 7); ctx.stroke();
+  }
+
+  // Shockwaves
+  for (const w of shockwaves) {
+    const [sx, sy] = worldToScreen(w.x, w.y);
+    const a = 1 - w.r / w.maxR;
+    ctx.strokeStyle = `hsla(${w.hue}, 100%, 70%, ${a * 0.9})`;
+    ctx.lineWidth = Math.max(2, 10 * a);
+    ctx.beginPath(); ctx.arc(sx, sy, w.r * z, 0, 7); ctx.stroke();
+  }
+
+  // Flashes
+  for (const f of flashes) {
+    const [sx, sy] = worldToScreen(f.x, f.y);
+    const a = f.life / f.maxLife;
+    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, f.r * z);
+    g.addColorStop(0, `rgba(${f.color},${0.85 * a})`);
+    g.addColorStop(1, `rgba(${f.color},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sx, sy, f.r * z, 0, 7); ctx.fill();
+  }
+}
+
+// ---------- Input ----------
+let clickMode = 'spawn';
+let spawnType = 'asteroid';
+const SPAWN_KEYS = { '1': 'asteroid', '2': 'dust', '3': 'ship', '4': 'comet', '5': 'planet' };
+
+function setMode(m) {
+  clickMode = m;
+  document.getElementById('mode-spawn').classList.toggle('active', m === 'spawn');
+  document.getElementById('mode-remove').classList.toggle('active', m === 'remove');
+  canvas.style.cursor = m === 'remove' ? 'cell' : 'crosshair';
+}
+
+let dragging = false, dragMoved = false, lastMX = 0, lastMY = 0;
+canvas.addEventListener('mousedown', e => { dragging = true; dragMoved = false; lastMX = e.clientX; lastMY = e.clientY; });
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
+  if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+  if (dragMoved) { cam.x -= dx / cam.zoom; cam.y -= dy / cam.zoom; }
+  lastMX = e.clientX; lastMY = e.clientY;
+});
+window.addEventListener('mouseup', e => {
+  if (!dragging) return;
+  dragging = false;
+  if (dragMoved || e.target !== canvas) return;
+  const [wx, wy] = screenToWorld(e.clientX, e.clientY);
+  if (clickMode === 'spawn') {
+    const n = spawnType === 'planet' ? 1 : spawnType === 'ship' ? 8 : spawnType === 'comet' ? 4 : 60;
+    spawnBatch(spawnType, n, wx, wy);
+  } else {
+    removeNear(wx, wy, 90 / Math.sqrt(cam.zoom));
+  }
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const [wx, wy] = screenToWorld(e.clientX, e.clientY);
+  cam.zoom *= e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  cam.zoom = Math.max(0.08, Math.min(6, cam.zoom));
+  // keep cursor anchored
+  const [wx2, wy2] = screenToWorld(e.clientX, e.clientY);
+  cam.x += wx - wx2; cam.y += wy - wy2;
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (SPAWN_KEYS[e.key]) { spawnType = SPAWN_KEYS[e.key]; log(`Click-spawn type set to <b>${spawnType}</b>`); }
+  else if (e.key === '6') { spawnType = 'asteroid'; spawnBatch('asteroid', 1000); }
+});
+
+// ---------- HUD ----------
+let fpsAcc = 0, fpsN = 0, fpsShown = 0;
+function updateHUD() {
+  document.getElementById('s-total').textContent = alive.toLocaleString();
+  for (const t of ['asteroid', 'dust', 'ship', 'comet', 'planet']) {
+    document.getElementById('s-' + t).textContent = counts[t].toLocaleString();
+  }
+  document.getElementById('s-blackhole').textContent = blackHoles.length;
+  document.getElementById('s-fps').textContent = fpsShown ? fpsShown + '' : '—';
+}
+
+// ---------- Init & main loop ----------
+function populate() {
+  // Inner dust disc
+  for (let i = 0; i < 800; i++) spawnOrbiting('dust', 300 + Math.random() * 900, 100, sizeFor('dust'));
+  // Main asteroid belt (the bulk of the 5k+)
+  for (let i = 0; i < 3600; i++) spawnOrbiting('asteroid', 640 + Math.random() * 320, 200, sizeFor('asteroid'));
+  // Outer scattered belt
+  for (let i = 0; i < 1200; i++) spawnOrbiting('asteroid', 1100 + Math.random() * 350, 260, sizeFor('asteroid'));
+  // Planets
+  const planetDists = [260, 420, 580, 940, 1300];
+  for (const d of planetDists) spawnOrbiting('planet', d, 20, sizeFor('planet'));
+  // Ships & comets
+  for (let i = 0; i < 120; i++) spawnOrbiting('ship', 350 + Math.random() * 600, 150, sizeFor('ship'));
+  for (let i = 0; i < 60; i++) spawnOrbiting('comet', 1000 + Math.random() * 500, 300, sizeFor('comet'));
+  log(`🌌 System initialized with ${alive.toLocaleString()} objects`);
+}
+
+function resetSim() {
+  for (let i = 0; i < count; i++) if (kind[i] !== 0) kill(i);
+  blackHoles.length = 0; shockwaves.length = 0; flashes.length = 0; wormholes.length = 0;
+  simClock = 0; nextAutoEvent = 12;
+  logEl.innerHTML = '';
+  populate();
+  banner('System Reborn');
+}
+
+let lastT = performance.now();
+let hudT = 0;
+function frame(t) {
+  let dt = Math.min((t - lastT) / 1000, 0.05);
+  lastT = t;
+
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc >= 0.5) { fpsShown = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
+
+  if (!paused) step(dt * timeScale);
+  render(t);
+
+  hudT += dt;
+  if (hudT > 0.25) { updateHUD(); hudT = 0; }
+
+  requestAnimationFrame(frame);
+}
+
+populate();
+updateHUD();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

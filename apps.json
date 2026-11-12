@@ -8,7 +8,12 @@
       "icon": "icons/superink.svg",
       "color": "#ff2fa8",
       "category": "Games",
-      "tags": ["game", "multiplayer", "typescript", "vite"],
+      "tags": [
+        "game",
+        "multiplayer",
+        "typescript",
+        "vite"
+      ],
       "status": "live",
       "embed": true
     },
@@ -20,8 +25,30 @@
       "icon": "orca/icons/icon.svg",
       "color": "#6d4ff5",
       "category": "AI",
-      "tags": ["ai", "chat", "gemini", "assistant"],
+      "tags": [
+        "ai",
+        "chat",
+        "gemini",
+        "assistant"
+      ],
       "status": "beta",
+      "embed": true
+    },
+    {
+      "id": "stellar-forge",
+      "name": "Stellar Forge",
+      "description": "Space sandbox with 5,800+ objects under real gravity. Spawn planets, set off supernovas, drop in black holes.",
+      "url": "stellar-forge/",
+      "icon": "icons/stellar-forge.svg",
+      "color": "#38bdf8",
+      "category": "Simulations",
+      "tags": [
+        "space",
+        "physics",
+        "sandbox",
+        "canvas"
+      ],
+      "status": "live",
       "embed": true
     }
   ]
