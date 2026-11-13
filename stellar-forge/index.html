@@ -14,27 +14,45 @@
     --accent: #7aa2ff;
     --danger: #ff6b7a;
     --ok: #7dffb0;
+    --gold: #ffd36b;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); }
-  #space { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+  #space { display: block; width: 100vw; height: 100vh; cursor: crosshair; touch-action: none; }
 
   .panel {
     position: fixed; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(8px);
     box-shadow: 0 6px 24px rgba(0,0,0,0.5); font-size: 12px; z-index: 10;
   }
-  #hud { top: 12px; left: 12px; min-width: 210px; }
-  #hud h1 { font-size: 15px; letter-spacing: 2px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+  body.hide-ui .panel { display: none !important; }
+  .ph { cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .ph .chev { color: var(--dim); font-size: 10px; transition: transform 0.2s; }
+  .collapsed .pbody { display: none; }
+  .collapsed .ph .chev { transform: rotate(-90deg); }
+
+  #hud { top: 12px; left: 12px; width: 220px; max-height: calc(100vh - 24px); overflow-y: auto; }
+  #hud h1 { font-size: 15px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
   #hud .stat { display: flex; justify-content: space-between; padding: 2px 0; }
   #hud .stat .v { font-variant-numeric: tabular-nums; color: #fff; }
   #hud .big { font-size: 20px; font-weight: 700; color: var(--ok); }
+  #hud .cap { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .meter { height: 6px; border-radius: 3px; background: rgba(122,162,255,0.15); overflow: hidden; margin: 4px 0 8px; }
+  .meter > div { height: 100%; width: 0; background: linear-gradient(90deg, #7dffb0, #7aa2ff 55%, #ff6b7a); transition: width 0.25s; }
+  .meter.full > div { animation: pulse 0.8s infinite alternate; }
+  @keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.8); } }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+  .sep { margin-top: 6px; border-top: 1px solid var(--panel-border); padding-top: 6px; }
+  .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin: 8px 0 4px; }
+  #graph, #minimap { display: block; width: 100%; border-radius: 6px; background: rgba(5,6,14,0.7); border: 1px solid var(--panel-border); }
+  #graph { height: 40px; }
+  #minimap { aspect-ratio: 1 / 1; cursor: pointer; }
 
-  #controls { top: 12px; right: 12px; width: 224px; max-height: calc(100vh - 24px); overflow-y: auto; }
+  #controls { top: 12px; right: 12px; width: 236px; max-height: calc(100vh - 24px); overflow-y: auto; }
   #controls h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin: 10px 0 6px; }
-  #controls h2:first-child { margin-top: 0; }
+  #controls .ph h2 { margin: 0; color: var(--accent); }
   .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .btn-grid.three { grid-template-columns: 1fr 1fr 1fr; }
   button {
     background: rgba(60, 80, 160, 0.25); color: var(--text); border: 1px solid var(--panel-border);
     border-radius: 6px; padding: 7px 6px; font-size: 11.5px; cursor: pointer; transition: background 0.15s, transform 0.05s;
@@ -44,14 +62,21 @@
   button:active { transform: scale(0.96); }
   button.event { background: rgba(160, 70, 60, 0.25); border-color: rgba(255, 120, 100, 0.3); }
   button.event:hover { background: rgba(220, 90, 70, 0.45); }
+  button.event.new { background: rgba(150, 70, 170, 0.28); border-color: rgba(220, 130, 255, 0.35); }
+  button.event.new:hover { background: rgba(190, 90, 230, 0.45); }
+  button.mass { background: rgba(60, 150, 110, 0.25); border-color: rgba(120, 255, 170, 0.3); }
+  button.mass:hover { background: rgba(80, 200, 140, 0.45); }
+  button.gold { background: rgba(200, 160, 60, 0.28); border-color: rgba(255, 210, 110, 0.45); color: #fff1cc; font-weight: 600; }
+  button.gold:hover { background: rgba(240, 190, 70, 0.5); }
   button.danger { background: rgba(160, 40, 55, 0.3); border-color: rgba(255, 100, 120, 0.35); color: #ffb3bd; }
   button.danger:hover { background: rgba(220, 50, 70, 0.5); }
   button.wide { grid-column: 1 / -1; }
-  button.toggled { background: rgba(90, 200, 140, 0.35); border-color: rgba(120, 255, 170, 0.5); color: #dfffef; }
-
-  .mode-row { display: flex; gap: 6px; margin-bottom: 4px; }
-  .mode-row button { flex: 1; }
-  .mode-row button.active { background: rgba(122, 162, 255, 0.45); border-color: var(--accent); color: #fff; }
+  button.toggled, button.active { background: rgba(122, 162, 255, 0.45); border-color: var(--accent); color: #fff; }
+  button.type .dot { margin-right: 4px; }
+  .slider { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .slider label { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; }
+  .slider label b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
 
   #eventlog {
     bottom: 12px; left: 12px; width: 320px; max-height: 180px; overflow-y: auto;
@@ -62,51 +87,120 @@
   #eventlog .entry .t { color: var(--dim); margin-right: 6px; font-variant-numeric: tabular-nums; }
   #eventlog .entry.warn { color: #ffcf87; }
   #eventlog .entry.bad { color: var(--danger); }
+  #eventlog .entry.good { color: var(--gold); }
 
   #help { bottom: 12px; right: 12px; font-size: 11px; color: var(--dim); line-height: 1.7; text-align: right; }
   #help b { color: var(--text); }
 
+  #overlay {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(2, 3, 8, 0.6); z-index: 40; padding: 16px;
+  }
+  #overlay.open { display: flex; }
+  #overlay .panel { position: relative; max-width: 460px; width: 100%; max-height: calc(100vh - 32px); overflow-y: auto; font-size: 12.5px; line-height: 1.6; }
+  #overlay h3 { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  #overlay table { width: 100%; border-collapse: collapse; }
+  #overlay td { padding: 3px 4px; vertical-align: top; }
+  #overlay td:first-child { color: #fff; white-space: nowrap; font-weight: 600; padding-right: 12px; }
+  .ach { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(90,120,220,0.12); opacity: 0.45; }
+  .ach.got { opacity: 1; }
+  .ach .ic { font-size: 20px; width: 28px; text-align: center; filter: grayscale(1); }
+  .ach.got .ic { filter: none; }
+  .ach b { color: #fff; display: block; }
+  .ach span { color: var(--dim); font-size: 11.5px; }
+  #overlay .close { position: absolute; top: 10px; right: 10px; padding: 4px 9px; }
+
   #banner {
     position: fixed; top: 18%; left: 50%; transform: translateX(-50%);
-    font-size: 26px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+    font-size: 26px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; text-align: center;
     color: #fff; text-shadow: 0 0 24px var(--accent), 0 0 60px var(--accent);
-    opacity: 0; pointer-events: none; transition: opacity 0.4s; z-index: 20;
+    opacity: 0; pointer-events: none; transition: opacity 0.4s; z-index: 20; white-space: nowrap;
   }
+  #banner.huge { font-size: 44px; color: #fff4d0; text-shadow: 0 0 24px var(--gold), 0 0 80px #ff8a3d; }
+  #toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 30px);
+    background: rgba(40, 32, 10, 0.92); border: 1px solid rgba(255, 211, 107, 0.6); color: #fff1cc;
+    padding: 10px 16px; border-radius: 10px; font-size: 13px; z-index: 30; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s; box-shadow: 0 6px 24px rgba(0,0,0,0.5); white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #showui { position: fixed; top: 10px; right: 10px; z-index: 15; display: none; opacity: 0.6; }
+  body.hide-ui #showui { display: block; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-thumb { background: rgba(122,162,255,0.3); border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    #eventlog, #help { display: none; }
+    #hud { width: 158px; padding: 10px; top: 8px; left: 8px; }
+    #controls { width: 186px; padding: 10px; top: 8px; right: 8px; }
+    #hud .big { font-size: 17px; }
+    #banner { font-size: 18px; letter-spacing: 2px; }
+    #banner.huge { font-size: 26px; }
+    #toast { font-size: 12px; }
+  }
 </style>
 </head>
 <body>
 <canvas id="space"></canvas>
 
 <div id="hud" class="panel">
-  <h1>Stellar Forge</h1>
-  <div class="stat"><span>Objects</span><span class="v big" id="s-total">0</span></div>
-  <div class="stat"><span><span class="dot" style="background:#9aa3b5"></span>Asteroids</span><span class="v" id="s-asteroid">0</span></div>
-  <div class="stat"><span><span class="dot" style="background:#8f97ff"></span>Dust</span><span class="v" id="s-dust">0</span></div>
-  <div class="stat"><span><span class="dot" style="background:#7dffb0"></span>Ships</span><span class="v" id="s-ship">0</span></div>
-  <div class="stat"><span><span class="dot" style="background:#9fe8ff"></span>Comets</span><span class="v" id="s-comet">0</span></div>
-  <div class="stat"><span><span class="dot" style="background:#ffb36b"></span>Planets</span><span class="v" id="s-planet">0</span></div>
-  <div class="stat"><span><span class="dot" style="background:#c07dff"></span>Black holes</span><span class="v" id="s-blackhole">0</span></div>
-  <div class="stat" style="margin-top:6px;border-top:1px solid var(--panel-border);padding-top:6px"><span>FPS</span><span class="v" id="s-fps">—</span></div>
-  <div class="stat"><span>Sim speed</span><span class="v" id="s-speed">1.0×</span></div>
+  <div class="ph" data-toggle="hud"><h1>Stellar Forge</h1><span class="chev">▼</span></div>
+  <div class="stat" style="margin-top:8px"><span>Objects</span><span class="v big" id="s-total">0</span></div>
+  <div class="stat"><span class="cap">Cap 777,000</span><span class="cap" id="s-pct">0%</span></div>
+  <div class="meter" id="meter"><div id="meter-fill"></div></div>
+  <div class="pbody">
+    <div class="stat"><span><span class="dot" style="background:#9aa3b5"></span>Asteroids</span><span class="v" id="s-asteroid">0</span></div>
+    <div class="stat"><span><span class="dot" style="background:#8f97ff"></span>Dust</span><span class="v" id="s-dust">0</span></div>
+    <div class="stat"><span><span class="dot" style="background:#7dffb0"></span>Ships</span><span class="v" id="s-ship">0</span></div>
+    <div class="stat"><span><span class="dot" style="background:#9fe8ff"></span>Comets</span><span class="v" id="s-comet">0</span></div>
+    <div class="stat"><span><span class="dot" style="background:#ffb36b"></span>Planets</span><span class="v" id="s-planet">0</span></div>
+    <div class="stat"><span><span class="dot" style="background:#ff7ad9"></span>Nebula gas</span><span class="v" id="s-gas">0</span></div>
+    <div class="stat"><span><span class="dot" style="background:#c07dff"></span>Black holes</span><span class="v" id="s-blackhole">0</span></div>
+    <div class="stat sep"><span>FPS</span><span class="v" id="s-fps">—</span></div>
+    <div class="stat"><span>Sim speed</span><span class="v" id="s-speed">1×</span></div>
+    <div class="stat"><span>Gravity</span><span class="v" id="s-grav">Normal</span></div>
+    <div class="stat"><span>Eaten by black holes</span><span class="v" id="s-eaten">0</span></div>
+    <div class="lbl">Population</div>
+    <canvas id="graph" width="380" height="80"></canvas>
+    <div class="lbl">Map · click to jump</div>
+    <canvas id="minimap" width="160" height="160"></canvas>
+  </div>
 </div>
 
 <div id="controls" class="panel">
+  <div class="ph" data-toggle="controls"><h2>Controls</h2><span class="chev">▼</span></div>
+  <div class="pbody">
   <h2>Click mode</h2>
-  <div class="mode-row">
+  <div class="btn-grid">
     <button id="mode-spawn" class="active" onclick="setMode('spawn')">Spawn</button>
     <button id="mode-remove" onclick="setMode('remove')">Remove</button>
+    <button id="mode-attract" onclick="setMode('attract')">Attract (hold)</button>
+    <button id="mode-repel" onclick="setMode('repel')">Repel (hold)</button>
+  </div>
+
+  <h2>Click-spawn type</h2>
+  <div class="btn-grid three" id="type-row">
+    <button class="type active" data-type="asteroid"><span class="dot" style="background:#9aa3b5"></span>Rock</button>
+    <button class="type" data-type="dust"><span class="dot" style="background:#8f97ff"></span>Dust</button>
+    <button class="type" data-type="ship"><span class="dot" style="background:#7dffb0"></span>Ship</button>
+    <button class="type" data-type="comet"><span class="dot" style="background:#9fe8ff"></span>Comet</button>
+    <button class="type" data-type="planet"><span class="dot" style="background:#ffb36b"></span>Planet</button>
+    <button class="type" data-type="gas"><span class="dot" style="background:#ff7ad9"></span>Gas</button>
   </div>
 
   <h2>Spawn objects</h2>
   <div class="btn-grid">
     <button onclick="spawnBatch('asteroid', 100)">+100 Asteroids</button>
     <button onclick="spawnBatch('asteroid', 1000)">+1000 Asteroids</button>
+    <button class="mass" onclick="spawnBatch('asteroid', 10000)">+10K Asteroids</button>
+    <button class="mass" onclick="spawnBatch('dust', 100000)">+100K Dust</button>
     <button onclick="spawnBatch('dust', 500)">+500 Dust</button>
+    <button onclick="spawnBatch('gas', 5000)">+5K Gas</button>
     <button onclick="spawnBatch('ship', 25)">+25 Ships</button>
     <button onclick="spawnBatch('comet', 10)">+10 Comets</button>
     <button onclick="spawnBatch('planet', 1)">+1 Planet</button>
+    <button class="mass" onclick="spawnBatch('ship', 1000)">+1K Ships</button>
+    <button class="gold wide" onclick="fillToCap()">Fill to 777K</button>
   </div>
 
   <h2>Trigger events</h2>
@@ -117,16 +211,42 @@
     <button class="event" onclick="triggerEvent('flare')">Solar Flare</button>
     <button class="event" onclick="triggerEvent('wormhole')">Wormhole</button>
     <button class="event" onclick="triggerEvent('fleet')">Fleet Arrival</button>
+    <button class="event new" onclick="triggerEvent('roguestar')">Rogue Star</button>
+    <button class="event new" onclick="triggerEvent('galaxy')">Spiral Galaxy</button>
+    <button class="event new" onclick="triggerEvent('dyson')">Dyson Swarm</button>
+    <button class="event new" onclick="triggerEvent('grb')">Gamma Burst</button>
+    <button class="event new" onclick="triggerEvent('nebula')">Nebula</button>
+    <button class="event new" onclick="triggerEvent('cometstorm')">Comet Storm</button>
+    <button class="event new" onclick="triggerEvent('pulsar')">Pulsar</button>
+    <button class="event new" onclick="triggerEvent('ionstorm')">Ion Storm</button>
+    <button class="event new" onclick="triggerEvent('flip')">Gravity Flip</button>
+    <button class="event new" onclick="triggerEvent('crunch')">Big Crunch</button>
     <button class="event wide" id="btn-auto" onclick="toggleAutoEvents()">Random events: ON</button>
   </div>
 
   <h2>Remove objects</h2>
   <div class="btn-grid">
     <button class="danger" onclick="removeRandom(500)">−500 Random</button>
+    <button class="danger" onclick="removeFraction(0.5)">Halve all</button>
     <button class="danger" onclick="removeType('asteroid')">All asteroids</button>
+    <button class="danger" onclick="removeType('dust')">All dust</button>
     <button class="danger" onclick="removeType('ship')">All ships</button>
     <button class="danger" onclick="removeType('comet')">All comets</button>
+    <button class="danger" onclick="removeType('gas')">All gas</button>
+    <button class="danger" onclick="removeType('planet')">All planets</button>
     <button class="danger wide" onclick="removeAll()">Purge everything</button>
+  </div>
+
+  <h2>View</h2>
+  <div class="btn-grid">
+    <button class="view active" data-view="0" onclick="setView(0)">Classic</button>
+    <button class="view" data-view="1" onclick="setView(1)">Velocity</button>
+    <button class="view" data-view="2" onclick="setView(2)">Heat</button>
+    <button class="view" data-view="3" onclick="setView(3)">Rainbow</button>
+    <button id="btn-trails" onclick="toggleTrails()">Trails: OFF</button>
+    <button id="btn-cine" onclick="toggleCinematic()">Cinematic</button>
+    <button id="btn-follow" onclick="followNextPlanet()">Follow planet</button>
+    <button onclick="resetCamera()">Recenter</button>
   </div>
 
   <h2>Simulation</h2>
@@ -136,6 +256,25 @@
     <button id="btn-pause" onclick="togglePause()">Pause</button>
     <button onclick="resetSim()">Reset sim</button>
   </div>
+  <div class="slider">
+    <label for="sun-mass">Sun mass <b id="sun-mass-v">90K</b></label>
+    <input type="range" id="sun-mass" min="20000" max="300000" step="1000" value="90000">
+  </div>
+  <div class="slider">
+    <label for="brush-size">Brush size <b id="brush-size-v">320</b></label>
+    <input type="range" id="brush-size" min="80" max="900" step="10" value="320">
+  </div>
+
+  <h2>Extras</h2>
+  <div class="btn-grid">
+    <button id="btn-ach" onclick="openOverlay('ach')">🏆 0/13</button>
+    <button id="btn-sound" onclick="toggleSound()">Sound: ON</button>
+    <button onclick="snapshot()">📸 Snapshot</button>
+    <button onclick="toggleFullscreen()">Fullscreen</button>
+    <button onclick="openOverlay('keys')">Shortcuts</button>
+    <button onclick="toggleUI()">Hide UI</button>
+  </div>
+  </div>
 </div>
 
 <div id="eventlog" class="panel">
@@ -144,29 +283,55 @@
 </div>
 
 <div id="help" class="panel">
-  <b>Click</b> spawn / remove (per mode) &nbsp;·&nbsp; <b>Drag</b> pan<br>
-  <b>Wheel</b> zoom &nbsp;·&nbsp; <b>Space</b> pause &nbsp;·&nbsp; <b>1–6</b> spawn type
+  <b>Click</b> spawn / remove · <b>Hold</b> attract / repel · <b>Drag</b> pan<br>
+  <b>Wheel / pinch</b> zoom · <b>Space</b> pause · <b>?</b> all shortcuts
+</div>
+
+<button id="showui" onclick="toggleUI()">Show UI</button>
+
+<div id="overlay" onclick="if (event.target === this) closeOverlay()">
+  <div class="panel" id="overlay-body"></div>
 </div>
 
 <div id="banner"></div>
+<div id="toast"></div>
 
 <script>
 'use strict';
 // ============================================================
 // Stellar Forge — a space simulation sandbox
-// Thousands of bodies under central gravity, with spawnable
-// objects, dynamic events, and click-to-remove.
+// Up to 777,000 bodies under central gravity, with spawnable
+// objects, dynamic events, gravity brushes and click-to-remove.
 // ============================================================
 
 const canvas = document.getElementById('space');
 const ctx = canvas.getContext('2d');
-let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+let W = 0, H = 0;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+// Small objects are plotted straight into a pixel buffer (much faster than
+// canvas paths), which is what lets the sim run with hundreds of thousands.
+const pcan = document.createElement('canvas');
+const pctx = pcan.getContext('2d');
+let img = null, buf = null;
 
 function resize() {
   W = window.innerWidth; H = window.innerHeight;
-  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  PR = 0; // particle buffer is rebuilt on the next frame
+}
+// The particle buffer runs at full device resolution for normal scenes and
+// drops to 1x when the system is very crowded, which keeps huge scenes smooth.
+let PR = 0;
+function ensureBuffer() {
+  const want = alive > 150000 ? 1 : DPR;
+  if (want === PR) return;
+  PR = want;
+  pcan.width = Math.round(W * PR); pcan.height = Math.round(H * PR);
+  img = pctx.createImageData(pcan.width, pcan.height);
+  buf = new Int32Array(img.data.buffer);
 }
 window.addEventListener('resize', resize);
 resize();
@@ -174,37 +339,69 @@ resize();
 // ---------- World & camera ----------
 const SUN = { x: 0, y: 0, mass: 90000, r: 26 };
 const G = 1.0;
+const KILL_DIST = 4200;           // objects flung past this are lost to deep space
 const cam = { x: 0, y: 0, zoom: 0.42 };
+let gravMul = 1, gravModT = 0;    // temporary gravity changes (flip / crunch)
 
 function worldToScreen(x, y) { return [ (x - cam.x) * cam.zoom + W / 2, (y - cam.y) * cam.zoom + H / 2 ]; }
 function screenToWorld(sx, sy) { return [ (sx - W / 2) / cam.zoom + cam.x, (sy - H / 2) / cam.zoom + cam.y ]; }
 
 // ---------- Object storage (struct-of-arrays for speed) ----------
-const MAX = 777000;                   // hard cap: 777K objects
+const MAX = 777000;               // hard cap: 777K objects
 const px = new Float32Array(MAX), py = new Float32Array(MAX);
 const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
 const rad = new Float32Array(MAX);
-const kind = new Uint8Array(MAX);     // 0 dead, 1 asteroid, 2 dust, 3 ship, 4 comet, 5 planet
+const kind = new Uint8Array(MAX);     // 0 dead, 1 asteroid, 2 dust, 3 ship, 4 comet, 5 planet, 6 gas
 const hue = new Float32Array(MAX);
 let count = 0;                        // high-water mark into arrays
 let alive = 0;
-const freeList = [];
+const freeStack = new Int32Array(MAX);
+let freeTop = 0;
+let capHit = false;
 
-const KIND = { asteroid: 1, dust: 2, ship: 3, comet: 4, planet: 5 };
-const KIND_NAME = ['dead', 'asteroid', 'dust', 'ship', 'comet', 'planet'];
-const counts = { asteroid: 0, dust: 0, ship: 0, comet: 0, planet: 0 };
+const TYPES = ['asteroid', 'dust', 'ship', 'comet', 'planet', 'gas'];
+const KIND = { asteroid: 1, dust: 2, ship: 3, comet: 4, planet: 5, gas: 6 };
+const KIND_NAME = ['dead', ...TYPES];
+const counts = { asteroid: 0, dust: 0, ship: 0, comet: 0, planet: 0, gas: 0 };
+const KIND_COLOR = [null, '#9aa3b5', '#8f97ff', '#7dffb0', '#9fe8ff', '#ffb36b', '#ff7ad9'];
 
-const KIND_STYLE = {
-  1: { color: '#9aa3b5' },
-  2: { color: '#8f97ff' },
-  3: { color: '#7dffb0' },
-  4: { color: '#9fe8ff' },
-  5: { color: '#ffb36b' },
-};
+// ---------- Colour tables ----------
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function pack(r, g, b) { return (255 << 24) | (b << 16) | (g << 8) | r; } // little-endian RGBA
+const KCOL = new Int32Array(7);
+for (let k = 1; k <= 6; k++) KCOL[k] = pack(...hexToRgb(KIND_COLOR[k]));
+
+function buildLUT(stops) {
+  const lut = new Int32Array(256), css = new Array(256);
+  const rgb = stops.map(([p, c]) => [p, hexToRgb(c)]);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    let j = 0; while (j < rgb.length - 2 && t > rgb[j + 1][0]) j++;
+    const [p0, c0] = rgb[j], [p1, c1] = rgb[j + 1];
+    const f = Math.max(0, Math.min(1, (t - p0) / (p1 - p0)));
+    const r = Math.round(c0[0] + (c1[0] - c0[0]) * f), g = Math.round(c0[1] + (c1[1] - c0[1]) * f), b = Math.round(c0[2] + (c1[2] - c0[2]) * f);
+    lut[i] = pack(r, g, b); css[i] = `rgb(${r},${g},${b})`;
+  }
+  return { lut, css };
+}
+const LUT_VEL = buildLUT([[0, '#1b2a6b'], [0.3, '#2f7bff'], [0.55, '#3ef0ff'], [0.75, '#ffe14a'], [1, '#ff3b3b']]);
+const LUT_HEAT = buildLUT([[0, '#3a0d5c'], [0.35, '#b0247a'], [0.65, '#ff7a2f'], [0.85, '#ffd36b'], [1, '#ffffff']]);
+const LUT_RAIN = (() => {
+  const lut = new Int32Array(256), css = new Array(256);
+  for (let i = 0; i < 256; i++) {
+    const h = i / 256 * 6, s = 0.85, l = 0.65;
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(h % 2 - 1)), m = l - c / 2;
+    const [r, g, b] = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
+    const R = Math.round((r + m) * 255), Gg = Math.round((g + m) * 255), B = Math.round((b + m) * 255);
+    lut[i] = pack(R, Gg, B); css[i] = `rgb(${R},${Gg},${B})`;
+  }
+  return { lut, css };
+})();
 
 function allocSlot() {
-  if (freeList.length) return freeList.pop();
+  if (freeTop) return freeStack[--freeTop];
   if (count < MAX) return count++;
+  capHit = true;
   return -1;
 }
 
@@ -218,11 +415,19 @@ function spawn(type, x, y, ivx, ivy, r) {
 }
 
 function kill(i) {
-  if (kind[i] === 0) return;
+  if (kind[i] === 0) return false;
   counts[KIND_NAME[kind[i]]]--;
   kind[i] = 0;
-  freeList.push(i);
+  freeStack[freeTop++] = i;
   alive--;
+  return true;
+}
+
+// Wipe everything and compact storage back to empty.
+function wipe() {
+  kind.fill(0, 0, count);
+  for (const t of TYPES) counts[t] = 0;
+  count = 0; alive = 0; freeTop = 0;
 }
 
 // Circular-orbit velocity at distance d from the sun.
@@ -234,6 +439,13 @@ function spawnOrbiting(type, dist, spread, r) {
   const x = Math.cos(a) * d, y = Math.sin(a) * d;
   const sp = orbitalSpeed(d) * (0.94 + Math.random() * 0.12);
   return spawn(type, x, y, -Math.sin(a) * sp, Math.cos(a) * sp, r);
+}
+
+function capWarning(made, n) {
+  if (made < n) {
+    log(`🧱 Object cap reached — the system holds at most ${MAX.toLocaleString()} objects`, 'bad');
+    banner('777K cap reached');
+  }
 }
 
 function spawnBatch(type, n, atX, atY) {
@@ -249,10 +461,27 @@ function spawnBatch(type, n, atX, atY) {
     } else {
       i = spawnOrbiting(type, distFor(type), spreadFor(type), sizeFor(type));
     }
-    if (i >= 0) made++;
+    if (i < 0) break;
+    made++;
   }
-  if (made) log(`Spawned ${made} ${type}${made > 1 ? 's' : ''}`);
+  if (made) { log(`Spawned ${made.toLocaleString()} ${type}${made > 1 ? 's' : ''}`); sfx('pop'); }
+  capWarning(made, n);
   return made;
+}
+
+function fillToCap() {
+  const room = MAX - alive;
+  if (room <= 0) { capWarning(0, 1); return; }
+  const plan = [['asteroid', 0.5], ['dust', 0.36], ['gas', 0.1], ['ship', 0.035], ['comet', 0.005]];
+  let made = 0;
+  for (const [t, f] of plan) {
+    const n = Math.floor(room * f);
+    for (let k = 0; k < n; k++) if (spawnOrbiting(t, distFor(t), spreadFor(t), sizeFor(t)) >= 0) made++;
+  }
+  while (alive < MAX && spawnOrbiting('dust', distFor('dust'), 160, sizeFor('dust')) >= 0) made++;
+  log(`🌠 Filled the system to the brim: +${made.toLocaleString()} objects`, 'good');
+  banner('777K — Max capacity');
+  sfx('boom');
 }
 
 function sizeFor(t) {
@@ -262,6 +491,7 @@ function sizeFor(t) {
     case 'ship': return 2.2 + Math.random() * 1.2;
     case 'comet': return 1.8 + Math.random() * 1.6;
     case 'planet': return 9 + Math.random() * 8;
+    case 'gas': return 0.8 + Math.random() * 0.9;
   }
   return 2;
 }
@@ -272,18 +502,24 @@ function distFor(t) {
     case 'ship': return 350 + Math.random() * 500;
     case 'comet': return 1000 + Math.random() * 500;
     case 'planet': return 250 + Math.random() * 950;
+    case 'gas': return 200 + Math.random() * 1500;
   }
   return 500;
 }
-function spreadFor(t) { return t === 'asteroid' ? 260 : 160; }
+function spreadFor(t) { return t === 'asteroid' ? 260 : t === 'gas' ? 300 : 160; }
 
-// ---------- Black holes (special attractors) ----------
-const blackHoles = []; // {x, y, vx, vy, mass, r, life}
+// ---------- Massive bodies: black holes, rogue stars, galaxy cores ----------
+const bodies = []; // {type, x, y, vx, vy, mass, r, life, eats}
 
 // ---------- Visual effects ----------
 const shockwaves = []; // {x, y, r, maxR, speed, push, killR, hue}
 const flashes = [];    // {x, y, r, life, maxLife, color}
 const wormholes = [];  // {ax, ay, bx, by, r, life, maxLife}
+const beams = [];      // {x, y, ang, spin, len, half, life, maxLife, twin, color}
+
+// ---------- Stats ----------
+const stats = { eaten: 0, vaporized: 0, supernovas: 0 };
+const eventsSeen = new Set();
 
 // ---------- Event system ----------
 let autoEvents = true;
@@ -300,12 +536,25 @@ function log(msg, cls) {
   while (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
 }
 
-function banner(text) {
+function banner(text, huge) {
   const b = document.getElementById('banner');
   b.textContent = text;
+  b.classList.toggle('huge', !!huge);
   b.style.opacity = 1;
   clearTimeout(banner._t);
-  banner._t = setTimeout(() => b.style.opacity = 0, 1800);
+  banner._t = setTimeout(() => b.style.opacity = 0, huge ? 2600 : 1800);
+}
+
+function toast(text) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function flash(x, y, r, life, color) {
+  if (flashes.length < 160) flashes.push({ x, y, r, life, maxLife: life, color });
 }
 
 function randomFieldPoint(minD, maxD) {
@@ -318,17 +567,21 @@ const EVENTS = {
   supernova(x, y) {
     if (x === undefined) [x, y] = randomFieldPoint(400, 1100);
     shockwaves.push({ x, y, r: 10, maxR: 900, speed: 420, push: 260, killR: 130, hue: 18 });
-    flashes.push({ x, y, r: 160, life: 1.2, maxLife: 1.2, color: '255,200,140' });
+    flash(x, y, 160, 1.2, '255,200,140');
     banner('Supernova');
     log(`💥 Supernova detonated at (${x | 0}, ${y | 0})`, 'bad');
+    stats.supernovas++;
+    if (stats.supernovas >= 5) unlock('nova5');
+    sfx('boom');
   },
   blackhole(x, y) {
     if (x === undefined) [x, y] = randomFieldPoint(450, 1000);
     const d = Math.hypot(x, y) || 1;
     const sp = orbitalSpeed(d) * 0.9;
-    blackHoles.push({ x, y, vx: -y / d * sp, vy: x / d * sp, mass: 42000, r: 13, life: 22 });
+    bodies.push({ type: 'bh', x, y, vx: -y / d * sp, vy: x / d * sp, mass: 42000, r: 13, life: 22, eats: true });
     banner('Black Hole');
     log(`🕳️ Black hole formed — devouring everything nearby for 22s`, 'bad');
+    sfx('drone');
   },
   shower() {
     const a = Math.random() * Math.PI * 2;
@@ -342,12 +595,14 @@ const EVENTS = {
     }
     banner('Meteor Shower');
     log(`☄️ Meteor shower — ${made} rocks inbound from deep space`, 'warn');
+    sfx('whoosh');
   },
   flare() {
     shockwaves.push({ x: 0, y: 0, r: SUN.r, maxR: 620, speed: 520, push: 200, killR: 70, hue: 45 });
-    flashes.push({ x: 0, y: 0, r: 220, life: 0.9, maxLife: 0.9, color: '255,230,150' });
+    flash(0, 0, 220, 0.9, '255,230,150');
     banner('Solar Flare');
     log('🔆 Solar flare — the sun ejects a burning shockwave', 'warn');
+    sfx('boom');
   },
   wormhole() {
     const [ax, ay] = randomFieldPoint(350, 900);
@@ -355,6 +610,7 @@ const EVENTS = {
     wormholes.push({ ax, ay, bx, by, r: 120, life: 8, maxLife: 8 });
     banner('Wormhole');
     log(`🌀 Wormhole opened — teleporting objects across ${Math.hypot(bx - ax, by - ay) | 0} units`, 'warn');
+    sfx('whoosh');
   },
   fleet() {
     const [x, y] = randomFieldPoint(500, 900);
@@ -365,13 +621,141 @@ const EVENTS = {
       const sp = orbitalSpeed(d);
       if (spawn('ship', jx, jy, -jy / d * sp, jx / d * sp, 2.4 + Math.random()) >= 0) made++;
     }
-    flashes.push({ x, y, r: 120, life: 0.8, maxLife: 0.8, color: '140,255,190' });
+    flash(x, y, 120, 0.8, '140,255,190');
     banner('Fleet Arrival');
     log(`🚀 A fleet of ${made} ships warped into the system`);
+    sfx('zap');
+  },
+  // ----- new events -----
+  roguestar() {
+    const a = Math.random() * Math.PI * 2;
+    const x = Math.cos(a) * 3400, y = Math.sin(a) * 3400;
+    const miss = (300 + Math.random() * 400) * (Math.random() < 0.5 ? -1 : 1);
+    const tx = -Math.sin(a) * miss, ty = Math.cos(a) * miss;
+    const d = Math.hypot(tx - x, ty - y);
+    bodies.push({ type: 'star', x, y, vx: (tx - x) / d * 140, vy: (ty - y) / d * 140, mass: 50000, r: 16, life: 60, eats: true });
+    banner('Rogue Star');
+    log('⭐ A rogue star is barrelling through the system — orbits will be wrecked', 'bad');
+    sfx('drone');
+  },
+  galaxy() {
+    const [cx, cy] = randomFieldPoint(1800, 2100);
+    const d = Math.hypot(cx, cy);
+    const sp = orbitalSpeed(d) * 0.6;
+    const core = { type: 'core', x: cx, y: cy, vx: -cy / d * sp, vy: cx / d * sp, mass: 20000, r: 10, life: 70, eats: false };
+    bodies.push(core);
+    const spin = Math.random() < 0.5 ? 1 : -1;
+    let made = 0;
+    for (let k = 0; k < 40000; k++) {
+      const r = 25 + Math.pow(Math.random(), 0.8) * 460;
+      const arm = (k % 2) * Math.PI;
+      const th = arm + spin * Math.log(r) * 2.4 + (Math.random() - 0.5) * 0.7;
+      const x = cx + Math.cos(th) * r, y = cy + Math.sin(th) * r;
+      const v = Math.sqrt(G * core.mass * r * r / Math.pow(r * r + 400, 1.5));
+      const t = Math.random() < 0.82 ? 'dust' : Math.random() < 0.7 ? 'gas' : 'asteroid';
+      if (spawn(t, x, y, core.vx - Math.sin(th) * v * spin, core.vy + Math.cos(th) * v * spin, sizeFor(t)) < 0) break;
+      made++;
+    }
+    if (!made) { bodies.pop(); capWarning(0, 1); return; }
+    flash(cx, cy, 260, 1.5, '200,180,255');
+    banner('Spiral Galaxy');
+    log(`🌌 A spiral galaxy of ${made.toLocaleString()} stars drifted in — watch the sun tear it apart`, 'good');
+    capWarning(made, 40000);
+    unlock('galaxy');
+    sfx('chime');
+  },
+  dyson() {
+    let made = 0;
+    for (let k = 0; k < 20000; k++) {
+      if (spawnOrbiting('ship', 140, 60, 1 + Math.random() * 0.8) < 0) break;
+      made++;
+    }
+    flash(0, 0, 260, 1.2, '140,255,190');
+    banner('Dyson Swarm');
+    log(`🛰️ Dyson swarm deployed — ${made.toLocaleString()} collectors wrap the sun`, 'good');
+    capWarning(made, 20000);
+    unlock('dyson');
+    sfx('zap');
+  },
+  grb() {
+    const [x, y] = randomFieldPoint(1400, 2200);
+    const ang = Math.atan2(-y, -x) - 0.8;
+    beams.push({ x, y, ang, spin: 0.45, len: 3200, half: 0.05, life: 3.6, maxLife: 3.6, twin: false, color: '170,230,255' });
+    flash(x, y, 200, 1.0, '200,240,255');
+    banner('Gamma-Ray Burst');
+    log('⚡ Gamma-ray burst — a beam of death sweeps across the system', 'bad');
+    sfx('zap');
+  },
+  nebula() {
+    const [cx, cy] = randomFieldPoint(500, 1100);
+    const d = Math.hypot(cx, cy);
+    let made = 0;
+    for (let k = 0; k < 25000; k++) {
+      const a = Math.random() * Math.PI * 2, r = Math.sqrt(-2 * Math.log(Math.random() + 1e-9)) * 110;
+      const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+      const dd = Math.hypot(x, y) || 1, sp = orbitalSpeed(dd) * (0.97 + Math.random() * 0.06);
+      if (spawn('gas', x, y, -y / dd * sp, x / dd * sp, sizeFor('gas')) < 0) break;
+      made++;
+    }
+    flash(cx, cy, 300, 1.4, '255,140,220');
+    banner('Nebula');
+    log(`🌸 A nebula of ${made.toLocaleString()} gas particles condensed at ${d | 0} units`, 'good');
+    capWarning(made, 25000);
+    sfx('chime');
+  },
+  cometstorm() {
+    let made = 0;
+    for (let k = 0; k < 150; k++) {
+      const [x, y] = randomFieldPoint(1600, 2300);
+      const dd = Math.hypot(x, y), sp = orbitalSpeed(dd) * (0.25 + Math.random() * 0.35);
+      const dir = Math.random() < 0.85 ? 1 : -1;
+      if (spawn('comet', x, y, -y / dd * sp * dir, x / dd * sp * dir, sizeFor('comet')) >= 0) made++;
+    }
+    banner('Comet Storm');
+    log(`☄️ Comet storm — ${made} comets diving toward the sun`, 'warn');
+    sfx('whoosh');
+  },
+  pulsar() {
+    const [x, y] = randomFieldPoint(500, 1200);
+    beams.push({ x, y, ang: Math.random() * 6.28, spin: 2.2, len: 800, half: 0.014, life: 18, maxLife: 18, twin: true, color: '140,200,255' });
+    banner('Pulsar');
+    log('📡 A pulsar ignited — its twin beams slice everything they touch for 18s', 'bad');
+    sfx('drone');
+  },
+  ionstorm() {
+    let n = 0;
+    for (let i = 0; i < count; i++) {
+      if (kind[i] === 0 || Math.random() > 0.35) continue;
+      vx[i] += (Math.random() - 0.5) * 16; vy[i] += (Math.random() - 0.5) * 16; n++;
+    }
+    flash(cam.x, cam.y, 2600, 0.7, '120,170,255');
+    banner('Ion Storm');
+    log(`🌩️ Ion storm — ${n.toLocaleString()} objects knocked off course`, 'warn');
+    sfx('zap');
+  },
+  flip() {
+    gravMul = -6; gravModT = 4;
+    flash(0, 0, 500, 1.0, '255,120,255');
+    banner('Gravity Flip');
+    log('🔄 Gravity flipped! The sun is pushing everything away for 4s', 'bad');
+    unlock('flip');
+    sfx('drone');
+  },
+  crunch() {
+    gravMul = 8; gravModT = 3;
+    flash(0, 0, 400, 1.0, '255,200,120');
+    banner('Big Crunch');
+    log('🌑 Big crunch — the sun’s gravity spikes 8× for 3s', 'bad');
+    sfx('boom');
   },
 };
+const EVENT_COUNT = Object.keys(EVENTS).length;
 
-function triggerEvent(name, x, y) { EVENTS[name](x, y); }
+function triggerEvent(name, x, y) {
+  EVENTS[name](x, y);
+  eventsSeen.add(name);
+  if (eventsSeen.size >= EVENT_COUNT) unlock('allEvents');
+}
 
 function toggleAutoEvents() {
   autoEvents = !autoEvents;
@@ -387,18 +771,25 @@ function removeRandom(n) {
   }
   log(`Removed ${removed} random objects`, 'warn');
 }
+function removeFraction(f) {
+  let removed = 0;
+  for (let i = 0; i < count; i++) if (kind[i] !== 0 && Math.random() < f) { kill(i); removed++; }
+  log(`✂️ Halved the system — removed ${removed.toLocaleString()} objects`, 'warn');
+}
 function removeType(type) {
   const k = KIND[type];
   let removed = 0;
   for (let i = 0; i < count; i++) if (kind[i] === k) { kill(i); removed++; }
-  log(`Removed all ${type}s (${removed})`, 'warn');
+  log(`Removed all ${type}${type === 'gas' || type === 'dust' ? '' : 's'} (${removed.toLocaleString()})`, 'warn');
 }
 function removeAll() {
-  let removed = alive;
-  for (let i = 0; i < count; i++) if (kind[i] !== 0) kill(i);
-  blackHoles.length = 0;
-  log(`☠️ Purged the entire system (${removed} objects)`, 'bad');
+  const removed = alive;
+  wipe();
+  bodies.length = 0; beams.length = 0;
+  log(`☠️ Purged the entire system (${removed.toLocaleString()} objects)`, 'bad');
   banner('System Purged');
+  unlock('purge');
+  sfx('boom');
 }
 function removeNear(x, y, r) {
   const r2 = r * r;
@@ -409,8 +800,11 @@ function removeNear(x, y, r) {
     if (dx * dx + dy * dy < r2) { kill(i); removed++; }
   }
   if (removed) {
-    flashes.push({ x, y, r, life: 0.4, maxLife: 0.4, color: '255,110,130' });
-    log(`Vaporized ${removed} objects`, 'warn');
+    flash(x, y, r, 0.4, '255,110,130');
+    log(`Vaporized ${removed.toLocaleString()} objects`, 'warn');
+    stats.vaporized += removed;
+    if (stats.vaporized >= 10000) unlock('vaporizer');
+    sfx('pop');
   }
   return removed;
 }
@@ -418,13 +812,13 @@ function removeNear(x, y, r) {
 // ---------- Simulation ----------
 let timeScale = 1.0;
 let paused = false;
-const SPEEDS = [0.25, 0.5, 1.0, 2.0, 4.0];
+const SPEEDS = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0];
 let speedIdx = 2;
 
 function setSpeed(dir) {
   speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, speedIdx + dir));
   timeScale = SPEEDS[speedIdx];
-  document.getElementById('s-speed').textContent = timeScale.toFixed(2).replace(/\.?0+$/, '') + '×';
+  document.getElementById('s-speed').textContent = timeScale + '×';
 }
 function togglePause() {
   paused = !paused;
@@ -432,59 +826,113 @@ function togglePause() {
   document.getElementById('btn-pause').classList.toggle('toggled', paused);
 }
 
+// Gravity brush (attract / repel), driven by a held pointer.
+const brush = { active: false, sx: 0, sy: 0 };
+let brushSize = 320;
+let stepPhase = 0;
+
 function step(dt) {
   simClock += dt;
 
-  // Black hole lifecycle & motion
-  for (let b = blackHoles.length - 1; b >= 0; b--) {
-    const bh = blackHoles[b];
+  if (gravModT > 0) {
+    gravModT -= dt;
+    if (gravModT <= 0) { gravMul = 1; log('Gravity returned to normal'); }
+  }
+
+  // Massive bodies: lifecycle & motion around the sun
+  for (let b = bodies.length - 1; b >= 0; b--) {
+    const bh = bodies[b];
     const d = Math.hypot(bh.x, bh.y) || 1;
-    const acc = G * SUN.mass / (d * d + 2000);
+    const acc = G * SUN.mass * gravMul / (d * d + 2000);
     bh.vx += -bh.x / d * acc * dt; bh.vy += -bh.y / d * acc * dt;
     bh.x += bh.vx * dt; bh.y += bh.vy * dt;
     bh.life -= dt;
-    if (bh.life <= 0) {
-      flashes.push({ x: bh.x, y: bh.y, r: 150, life: 1.0, maxLife: 1.0, color: '200,140,255' });
-      blackHoles.splice(b, 1);
-      log('🕳️ Black hole evaporated (Hawking radiation wins again)');
+    if (bh.life <= 0 || d > KILL_DIST + 800) {
+      bodies.splice(b, 1);
+      if (bh.type === 'bh') { flash(bh.x, bh.y, 150, 1.0, '200,140,255'); log('🕳️ Black hole evaporated (Hawking radiation wins again)'); }
+      else if (bh.type === 'star') log('⭐ The rogue star left the system');
+      else log('🌌 The galaxy core dissolved — its stars are on their own now');
     }
   }
 
-  const nBH = blackHoles.length;
-  const removeQueue = [];
+  const nB = bodies.length;
+  const sm = G * SUN.mass * gravMul;
+  const sunR = SUN.r;
 
-  for (let i = 0; i < count; i++) {
+  let brushOn = false, bwx = 0, bwy = 0, bR = 0, bR2 = 0, bSign = 0;
+  if (brush.active && (clickMode === 'attract' || clickMode === 'repel')) {
+    brushOn = true;
+    [bwx, bwy] = screenToWorld(brush.sx, brush.sy);
+    bR = brushSize / Math.sqrt(cam.zoom); bR2 = bR * bR;
+    bSign = clickMode === 'attract' ? 1 : -1;
+  }
+  const kill2 = KILL_DIST * KILL_DIST;
+
+  // Very crowded systems update half the objects per frame (with a doubled
+  // time step), which halves the physics cost without changing the motion.
+  const stride = alive > 250000 ? 2 : 1;
+  stepPhase = (stepPhase + 1) % stride;
+  const frameDt = dt;
+  dt *= stride;
+  const drag = Math.max(0, 1 - 1.6 * dt);
+
+  for (let i = stepPhase; i < count; i += stride) {
     if (kind[i] === 0) continue;
-    let x = px[i], y = py[i];
+    const x = px[i], y = py[i];
 
     // Central gravity (softened)
     let dx = -x, dy = -y;
     let d2 = dx * dx + dy * dy + 900;
+    const sr = sunR + rad[i];
+    if (d2 < sr * sr + 900) { kill(i); continue; }   // sun consumes what falls in
     let inv = 1 / Math.sqrt(d2);
-    let acc = G * SUN.mass * inv * inv;
+    let acc = sm * inv * inv;
     let ax = dx * inv * acc, ay = dy * inv * acc;
 
-    // Sun consumes what falls in
-    if (d2 < (SUN.r + rad[i]) * (SUN.r + rad[i]) + 900) { removeQueue.push(i); continue; }
-
-    // Black hole gravity + event horizon
-    for (let b = 0; b < nBH; b++) {
-      const bh = blackHoles[b];
+    // Massive bodies: gravity + event horizons
+    let eaten = false;
+    for (let b = 0; b < nB; b++) {
+      const bh = bodies[b];
       dx = bh.x - x; dy = bh.y - y;
       d2 = dx * dx + dy * dy + 400;
-      if (d2 < (bh.r + 6) * (bh.r + 6) + 400) { removeQueue.push(i); flashes.push({ x, y, r: 8, life: 0.25, maxLife: 0.25, color: '200,140,255' }); break; }
+      if (bh.eats && d2 < (bh.r + 6) * (bh.r + 6) + 400) {
+        kill(i); eaten = true;
+        if (bh.type === 'bh') stats.eaten++;
+        if (Math.random() < 0.02) flash(x, y, 8, 0.25, '200,140,255');
+        break;
+      }
       inv = 1 / Math.sqrt(d2);
       acc = G * bh.mass * inv * inv;
       ax += dx * inv * acc; ay += dy * inv * acc;
     }
-    if (removeQueue.length && removeQueue[removeQueue.length - 1] === i) continue;
+    if (eaten) continue;
+
+    // Gravity brush: attract makes a swirling vortex, repel blasts things away
+    if (brushOn) {
+      dx = bwx - x; dy = bwy - y;
+      d2 = dx * dx + dy * dy;
+      if (d2 < bR2) {
+        const d = Math.sqrt(d2) + 1, fall = 1 - d / bR;
+        if (bSign > 0) {
+          const f = 90 * fall;
+          ax += (dx * f - dy * f * 0.6) / d; ay += (dy * f + dx * f * 0.6) / d;
+          vx[i] *= drag; vy[i] *= drag;
+        } else {
+          const f = -160 * fall;
+          ax += dx / d * f; ay += dy / d * f;
+        }
+      }
+    }
 
     vx[i] += ax * dt; vy[i] += ay * dt;
-    px[i] += vx[i] * dt; py[i] += vy[i] * dt;
+    const nx = x + vx[i] * dt, ny = y + vy[i] * dt;
+    px[i] = nx; py[i] = ny;
 
     // Drop objects flung far outside the system
-    if (px[i] * px[i] + py[i] * py[i] > 3200 * 3200) removeQueue.push(i);
+    if (nx * nx + ny * ny > kill2) kill(i);
   }
+
+  dt = frameDt;
 
   // Shockwaves: expanding rings that push and destroy
   for (let s = shockwaves.length - 1; s >= 0; s--) {
@@ -492,13 +940,16 @@ function step(dt) {
     const prevR = w.r;
     w.r += w.speed * dt;
     const band = w.r - prevR + 26;
+    const killing = w.r < w.killR * 1.5, kr2 = w.killR * w.killR;
+    const lo = Math.max(0, prevR - 6), hi = prevR + band, lo2 = lo * lo, hi2 = hi * hi;
+    const f = w.push * (1 - w.r / w.maxR);
     for (let i = 0; i < count; i++) {
       if (kind[i] === 0) continue;
       const dx = px[i] - w.x, dy = py[i] - w.y;
-      const d = Math.hypot(dx, dy);
-      if (d < w.killR && w.r < w.killR * 1.5) { removeQueue.push(i); continue; }
-      if (d >= prevR - 6 && d <= prevR + band && d > 1) {
-        const f = w.push * (1 - w.r / w.maxR);
+      const d2 = dx * dx + dy * dy;
+      if (killing && d2 < kr2) { kill(i); continue; }
+      if (d2 >= lo2 && d2 <= hi2 && d2 > 1) {
+        const d = Math.sqrt(d2);
         vx[i] += dx / d * f; vy[i] += dy / d * f;
       }
     }
@@ -523,12 +974,27 @@ function step(dt) {
         ported++;
       }
     }
-    if (ported > 50) flashes.push({ x: wh.bx, y: wh.by, r: 80, life: 0.5, maxLife: 0.5, color: '150,220,255' });
+    if (ported > 50) flash(wh.bx, wh.by, 80, 0.5, '150,220,255');
     if (wh.life <= 0) wormholes.splice(s, 1);
   }
 
-  // Apply queued removals (dedup handled by kill's dead-check)
-  for (const i of removeQueue) kill(i);
+  // Beams (gamma-ray bursts, pulsars): everything inside the cone is destroyed
+  for (let s = beams.length - 1; s >= 0; s--) {
+    const bm = beams[s];
+    bm.life -= dt;
+    bm.ang += bm.spin * dt;
+    const c = Math.cos(bm.ang), sn = Math.sin(bm.ang), th = Math.tan(bm.half), len = bm.len;
+    for (let i = 0; i < count; i++) {
+      if (kind[i] === 0) continue;
+      const dx = px[i] - bm.x, dy = py[i] - bm.y;
+      let along = dx * c + dy * sn;
+      if (bm.twin) along = Math.abs(along);
+      if (along < 4 || along > len) continue;
+      const perp = Math.abs(dx * sn - dy * c);
+      if (perp < along * th + 3) kill(i);
+    }
+    if (bm.life <= 0) beams.splice(s, 1);
+  }
 
   // Flashes decay
   for (let f = flashes.length - 1; f >= 0; f--) {
@@ -540,9 +1006,8 @@ function step(dt) {
   if (autoEvents) {
     nextAutoEvent -= dt;
     if (nextAutoEvent <= 0) {
-      const pool = ['supernova', 'shower', 'flare', 'wormhole', 'fleet', 'blackhole'];
-      const pick = pool[(Math.random() * pool.length) | 0];
-      EVENTS[pick]();
+      const pool = ['supernova', 'shower', 'flare', 'wormhole', 'fleet', 'blackhole', 'roguestar', 'grb', 'cometstorm', 'pulsar', 'ionstorm'];
+      triggerEvent(pool[(Math.random() * pool.length) | 0]);
       nextAutoEvent = 14 + Math.random() * 18;
     }
   }
@@ -552,18 +1017,90 @@ function step(dt) {
 const starfield = [];
 for (let i = 0; i < 400; i++) starfield.push({ x: Math.random(), y: Math.random(), s: Math.random() * 1.4 + 0.3, tw: Math.random() * 6 });
 
-function render(t) {
-  ctx.fillStyle = '#05060e';
-  ctx.fillRect(0, 0, W, H);
+let viewMode = 0;     // 0 classic, 1 velocity, 2 heat, 3 rainbow
+let trails = false;
+const bigList = [];
 
-  // Background starfield (screen-space, parallax-free — distant stars)
-  ctx.fillStyle = '#ffffff';
-  for (const s of starfield) {
-    const a = 0.35 + 0.3 * Math.sin(t * 0.001 + s.tw);
-    ctx.globalAlpha = a;
-    ctx.fillRect(s.x * W, s.y * H, s.s, s.s);
+function cssOf(i, k) {
+  if (viewMode === 0) return KIND_COLOR[k];
+  if (viewMode === 1) { const s = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]) * 6; return LUT_VEL.css[s > 255 ? 255 : s | 0]; }
+  if (viewMode === 2) { const d = 255 - Math.sqrt(px[i] * px[i] + py[i] * py[i]) * 0.17; return LUT_HEAT.css[d < 0 ? 0 : d | 0]; }
+  return LUT_RAIN.css[(hue[i] * 255) | 0];
+}
+
+function renderParticles() {
+  ensureBuffer();
+  const DW = pcan.width, DH = pcan.height;
+  buf.fill(0);
+  const z = cam.zoom * PR;
+  const ox = DW / 2 - cam.x * z, oy = DH / 2 - cam.y * z;
+  const minR = PR >= 1.5 ? 0.9 : 0;   // on sharp screens the smallest dot is 2x2
+  const mode = viewMode, lutV = LUT_VEL.lut, lutH = LUT_HEAT.lut, lutR = LUT_RAIN.lut;
+  bigList.length = 0;
+  for (let i = 0; i < count; i++) {
+    const k = kind[i];
+    if (k === 0) continue;
+    const sx = px[i] * z + ox;
+    if (sx < -8 || sx >= DW + 8) continue;
+    const sy = py[i] * z + oy;
+    if (sy < -8 || sy >= DH + 8) continue;
+    let r = rad[i] * z;
+    if (r > 6) { bigList.push(i); continue; }
+    if (r < minR) r = minR;
+    let col;
+    if (mode === 0) col = KCOL[k];
+    else if (mode === 1) { const s = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]) * 6; col = lutV[s > 255 ? 255 : s | 0]; }
+    else if (mode === 2) { const d = 255 - Math.sqrt(px[i] * px[i] + py[i] * py[i]) * 0.17; col = lutH[d < 0 ? 0 : d | 0]; }
+    else col = lutR[(hue[i] * 255) | 0];
+    const ix = sx | 0, iy = sy | 0;
+    if (r < 2.6) {
+      // fixed 1x1 / 2x2 / 3x3 blocks: the fast path nearly everything takes
+      if (ix < 1 || iy < 1 || ix >= DW - 1 || iy >= DH - 1) continue;
+      const o = iy * DW + ix;
+      buf[o] = col;
+      if (r >= 0.9) {
+        buf[o + 1] = col; buf[o + DW] = col; buf[o + DW + 1] = col;
+        if (r >= 1.7) { buf[o - 1] = col; buf[o - DW] = col; buf[o - DW - 1] = col; buf[o - DW + 1] = col; buf[o + DW - 1] = col; }
+      }
+    } else {
+      const ir = Math.ceil(r), r2 = r * r;
+      for (let yy = -ir; yy <= ir; yy++) {
+        const Y = iy + yy;
+        if (Y < 0 || Y >= DH) continue;
+        const w = Math.sqrt(Math.max(0, r2 - yy * yy)) | 0;
+        const x0 = Math.max(0, ix - w), x1 = Math.min(DW - 1, ix + w), row = Y * DW;
+        for (let X = x0; X <= x1; X++) buf[row + X] = col;
+      }
+    }
   }
-  ctx.globalAlpha = 1;
+  pctx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(pcan, 0, 0, W, H);
+
+  // Large objects (planets, or anything when zoomed way in) get real circles
+  const zc = cam.zoom;
+  for (const i of bigList) {
+    const sx = (px[i] - cam.x) * zc + W / 2, sy = (py[i] - cam.y) * zc + H / 2;
+    ctx.fillStyle = cssOf(i, kind[i]);
+    ctx.beginPath(); ctx.arc(sx, sy, rad[i] * zc, 0, 7); ctx.fill();
+  }
+}
+
+function render(t) {
+  if (trails) {
+    ctx.fillStyle = 'rgba(5,6,14,0.16)';
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#05060e';
+    ctx.fillRect(0, 0, W, H);
+    // Background starfield (screen-space — distant stars)
+    ctx.fillStyle = '#ffffff';
+    for (const s of starfield) {
+      ctx.globalAlpha = 0.35 + 0.3 * Math.sin(t * 0.001 + s.tw);
+      ctx.fillRect(s.x * W, s.y * H, s.s, s.s);
+    }
+    ctx.globalAlpha = 1;
+  }
 
   const z = cam.zoom;
 
@@ -585,13 +1122,14 @@ function render(t) {
     }
   }
 
-  // Sun
+  // Sun (tinted while gravity is modified)
   {
     const [sx, sy] = worldToScreen(0, 0);
-    const sr = SUN.r * z;
+    const sr = SUN.r * z * Math.pow(SUN.mass / 90000, 0.3);
+    const tint = gravMul < 0 ? ['255,120,255', '200,80,255'] : gravMul > 1 ? ['255,120,80', '255,60,30'] : ['255,220,140', '255,160,60'];
     const glow = ctx.createRadialGradient(sx, sy, sr * 0.4, sx, sy, sr * 5);
-    glow.addColorStop(0, 'rgba(255,220,140,0.9)');
-    glow.addColorStop(0.3, 'rgba(255,160,60,0.25)');
+    glow.addColorStop(0, `rgba(${tint[0]},0.9)`);
+    glow.addColorStop(0.3, `rgba(${tint[1]},0.25)`);
     glow.addColorStop(1, 'rgba(255,120,40,0)');
     ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(sx, sy, sr * 5, 0, 7); ctx.fill();
@@ -599,32 +1137,13 @@ function render(t) {
     ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
   }
 
-  // Objects — batched per kind to minimize style switches
-  const halfW = W / 2 + 20, halfH = H / 2 + 20;
-  for (let k = 1; k <= 5; k++) {
-    ctx.fillStyle = KIND_STYLE[k].color;
-    ctx.beginPath();
-    for (let i = 0; i < count; i++) {
-      if (kind[i] !== k) continue;
-      const sx = (px[i] - cam.x) * z + W / 2;
-      const sy = (py[i] - cam.y) * z + H / 2;
-      if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
-      const sr = Math.max(rad[i] * z, k === 2 ? 0.5 : 0.9);
-      if (sr < 1.6) {
-        ctx.rect(sx - sr, sy - sr, sr * 2, sr * 2);
-      } else {
-        ctx.moveTo(sx + sr, sy);
-        ctx.arc(sx, sy, sr, 0, 7);
-      }
-    }
-    ctx.fill();
-  }
+  renderParticles();
 
-  // Comet tails (drawn separately, only for visible comets)
+  // Comet tails (only for visible comets)
   ctx.strokeStyle = 'rgba(159,232,255,0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let i = 0; i < count; i++) {
+  if (counts.comet) for (let i = 0; i < count; i++) {
     if (kind[i] !== 4) continue;
     const sx = (px[i] - cam.x) * z + W / 2;
     const sy = (py[i] - cam.y) * z + H / 2;
@@ -636,21 +1155,52 @@ function render(t) {
   }
   ctx.stroke();
 
-  // Black holes
-  for (const bh of blackHoles) {
+  // Massive bodies
+  for (const bh of bodies) {
     const [sx, sy] = worldToScreen(bh.x, bh.y);
     const sr = bh.r * z;
-    const g = ctx.createRadialGradient(sx, sy, sr, sx, sy, sr * 6);
-    g.addColorStop(0, 'rgba(190,120,255,0.5)');
-    g.addColorStop(0.5, 'rgba(120,60,200,0.15)');
-    g.addColorStop(1, 'rgba(80,40,160,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(sx, sy, sr * 6, 0, 7); ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(210,160,255,0.9)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(sx, sy, sr + 1.5, 0, 7); ctx.stroke();
+    if (bh.type === 'bh') {
+      const g = ctx.createRadialGradient(sx, sy, sr, sx, sy, sr * 6);
+      g.addColorStop(0, 'rgba(190,120,255,0.5)');
+      g.addColorStop(0.5, 'rgba(120,60,200,0.15)');
+      g.addColorStop(1, 'rgba(80,40,160,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, sr * 6, 0, 7); ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(210,160,255,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(sx, sy, sr + 1.5, 0, 7); ctx.stroke();
+    } else {
+      const col = bh.type === 'star' ? ['180,220,255', '#eaf4ff'] : ['230,200,255', '#fff6ff'];
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 7);
+      g.addColorStop(0, `rgba(${col[0]},0.85)`);
+      g.addColorStop(0.35, `rgba(${col[0]},0.2)`);
+      g.addColorStop(1, `rgba(${col[0]},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, sr * 7, 0, 7); ctx.fill();
+      ctx.fillStyle = col[1];
+      ctx.beginPath(); ctx.arc(sx, sy, Math.max(2, sr), 0, 7); ctx.fill();
+    }
+  }
+
+  // Beams
+  for (const bm of beams) {
+    const a = Math.min(1, bm.life / bm.maxLife * 3);
+    const [sx, sy] = worldToScreen(bm.x, bm.y);
+    const dirs = bm.twin ? [bm.ang, bm.ang + Math.PI] : [bm.ang];
+    for (const ang of dirs) {
+      const L = bm.len * z, hw = Math.tan(bm.half) * L + 3;
+      const ex = sx + Math.cos(ang) * L, ey = sy + Math.sin(ang) * L;
+      const nx = -Math.sin(ang) * hw, ny = Math.cos(ang) * hw;
+      const g = ctx.createLinearGradient(sx, sy, ex, ey);
+      g.addColorStop(0, `rgba(${bm.color},${0.85 * a})`);
+      g.addColorStop(1, `rgba(${bm.color},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex + nx, ey + ny); ctx.lineTo(ex - nx, ey - ny); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = `rgba(230,245,255,${a})`;
+    ctx.beginPath(); ctx.arc(sx, sy, Math.max(3, 6 * z), 0, 7); ctx.fill();
   }
 
   // Shockwaves
@@ -672,73 +1222,444 @@ function render(t) {
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(sx, sy, f.r * z, 0, 7); ctx.fill();
   }
+
+  // Brush ring
+  if ((clickMode === 'attract' || clickMode === 'repel') && (brush.active || hover.on)) {
+    const sx = brush.active ? brush.sx : hover.x, sy = brush.active ? brush.sy : hover.y;
+    const r = brushSize / Math.sqrt(cam.zoom) * z;
+    ctx.strokeStyle = clickMode === 'attract' ? `rgba(125,255,176,${brush.active ? 0.8 : 0.35})` : `rgba(255,107,122,${brush.active ? 0.8 : 0.35})`;
+    ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 0.03 * (clickMode === 'attract' ? 1 : -1);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Followed planet marker
+  if (followIdx >= 0 && kind[followIdx] === 5) {
+    const [sx, sy] = worldToScreen(px[followIdx], py[followIdx]);
+    const r = rad[followIdx] * z + 8;
+    ctx.strokeStyle = 'rgba(255,211,107,0.8)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.stroke();
+  }
 }
 
-// ---------- Input ----------
+// ---------- Views & camera tools ----------
+function setView(m) {
+  viewMode = m;
+  document.querySelectorAll('button.view').forEach(b => b.classList.toggle('active', +b.dataset.view === m));
+  log(`View: <b>${['Classic', 'Velocity', 'Heat', 'Rainbow'][m]}</b>`);
+}
+function toggleTrails() {
+  trails = !trails;
+  const b = document.getElementById('btn-trails');
+  b.textContent = 'Trails: ' + (trails ? 'ON' : 'OFF');
+  b.classList.toggle('toggled', trails);
+}
+let followIdx = -1;
+function followNextPlanet() {
+  cine = false; document.getElementById('btn-cine').classList.remove('toggled');
+  for (let n = 1; n <= count; n++) {
+    const i = (followIdx + n + count) % count;
+    if (kind[i] === 5) {
+      followIdx = i;
+      cam.zoom = Math.max(cam.zoom, 1.2);
+      document.getElementById('btn-follow').classList.add('toggled');
+      log('🎥 Riding along with a planet (F for next, Esc to stop)');
+      unlock('rider');
+      return;
+    }
+  }
+  stopFollow();
+  log('No planets left to follow — spawn one first', 'warn');
+}
+function stopFollow() {
+  followIdx = -1;
+  document.getElementById('btn-follow').classList.remove('toggled');
+}
+let cine = false, cineT = 0;
+function toggleCinematic() {
+  cine = !cine;
+  stopFollow();
+  document.getElementById('btn-cine').classList.toggle('toggled', cine);
+  log(cine ? '🎬 Cinematic camera on' : 'Cinematic camera off');
+}
+function stopCameraModes() {
+  if (followIdx >= 0) stopFollow();
+  if (cine) { cine = false; document.getElementById('btn-cine').classList.remove('toggled'); }
+}
+function resetCamera() { stopCameraModes(); cam.x = 0; cam.y = 0; cam.zoom = 0.42; }
+
+function updateCamera(dt) {
+  if (followIdx >= 0) {
+    if (kind[followIdx] !== 5) { stopFollow(); log('The planet you were following is gone 💀', 'bad'); }
+    else { cam.x += (px[followIdx] - cam.x) * Math.min(1, dt * 6); cam.y += (py[followIdx] - cam.y) * Math.min(1, dt * 6); }
+  } else if (cine) {
+    cineT += dt;
+    const tx = Math.cos(cineT * 0.07) * 650, ty = Math.sin(cineT * 0.11) * 450;
+    const tz = 0.35 + 0.25 * (0.5 + 0.5 * Math.sin(cineT * 0.13));
+    cam.x += (tx - cam.x) * dt * 0.5; cam.y += (ty - cam.y) * dt * 0.5; cam.zoom += (tz - cam.zoom) * dt * 0.5;
+  }
+}
+
+function zoomAt(sx, sy, f) {
+  const [wx, wy] = screenToWorld(sx, sy);
+  cam.zoom = Math.max(0.08, Math.min(6, cam.zoom * f));
+  const [wx2, wy2] = screenToWorld(sx, sy);
+  cam.x += wx - wx2; cam.y += wy - wy2;
+}
+
+// ---------- Input (mouse, pen and touch) ----------
 let clickMode = 'spawn';
 let spawnType = 'asteroid';
-const SPAWN_KEYS = { '1': 'asteroid', '2': 'dust', '3': 'ship', '4': 'comet', '5': 'planet' };
+const SPAWN_KEYS = { '1': 'asteroid', '2': 'dust', '3': 'ship', '4': 'comet', '5': 'planet', '6': 'gas' };
+const hover = { on: false, x: 0, y: 0 };
 
 function setMode(m) {
   clickMode = m;
-  document.getElementById('mode-spawn').classList.toggle('active', m === 'spawn');
-  document.getElementById('mode-remove').classList.toggle('active', m === 'remove');
-  canvas.style.cursor = m === 'remove' ? 'cell' : 'crosshair';
+  for (const id of ['spawn', 'remove', 'attract', 'repel']) document.getElementById('mode-' + id).classList.toggle('active', m === id);
+  canvas.style.cursor = m === 'remove' ? 'cell' : m === 'spawn' ? 'crosshair' : 'none';
+}
+function setSpawnType(t) {
+  spawnType = t;
+  document.querySelectorAll('button.type').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+}
+document.querySelectorAll('button.type').forEach(b => b.addEventListener('click', () => { setSpawnType(b.dataset.type); setMode('spawn'); }));
+
+const pointers = new Map();
+let pinch = null, dragging = false, dragMoved = false, panOnly = false, lastMX = 0, lastMY = 0;
+
+function pinchInfo() {
+  const [a, b] = [...pointers.values()];
+  return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
 }
 
-let dragging = false, dragMoved = false, lastMX = 0, lastMY = 0;
-canvas.addEventListener('mousedown', e => { dragging = true; dragMoved = false; lastMX = e.clientX; lastMY = e.clientY; });
-window.addEventListener('mousemove', e => {
-  if (!dragging) return;
-  const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
-  if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
-  if (dragMoved) { cam.x -= dx / cam.zoom; cam.y -= dy / cam.zoom; }
-  lastMX = e.clientX; lastMY = e.clientY;
-});
-window.addEventListener('mouseup', e => {
-  if (!dragging) return;
-  dragging = false;
-  if (dragMoved || e.target !== canvas) return;
-  const [wx, wy] = screenToWorld(e.clientX, e.clientY);
-  if (clickMode === 'spawn') {
-    const n = spawnType === 'planet' ? 1 : spawnType === 'ship' ? 8 : spawnType === 'comet' ? 4 : 60;
-    spawnBatch(spawnType, n, wx, wy);
-  } else {
-    removeNear(wx, wy, 90 / Math.sqrt(cam.zoom));
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  ensureAudio();
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) { brush.active = false; dragging = false; pinch = pinchInfo(); return; }
+  if (pointers.size > 2) return;
+  dragging = true; dragMoved = false; lastMX = e.clientX; lastMY = e.clientY;
+  panOnly = e.button === 1 || e.button === 2;
+  if (!panOnly && (clickMode === 'attract' || clickMode === 'repel')) {
+    brush.active = true; brush.sx = e.clientX; brush.sy = e.clientY;
+    if (clickMode === 'attract') unlock('vortex');
   }
 });
+canvas.addEventListener('pointermove', e => {
+  hover.on = true; hover.x = e.clientX; hover.y = e.clientY;
+  const p = pointers.get(e.pointerId);
+  if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (pinch && pointers.size >= 2) {
+    const now = pinchInfo();
+    stopCameraModes();
+    zoomAt(now.cx, now.cy, now.d / pinch.d);
+    cam.x -= (now.cx - pinch.cx) / cam.zoom; cam.y -= (now.cy - pinch.cy) / cam.zoom;
+    pinch = now;
+    return;
+  }
+  if (!dragging) return;
+  if (brush.active) { brush.sx = e.clientX; brush.sy = e.clientY; return; }
+  const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
+  if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+  if (dragMoved) { stopCameraModes(); cam.x -= dx / cam.zoom; cam.y -= dy / cam.zoom; }
+  lastMX = e.clientX; lastMY = e.clientY;
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; dragging = false; return; }
+  if (!dragging) return;
+  dragging = false;
+  if (brush.active) { brush.active = false; return; }
+  if (dragMoved || panOnly || e.type === 'pointercancel') return;
+  const [wx, wy] = screenToWorld(e.clientX, e.clientY);
+  if (clickMode === 'spawn') {
+    const n = spawnType === 'planet' ? 1 : spawnType === 'ship' ? 8 : spawnType === 'comet' ? 4 : spawnType === 'gas' ? 300 : 60;
+    if (spawnBatch(spawnType, n, wx, wy)) unlock('first');
+  } else if (clickMode === 'remove') {
+    removeNear(wx, wy, 90 / Math.sqrt(cam.zoom));
+  }
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('pointerleave', () => { hover.on = false; });
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  const [wx, wy] = screenToWorld(e.clientX, e.clientY);
-  cam.zoom *= e.deltaY < 0 ? 1.12 : 1 / 1.12;
-  cam.zoom = Math.max(0.08, Math.min(6, cam.zoom));
-  // keep cursor anchored
-  const [wx2, wy2] = screenToWorld(e.clientX, e.clientY);
-  cam.x += wx - wx2; cam.y += wy - wy2;
+  stopCameraModes();
+  zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 1 / 1.12);
 }, { passive: false });
 
 window.addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  ensureAudio();
+  const k = e.key;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-  else if (SPAWN_KEYS[e.key]) { spawnType = SPAWN_KEYS[e.key]; log(`Click-spawn type set to <b>${spawnType}</b>`); }
-  else if (e.key === '6') { spawnType = 'asteroid'; spawnBatch('asteroid', 1000); }
+  else if (SPAWN_KEYS[k]) { setSpawnType(SPAWN_KEYS[k]); log(`Click-spawn type set to <b>${spawnType}</b>`); }
+  else if (k === '7') spawnBatch('asteroid', 1000);
+  else if (k === '8') spawnBatch('asteroid', 10000);
+  else if (k === '9') spawnBatch('dust', 100000);
+  else if (k === '0') fillToCap();
+  else if (k === 'q' || k === 'Q') setMode('spawn');
+  else if (k === 'w' || k === 'W') setMode('remove');
+  else if (k === 'e' || k === 'E') setMode('attract');
+  else if (k === 'r' || k === 'R') setMode('repel');
+  else if (k === 'v' || k === 'V') setView((viewMode + 1) % 4);
+  else if (k === 't' || k === 'T') toggleTrails();
+  else if (k === 'f' || k === 'F') followNextPlanet();
+  else if (k === 'c' || k === 'C') toggleCinematic();
+  else if (k === 'm' || k === 'M') toggleSound();
+  else if (k === 'p' || k === 'P') snapshot();
+  else if (k === 'h' || k === 'H') toggleUI();
+  else if (k === 'b' || k === 'B') triggerEvent('blackhole');
+  else if (k === 'n' || k === 'N') triggerEvent('supernova');
+  else if (k === '+' || k === '=') setSpeed(1);
+  else if (k === '-' || k === '_') setSpeed(-1);
+  else if (k === '?' || k === '/') openOverlay('keys');
+  else if (k === 'Escape') { closeOverlay(); stopCameraModes(); }
 });
 
-// ---------- HUD ----------
+// Sliders
+const sunSlider = document.getElementById('sun-mass');
+sunSlider.addEventListener('input', () => {
+  SUN.mass = +sunSlider.value;
+  document.getElementById('sun-mass-v').textContent = Math.round(SUN.mass / 1000) + 'K';
+});
+sunSlider.addEventListener('change', () => log(`☀️ Sun mass set to ${Math.round(SUN.mass / 1000)}K — orbits will reshape`));
+const brushSlider = document.getElementById('brush-size');
+brushSlider.addEventListener('input', () => {
+  brushSize = +brushSlider.value;
+  document.getElementById('brush-size-v').textContent = brushSize;
+});
+
+// Collapsible panels
+document.querySelectorAll('[data-toggle]').forEach(h => h.addEventListener('click', () => {
+  document.getElementById(h.dataset.toggle).classList.toggle('collapsed');
+}));
+if (window.innerWidth < 700) {
+  document.getElementById('hud').classList.add('collapsed');
+  document.getElementById('controls').classList.add('collapsed');
+}
+
+// ---------- Extras: UI, snapshot, fullscreen ----------
+function toggleUI() { document.body.classList.toggle('hide-ui'); }
+function snapshot() {
+  canvas.toBlob(b => {
+    if (!b) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = `stellar-forge-${Date.now()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    log('📸 Snapshot saved');
+    sfx('pop');
+  });
+}
+function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  } catch (_) { log('Fullscreen is not available here', 'warn'); }
+}
+
+// ---------- Sound (synthesized, no files) ----------
+let audio = null, soundOn = true, noiseBuf = null;
+function ensureAudio() {
+  if (!soundOn) return;
+  try {
+    if (!audio) {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+      noiseBuf = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (audio.state === 'suspended') audio.resume();
+  } catch (_) { audio = null; }
+}
+function toggleSound() {
+  soundOn = !soundOn;
+  document.getElementById('btn-sound').textContent = 'Sound: ' + (soundOn ? 'ON' : 'OFF');
+  if (soundOn) ensureAudio();
+}
+function sfx(type) {
+  if (!soundOn || !audio || audio.state !== 'running') return;
+  const a = audio, t = a.currentTime, out = a.createGain();
+  out.connect(a.destination);
+  if (type === 'boom' || type === 'whoosh') {
+    const src = a.createBufferSource(); src.buffer = noiseBuf;
+    const f = a.createBiquadFilter();
+    f.type = type === 'boom' ? 'lowpass' : 'bandpass';
+    f.frequency.setValueAtTime(type === 'boom' ? 900 : 300, t);
+    f.frequency.exponentialRampToValueAtTime(type === 'boom' ? 60 : 2400, t + 1.1);
+    out.gain.setValueAtTime(type === 'boom' ? 0.35 : 0.12, t);
+    out.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+    src.connect(f); f.connect(out); src.start(t); src.stop(t + 1.4);
+  } else {
+    const o = a.createOscillator();
+    const spec = {
+      pop: ['sine', 520, 880, 0.08, 0.12],
+      zap: ['sawtooth', 1200, 120, 0.06, 0.45],
+      drone: ['triangle', 90, 38, 0.18, 1.6],
+      chime: ['sine', 660, 1320, 0.1, 0.9],
+    }[type] || ['sine', 440, 440, 0.05, 0.2];
+    o.type = spec[0];
+    o.frequency.setValueAtTime(spec[1], t);
+    o.frequency.exponentialRampToValueAtTime(spec[2], t + spec[4]);
+    out.gain.setValueAtTime(spec[3], t);
+    out.gain.exponentialRampToValueAtTime(0.001, t + spec[4]);
+    o.connect(out); o.start(t); o.stop(t + spec[4] + 0.05);
+  }
+}
+
+// ---------- Achievements ----------
+const ACH = [
+  ['first', '✨', 'First Light', 'Click-spawn something by hand'],
+  ['pop100k', '💯', 'Crowded Sky', 'Have 100,000 objects at once'],
+  ['cap', '👑', '777K Club', 'Hit the 777,000 object cap'],
+  ['nova5', '💥', 'Chain Reaction', 'Set off 5 supernovas'],
+  ['bh3', '🕳️', 'Event Horizon Party', 'Have 3 black holes at once'],
+  ['glutton', '🍽️', 'Glutton', 'Let black holes eat 50,000 objects'],
+  ['vaporizer', '🔥', 'Vaporizer', 'Vaporize 10,000 objects by hand'],
+  ['galaxy', '🌌', 'Galaxy Brain', 'Summon a spiral galaxy'],
+  ['dyson', '🛰️', 'Type II Civilization', 'Build a Dyson swarm'],
+  ['flip', '🔄', 'Upside Down', 'Flip gravity'],
+  ['vortex', '🌀', 'Eye of the Storm', 'Use the attract brush'],
+  ['rider', '🎥', 'Planet Rider', 'Follow a planet'],
+  ['allEvents', '🏆', 'Seen It All', 'Trigger every event type'],
+];
+let achGot = {};
+try { achGot = JSON.parse(localStorage.getItem('stellarForge.achievements') || '{}') || {}; } catch (_) { achGot = {}; }
+function achCount() { return ACH.filter(a => achGot[a[0]]).length; }
+function refreshAchButton() { document.getElementById('btn-ach').textContent = `🏆 ${achCount()}/${ACH.length}`; }
+function unlock(id) {
+  if (achGot[id]) return;
+  const a = ACH.find(x => x[0] === id);
+  if (!a) return;
+  achGot[id] = Date.now();
+  try { localStorage.setItem('stellarForge.achievements', JSON.stringify(achGot)); } catch (_) {}
+  toast(`${a[1]} Achievement unlocked: ${a[2]}`);
+  log(`${a[1]} Achievement unlocked: <b>${a[2]}</b>`, 'good');
+  refreshAchButton();
+  sfx('chime');
+}
+refreshAchButton();
+
+// ---------- Overlay (achievements / shortcuts) ----------
+const SHORTCUTS = [
+  ['Click', 'Spawn or remove (by click mode)'], ['Hold', 'Attract / repel brush'], ['Drag · right-drag', 'Pan the camera'],
+  ['Wheel · pinch', 'Zoom'], ['Space', 'Pause / resume'], ['1–6', 'Click-spawn type (rock, dust, ship, comet, planet, gas)'],
+  ['7 / 8 / 9', '+1K asteroids / +10K asteroids / +100K dust'], ['0', 'Fill to 777K'],
+  ['Q W E R', 'Spawn / Remove / Attract / Repel mode'], ['V', 'Cycle view (Classic, Velocity, Heat, Rainbow)'],
+  ['T', 'Trails'], ['F', 'Follow next planet'], ['C', 'Cinematic camera'], ['Esc', 'Stop following / close'],
+  ['N / B', 'Supernova / black hole'], ['+ / −', 'Faster / slower'], ['M', 'Sound on / off'], ['P', 'Snapshot PNG'], ['H', 'Hide UI'],
+];
+function openOverlay(which) {
+  const body = document.getElementById('overlay-body');
+  if (which === 'ach') {
+    body.innerHTML = `<button class="close" onclick="closeOverlay()">✕</button><h3>Achievements · ${achCount()}/${ACH.length}</h3>` +
+      ACH.map(([id, ic, name, desc]) => `<div class="ach${achGot[id] ? ' got' : ''}"><div class="ic">${ic}</div><div><b>${name}</b><span>${desc}</span></div></div>`).join('');
+  } else {
+    body.innerHTML = `<button class="close" onclick="closeOverlay()">✕</button><h3>Shortcuts</h3><table>` +
+      SHORTCUTS.map(([k, d]) => `<tr><td>${k}</td><td>${d}</td></tr>`).join('') + '</table>';
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+function closeOverlay() { document.getElementById('overlay').classList.remove('open'); }
+
+// ---------- HUD, graph & minimap ----------
+const MILESTONES = [[10000, '10K objects'], [50000, '50K objects'], [100000, '100K objects'], [250000, '250K objects'], [500000, '500K objects'], [MAX, '777K — Max capacity']];
+let milestoneIdx = 0;
 let fpsAcc = 0, fpsN = 0, fpsShown = 0;
+const popHist = [];
+const meterEl = document.getElementById('meter'), meterFill = document.getElementById('meter-fill');
+
 function updateHUD() {
   document.getElementById('s-total').textContent = alive.toLocaleString();
-  for (const t of ['asteroid', 'dust', 'ship', 'comet', 'planet']) {
-    document.getElementById('s-' + t).textContent = counts[t].toLocaleString();
-  }
-  document.getElementById('s-blackhole').textContent = blackHoles.length;
+  const pct = alive / MAX * 100;
+  document.getElementById('s-pct').textContent = (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + '%';
+  meterFill.style.width = pct + '%';
+  meterEl.classList.toggle('full', alive >= MAX);
+  for (const t of TYPES) document.getElementById('s-' + t).textContent = counts[t].toLocaleString();
+  const nbh = bodies.filter(b => b.type === 'bh').length;
+  document.getElementById('s-blackhole').textContent = nbh;
   document.getElementById('s-fps').textContent = fpsShown ? fpsShown + '' : '—';
+  document.getElementById('s-grav').textContent = gravMul === 1 ? 'Normal' : gravMul < 0 ? 'FLIPPED' : gravMul + '×';
+  document.getElementById('s-eaten').textContent = stats.eaten.toLocaleString();
+
+  while (milestoneIdx < MILESTONES.length && alive >= MILESTONES[milestoneIdx][0]) {
+    const [, label] = MILESTONES[milestoneIdx++];
+    if (milestoneIdx === MILESTONES.length) { banner(label, true); log('👑 777,000 objects — the system is at maximum capacity', 'good'); }
+    else { banner(label); log(`📈 Milestone: ${label}`, 'good'); }
+  }
+  if (alive >= 100000) unlock('pop100k');
+  if (alive >= MAX) unlock('cap');
+  if (nbh >= 3) unlock('bh3');
+  if (stats.eaten >= 50000) unlock('glutton');
 }
+
+const graph = document.getElementById('graph'), gctx = graph.getContext('2d');
+function drawGraph() {
+  const w = graph.width, h = graph.height;
+  gctx.clearRect(0, 0, w, h);
+  if (popHist.length < 2) return;
+  const max = Math.max(...popHist, 1);
+  gctx.beginPath();
+  popHist.forEach((v, i) => {
+    const x = i / 119 * w, y = h - 4 - v / max * (h - 10);
+    i ? gctx.lineTo(x, y) : gctx.moveTo(x, y);
+  });
+  gctx.strokeStyle = '#7dffb0'; gctx.lineWidth = 2; gctx.stroke();
+  gctx.lineTo((popHist.length - 1) / 119 * w, h); gctx.lineTo(0, h); gctx.closePath();
+  gctx.fillStyle = 'rgba(125,255,176,0.12)'; gctx.fill();
+  gctx.fillStyle = '#7b86a8'; gctx.font = '18px system-ui';
+  gctx.fillText('peak ' + max.toLocaleString(), 6, 20);
+}
+
+const mm = document.getElementById('minimap'), mctx = mm.getContext('2d');
+const MM = mm.width, MM_R = 3600;
+const mmImg = mctx.createImageData(MM, MM), mmBuf = new Int32Array(mmImg.data.buffer), mmDen = new Uint16Array(MM * MM);
+function drawMinimap() {
+  mmDen.fill(0);
+  const s = MM / (2 * MM_R);
+  for (let i = 0; i < count; i++) {
+    if (kind[i] === 0) continue;
+    const x = ((px[i] + MM_R) * s) | 0, y = ((py[i] + MM_R) * s) | 0;
+    if (x < 0 || y < 0 || x >= MM || y >= MM) continue;
+    const o = y * MM + x;
+    if (mmDen[o] < 65535) mmDen[o]++;
+  }
+  for (let o = 0; o < mmDen.length; o++) {
+    const v = mmDen[o];
+    if (!v) { mmBuf[o] = 0; continue; }
+    const b = Math.min(255, 70 + Math.log2(v + 1) * 26) | 0;
+    mmBuf[o] = pack(b * 0.75 | 0, b * 0.85 | 0, b);
+  }
+  mctx.putImageData(mmImg, 0, 0);
+  const toM = (x, y) => [(x + MM_R) * s, (y + MM_R) * s];
+  mctx.fillStyle = '#ffd36b';
+  let [sx, sy] = toM(0, 0); mctx.beginPath(); mctx.arc(sx, sy, 2.5, 0, 7); mctx.fill();
+  for (const b of bodies) {
+    [sx, sy] = toM(b.x, b.y);
+    mctx.fillStyle = b.type === 'bh' ? '#c07dff' : '#eaf4ff';
+    mctx.beginPath(); mctx.arc(sx, sy, 2.5, 0, 7); mctx.fill();
+  }
+  const [vx0, vy0] = toM(...screenToWorld(0, 0)), [vx1, vy1] = toM(...screenToWorld(W, H));
+  mctx.strokeStyle = 'rgba(122,162,255,0.9)'; mctx.lineWidth = 1;
+  mctx.strokeRect(vx0, vy0, vx1 - vx0, vy1 - vy0);
+}
+mm.addEventListener('click', e => {
+  const r = mm.getBoundingClientRect();
+  stopCameraModes();
+  cam.x = ((e.clientX - r.left) / r.width) * 2 * MM_R - MM_R;
+  cam.y = ((e.clientY - r.top) / r.height) * 2 * MM_R - MM_R;
+});
 
 // ---------- Init & main loop ----------
 function populate() {
   // Inner dust disc
   for (let i = 0; i < 800; i++) spawnOrbiting('dust', 300 + Math.random() * 900, 100, sizeFor('dust'));
-  // Main asteroid belt (the bulk of the 5k+)
+  // Main asteroid belt
   for (let i = 0; i < 3600; i++) spawnOrbiting('asteroid', 640 + Math.random() * 320, 200, sizeFor('asteroid'));
   // Outer scattered belt
   for (let i = 0; i < 1200; i++) spawnOrbiting('asteroid', 1100 + Math.random() * 350, 260, sizeFor('asteroid'));
@@ -748,32 +1669,45 @@ function populate() {
   // Ships & comets
   for (let i = 0; i < 120; i++) spawnOrbiting('ship', 350 + Math.random() * 600, 150, sizeFor('ship'));
   for (let i = 0; i < 60; i++) spawnOrbiting('comet', 1000 + Math.random() * 500, 300, sizeFor('comet'));
-  log(`🌌 System initialized with ${alive.toLocaleString()} objects`);
+  // A faint nebula wisp in the outer system
+  for (let i = 0; i < 600; i++) spawnOrbiting('gas', 1500 + Math.random() * 200, 120, sizeFor('gas'));
+  log(`🌌 System initialized with ${alive.toLocaleString()} objects (cap ${MAX.toLocaleString()})`);
 }
 
 function resetSim() {
-  for (let i = 0; i < count; i++) if (kind[i] !== 0) kill(i);
-  blackHoles.length = 0; shockwaves.length = 0; flashes.length = 0; wormholes.length = 0;
+  wipe();
+  bodies.length = 0; shockwaves.length = 0; flashes.length = 0; wormholes.length = 0; beams.length = 0;
+  gravMul = 1; gravModT = 0;
   simClock = 0; nextAutoEvent = 12;
+  stats.eaten = 0; stats.vaporized = 0; stats.supernovas = 0;
+  milestoneIdx = 0; popHist.length = 0;
+  stopFollow();
   logEl.innerHTML = '';
   populate();
   banner('System Reborn');
 }
 
 let lastT = performance.now();
-let hudT = 0;
+let hudT = 0, mapT = 0, histT = 0;
 function frame(t) {
-  let dt = Math.min((t - lastT) / 1000, 0.05);
+  const rawDt = Math.min((t - lastT) / 1000, 0.05);
   lastT = t;
 
-  fpsAcc += dt; fpsN++;
+  fpsAcc += rawDt; fpsN++;
   if (fpsAcc >= 0.5) { fpsShown = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
 
-  if (!paused) step(dt * timeScale);
+  if (!paused) {
+    // Split fast-forward into sub-steps so orbits stay stable at 4× and 8×
+    const total = rawDt * timeScale, n = Math.ceil(total / 0.05);
+    for (let s = 0; s < n; s++) step(total / n);
+  }
+  updateCamera(rawDt);
   render(t);
 
-  hudT += dt;
+  hudT += rawDt; mapT += rawDt; histT += rawDt;
   if (hudT > 0.25) { updateHUD(); hudT = 0; }
+  if (histT > 0.5) { popHist.push(alive); if (popHist.length > 120) popHist.shift(); histT = 0; drawGraph(); }
+  if (mapT > 0.3 && !document.getElementById('hud').classList.contains('collapsed')) { drawMinimap(); mapT = 0; }
 
   requestAnimationFrame(frame);
 }

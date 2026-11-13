@@ -1,5 +1,5 @@
 // Network-first for everything, so updates show up right away; the cache is only the offline fallback.
-const CACHE = 'launcher-v17';
+const CACHE = 'launcher-v18';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/superink.svg', 'orca/icons/icon.svg', 'icons/stellar-forge.svg', 'icons/neon-drift.svg', 'icons/fusion.svg', 'icons/jot.svg', 'icons/focus.svg', 'icons/krazy-kombat.svg', 'icons/snake.svg', 'icons/stackfall.svg', 'icons/comet.svg', 'icons/sky-hopper.svg', 'icons/block-bash.svg', 'icons/turbo-tanks.svg', 'icons/dungeon-dash.svg', 'icons/rhythm-rush.svg', 'icons/gravity-golf.svg', 'icons/zombie-holdout.svg', 'icons/word-blitz.svg', 'icons/tiny-roads.svg', 'icons/grid-pop.svg'];
 
 self.addEventListener('install', (e) => {
