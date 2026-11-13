@@ -286,7 +286,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "label": "SK"
     },
     {
       "id": "jot",
