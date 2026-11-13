@@ -290,6 +290,24 @@
       "label": "SK"
     },
     {
+      "id": "grid-pop",
+      "name": "Grid Pop",
+      "description": "Drag blocks onto an 8x8 grid and clear full rows and columns. Chain clears for combos and chase your best score.",
+      "url": "grid-pop/",
+      "icon": "icons/grid-pop.svg",
+      "color": "#7c4dff",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "blocks",
+        "touch"
+      ],
+      "status": "live",
+      "embed": true,
+      "label": "SK"
+    },
+    {
       "id": "jot",
       "name": "Jot",
       "description": "Quick notes that save as you type. Search everything, first line is the title.",

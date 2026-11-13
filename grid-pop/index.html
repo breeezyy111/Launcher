@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grid Pop</title>
+<style>
+:root{--bg:#f4f1fa;--fg:#241b3a;--board:#d9d2ea;--cell:#e8e3f4;--ok:rgba(60,180,90,.55);--bad:rgba(220,60,60,.35);--card:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17122a;--fg:#efeaff;--board:#2a2347;--cell:#352c59;--card:#241d3f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17122a;--fg:#efeaff;--board:#2a2347;--cell:#352c59;--card:#241d3f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px;user-select:none;touch-action:none;min-height:100vh}
+h1{margin:0;font-size:22px;letter-spacing:.5px}
+.stats{display:flex;gap:12px}
+.stat{background:var(--card);border-radius:12px;padding:6px 16px;text-align:center;min-width:90px}
+.stat small{display:block;font-size:11px;opacity:.65;text-transform:uppercase}
+.stat b{font-size:20px}
+#board{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;background:var(--board);padding:6px;border-radius:12px;width:min(92vw,400px);aspect-ratio:1;position:relative}
+.c{background:var(--cell);border-radius:5px}
+.c.f{box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
+.c.ok{outline:3px solid var(--ok);outline-offset:-3px}
+.c.bad{outline:3px solid var(--bad);outline-offset:-3px}
+#tray{display:flex;justify-content:space-around;align-items:center;width:min(92vw,400px);height:120px}
+.slot{width:30%;display:flex;justify-content:center;align-items:center;height:100%;cursor:grab}
+.pc{display:grid;gap:2px;pointer-events:none}
+.pc div{border-radius:4px}
+#ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:9;display:none}
+#over{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:20}
+#over div{background:var(--card);padding:28px 36px;border-radius:18px;text-align:center}
+button{font:inherit;font-weight:700;background:#7c4dff;color:#fff;border:0;border-radius:10px;padding:10px 22px;cursor:pointer;margin-top:12px}
+.stat b{display:inline-block}
+.pop{animation:pop .18s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+.clr{animation:clr .26s ease-in forwards;z-index:1}
+@keyframes clr{0%{transform:scale(1);filter:brightness(1.8)}40%{transform:scale(1.15);filter:brightness(2.2)}100%{transform:scale(0);opacity:0}}
+.bump{animation:bump .2s}
+@keyframes bump{50%{transform:scale(1.35)}}
+.shake{animation:shake .25s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.cmb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#fff;text-shadow:0 2px 8px #000a;pointer-events:none;animation:cmb .7s ease-out forwards}
+@keyframes cmb{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.2);opacity:1}100%{transform:translateY(-30px);opacity:0}}
+#ghost{filter:drop-shadow(0 8px 10px rgba(0,0,0,.35))}
+.bar{display:flex;gap:8px}
+.meter{font-weight:700;font-size:14px;min-height:20px;opacity:0;transition:opacity .2s}
+.bar button{margin:0}
+.slot:active{cursor:grabbing}
+</style>
+</head>
+<body>
+<h1>GRID POP</h1>
+<div class="stats"><div class="stat"><small>Score</small><b id="sc">0</b></div><div class="stat"><small>Best</small><b id="bs">0</b></div></div>
+<div id="cm" class="meter"></div>
+<div id="board"></div>
+<div id="tray"></div>
+<div class="bar"><button id="rs">↻ Restart</button><button id="mt" title="Sound">🔊</button></div>
+<div id="ghost"></div>
+<div id="over"><div><h2 style="margin:0 0 6px">Game over</h2><p id="fs" style="margin:0"></p><button id="again">Play again</button></div></div>
+<script>
+const N=8,COL=["#ff5c7a","#ff9f43","#feca57","#2ed573","#1e90ff","#a55eea","#00d2d3"];
+const SH=[[[1]],[[1,1]],[[1],[1]],[[1,1,1]],[[1],[1],[1]],[[1,1,1,1]],[[1],[1],[1],[1]],[[1,1],[1,1]],[[1,1,1],[1,1,1],[1,1,1]],
+[[1,0],[1,0],[1,1]],[[0,1],[0,1],[1,1]],[[1,1,1],[1,0,0],[1,0,0]],[[1,1,1],[0,0,1],[0,0,1]],[[1,1,0],[0,1,1]],[[0,1,1],[1,1,0]],
+[[1,1,1],[0,1,0]],[[1,1],[1,0]],[[1,1],[0,1]],[[1,0],[1,1]],[[0,1],[1,1]],[[1,1,1],[1,0,1]]];
+let grid,pieces,score,best=0,drag=null,lastK="",streak=0,since=0;
+function meter(){const m=$("cm");if(streak>0){const left=3-since;m.textContent="🔥 Combo x"+streak+" · clear within "+left+" move"+(left>1?"s":"")+" to keep it";m.style.opacity=1}else m.style.opacity=0}
+let AC=null,mute=false;
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==="suspended")AC.resume();return AC}
+function tone(f,d,t,v,at,sl){const a=ac();if(!a||mute)return;at=at||0;const o=a.createOscillator(),g=a.createGain(),s=a.currentTime+at;o.type=t||"sine";o.frequency.setValueAtTime(f,s);if(sl)o.frequency.exponentialRampToValueAtTime(sl,s+d);g.gain.setValueAtTime(v||.12,s);g.gain.exponentialRampToValueAtTime(.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d)}
+const P=[523,587,659,784,880,1047,1175,1319];
+function sfx(k,n){
+ if(k==="pick")tone(520,.06,"triangle",.1);
+ else if(k==="snap")tone(740,.03,"square",.03);
+ else if(k==="place"){tone(220,.09,"sine",.22,0,110);tone(440,.05,"triangle",.08)}
+ else if(k==="clear"){tone(200,.1,"sine",.2,0,100);for(let i=0;i<Math.min(8,2+n*2);i++)tone(P[i],.2,"triangle",.11,i*.05)}
+ else if(k==="bad")tone(160,.15,"sawtooth",.07,0,80);
+ else if(k==="over"){[392,330,262,196].forEach((f,i)=>tone(f,.3,"triangle",.13,i*.16))}
+ else if(k==="restart"){tone(400,.08,"triangle",.1);tone(600,.1,"triangle",.1,.07)}}
+function shake(){board.classList.remove("shake");void board.offsetWidth;board.classList.add("shake")}
+function fxRun(pl,cl,k,n){
+ pl.forEach(i=>cells[i].classList.add("pop"));
+ if(k){sfx("clear",k);cl.forEach(([i,c])=>{const d=cells[i];d.style.background=c;d.classList.add("clr")});setTimeout(draw,260);try{navigator.vibrate&&navigator.vibrate(15)}catch(e){}}else sfx("place");
+ if(k&&streak>1){const t=document.createElement("div");t.className="cmb";t.textContent=streak+"x combo!";board.appendChild(t);setTimeout(()=>t.remove(),700)}
+ const s=$("sc");s.classList.remove("bump");void s.offsetWidth;s.classList.add("bump")}
+try{best=+localStorage.getItem("bb-best")||0}catch(e){}
+const $=id=>document.getElementById(id),board=$("board"),tray=$("tray"),ghost=$("ghost");
+const cells=[];
+for(let i=0;i<N*N;i++){const d=document.createElement("div");d.className="c";board.appendChild(d);cells.push(d)}
+function rnd(){return{s:SH[Math.random()*SH.length|0],c:COL[Math.random()*COL.length|0]}}
+function newGame(){grid=Array.from({length:N},()=>Array(N).fill(null));score=0;streak=0;since=0;pieces=[rnd(),rnd(),rnd()];$("over").style.display="none";draw()}
+function mk(p,cs){const e=document.createElement("div");e.className="pc";e.style.gridTemplateColumns=`repeat(${p.s[0].length},${cs}px)`;
+p.s.forEach(r=>r.forEach(v=>{const d=document.createElement("div");d.style.width=d.style.height=cs+"px";if(v)d.style.background=p.c;e.appendChild(d)}));return e}
+function draw(){
+ cells.forEach((d,i)=>{const v=grid[i/N|0][i%N];d.className="c"+(v?" f":"");d.style.background=v||""});
+ tray.innerHTML="";
+ pieces.forEach((p,i)=>{const s=document.createElement("div");s.className="slot";if(p){s.appendChild(mk(p,22));s.onpointerdown=e=>start(e,i)}tray.appendChild(s)});
+ $("sc").textContent=score;$("bs").textContent=best;meter()}
+function fits(s,r,c){return s.every((row,y)=>row.every((v,x)=>!v||(r+y>=0&&r+y<N&&c+x>=0&&c+x<N&&!grid[r+y][c+x])))}
+function canAny(){return pieces.some(p=>p&&[...Array(N*N).keys()].some(i=>fits(p.s,i/N|0,i%N)))}
+function start(e,i){const cs=cells[0].getBoundingClientRect().width+3;ghost.innerHTML="";const g=mk(pieces[i],cs-3);g.style.gap="3px";ghost.appendChild(g);
+ ghost.style.display="block";drag={i,cs};lastK="";sfx("pick");tray.children[i].style.opacity=.3;move(e);window.addEventListener("pointermove",move);window.addEventListener("pointerup",end)}
+function target(e){const p=pieces[drag.i],w=p.s[0].length*drag.cs,h=p.s.length*drag.cs;
+ const L=e.clientX-w/2,T=e.clientY-h-40;ghost.style.transform=`translate(${L}px,${T}px) scale(1.08)`;
+ const b=cells[0].getBoundingClientRect();return[Math.round((T-b.top)/drag.cs),Math.round((L-b.left)/drag.cs)]}
+function move(e){if(!drag)return;const[r,c]=target(e);cells.forEach(d=>d.classList.remove("ok","bad"));
+ const p=pieces[drag.i],ok=fits(p.s,r,c);const kk=ok?r+","+c:"";if(kk&&kk!==lastK)sfx("snap");lastK=kk;
+ p.s.forEach((row,y)=>row.forEach((v,x)=>{const rr=r+y,cc=c+x;if(v&&rr>=0&&rr<N&&cc>=0&&cc<N)cells[rr*N+cc].classList.add(ok?"ok":"bad")}))}
+function end(e){window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",end);
+ if(!drag)return;const[r,c]=target(e),p=pieces[drag.i];ghost.style.display="none";
+ if(fits(p.s,r,c)){let n=0;const pl=[];p.s.forEach((row,y)=>row.forEach((v,x)=>{if(v){grid[r+y][c+x]=p.c;n++;pl.push((r+y)*N+c+x)}}));
+  const rows=[],cols=[];for(let i=0;i<N;i++){if(grid[i].every(Boolean))rows.push(i);if(grid.every(g=>g[i]))cols.push(i)}
+  const cl=[];for(let y=0;y<N;y++)for(let x=0;x<N;x++)if((rows.includes(y)||cols.includes(x))&&grid[y][x])cl.push([y*N+x,grid[y][x]]);rows.forEach(i=>grid[i].fill(null));cols.forEach(j=>grid.forEach(g=>g[j]=null));
+  const k=rows.length+cols.length;if(k){streak=since<3&&streak>0?streak+1:1;since=0}else if(streak){since++;if(since>=3)streak=0}score+=(n+k*10*k)*(k?streak:1);pieces[drag.i]=null;
+  if(pieces.every(x=>!x))pieces=[rnd(),rnd(),rnd()];
+  if(score>best){best=score;try{localStorage.setItem("bb-best",best)}catch(e){}}
+  draw();
+  fxRun(pl,cl,k,n);if(!canAny()){sfx("over");shake();$("fs").textContent="Final score: "+score;$("over").style.display="flex"}
+ }else{sfx("bad");shake();draw()}
+ drag=null}
+$("again").onclick=()=>{sfx("restart");newGame()};
+$("rs").onclick=()=>{sfx("restart");newGame()};
+$("mt").onclick=e=>{mute=!mute;e.target.textContent=mute?"🔇":"🔊";if(!mute)sfx("pick")};
+newGame();
+</script>
+</body>
+</html>
