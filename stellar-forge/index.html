@@ -180,7 +180,7 @@ function worldToScreen(x, y) { return [ (x - cam.x) * cam.zoom + W / 2, (y - cam
 function screenToWorld(sx, sy) { return [ (sx - W / 2) / cam.zoom + cam.x, (sy - H / 2) / cam.zoom + cam.y ]; }
 
 // ---------- Object storage (struct-of-arrays for speed) ----------
-const MAX = 40000;
+const MAX = 777000;                   // hard cap: 777K objects
 const px = new Float32Array(MAX), py = new Float32Array(MAX);
 const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
 const rad = new Float32Array(MAX);
