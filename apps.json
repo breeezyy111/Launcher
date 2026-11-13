@@ -272,6 +272,23 @@
       "label": "SK"
     },
     {
+      "id": "tiny-roads",
+      "name": "Tiny Roads",
+      "description": "Calm road-building puzzler: link colored houses to their matching stations, add bridges, lights and motorways, and keep traffic flowing week after week.",
+      "url": "tiny-roads/",
+      "icon": "icons/tiny-roads.svg",
+      "color": "#3a86ff",
+      "category": "Games",
+      "tags": [
+        "puzzle",
+        "game",
+        "strategy",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "jot",
       "name": "Jot",
       "description": "Quick notes that save as you type. Search everything, first line is the title.",
