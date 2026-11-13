@@ -541,3 +541,75 @@ body[data-skin]:not([data-skin="cards"]) kbd { background: transparent; }
 
 /* Custom label pill from apps.json "label" (e.g. SK), solid blue in every style */
 body .tile .badge.label { background: #2563eb; color: #fff; border: 0; letter-spacing: .04em; box-shadow: none; }
+
+/* =====================================================================
+ * Feel: press feedback, loading placeholders, offline state.
+ * ===================================================================== */
+a, button, .chip, .tile { -webkit-tap-highlight-color: transparent; }
+
+/* Everything you can tap gives way under your finger, instantly (no waiting on hover). */
+.tile:active { transform: scale(.975); transition-duration: .06s; }
+body[data-skin="springboard"] .tile:active { transform: scale(.94); }
+body[data-skin="terminal"] .tile:active { transform: none; background: var(--surface-2); }
+.chip, .menu button, .tile-tools button, .brand { transition: transform .15s var(--ease), background-color .15s, border-color .15s, color .15s; }
+.chip:active, .brand:active { transform: scale(.95); transition-duration: .06s; }
+.menu button:active { transform: scale(.98); background: var(--surface-2); }
+.tile-tools button:active { transform: scale(.85); transition-duration: .06s; }
+.btn:active { transition-duration: .06s; }
+/* Pin star pops when toggled */
+@keyframes star-pop { 40% { transform: scale(1.35) rotate(-12deg); } }
+.tile-tools button.popped .i { animation: star-pop .35s var(--ease); }
+/* The tile you just opened pulses while the app comes up */
+@keyframes launch-pulse { 50% { transform: scale(.96); box-shadow: 0 0 0 6px color-mix(in srgb, var(--c) 30%, transparent), var(--shadow); } }
+.tile.launching { animation: launch-pulse .32s var(--ease); }
+
+/* Skeleton placeholders shown before apps.json arrives (first visit only). */
+@keyframes shimmer { to { background-position: -200% 0; } }
+.skeleton { pointer-events: none; cursor: default; }
+.skeleton .ico, .sk-line {
+  background: linear-gradient(90deg, var(--surface-2) 30%, color-mix(in srgb, var(--surface-2) 40%, var(--surface)) 50%, var(--surface-2) 70%);
+  background-size: 200% 100%; animation: shimmer 1.3s linear infinite;
+}
+.skeleton .ico { box-shadow: none; }
+.sk-line { display: block; height: 14px; width: 90%; border-radius: 7px; }
+.sk-line.w60 { width: 60%; height: 18px; margin-bottom: 4px; }
+.sk-line.w40 { width: 40%; }
+.summary .sk-line { display: inline-block; width: 180px; vertical-align: middle; }
+body[data-skin="springboard"] .skeleton .sk-line:not(.w60) { display: none; }
+
+.empty .btn { margin-top: 12px; }
+
+/* Offline */
+.offline-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 36px; align-self: center;
+  border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--dev);
+  background: color-mix(in srgb, var(--dev) 14%, transparent); animation: pop .25s var(--ease);
+}
+.offline-pill .i { width: 16px; height: 16px; }
+body.offline .tile.needs-net { opacity: .5; filter: grayscale(.6); }
+body.offline .tile.needs-net .tile-cta { visibility: hidden; }
+
+/* Player loading screen: the app's icon and a progress bar instead of a blank frame. */
+.player-loading {
+  position: absolute; left: 0; right: 0; bottom: 0; top: calc(60px + env(safe-area-inset-top)); z-index: 1;
+  display: grid; place-content: center; justify-items: center; gap: 14px; padding: 24px; text-align: center;
+  background: radial-gradient(60% 50% at 50% 40%, color-mix(in srgb, var(--tile-color, var(--accent)) 22%, var(--bg)), var(--bg));
+  transition: opacity .25s;
+}
+.player-loading.done { opacity: 0; pointer-events: none; }
+.player-loading p { margin: 0; color: var(--muted); font-weight: 600; }
+.pl-icon {
+  width: 88px; height: 88px; border-radius: 24px; overflow: hidden; display: grid; place-items: center; font-size: 44px;
+  background: var(--surface); box-shadow: var(--shadow-lg); animation: pl-breathe 1.6s var(--ease) infinite;
+}
+.pl-icon img { width: 100%; height: 100%; object-fit: cover; }
+@keyframes pl-breathe { 50% { transform: scale(1.06); } }
+.pl-bar { width: 160px; height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-2); }
+.pl-bar span { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--tile-color, var(--accent)); animation: pl-slide 1.1s ease-in-out infinite; }
+@keyframes pl-slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.player-loading.stuck .pl-bar, .player-loading.stuck .pl-icon { animation: none; }
+.player-loading.stuck .pl-bar span { animation: none; display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile:active, .chip:active, .tile-tools button:active { transform: none; }
+}

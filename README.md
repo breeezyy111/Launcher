@@ -31,13 +31,18 @@ Edit **`apps.json`**:
       "status": "live",                   // live | beta | dev | archived
       "tags": ["web"],
       "embed": true,                      // play it inside the launcher instead of leaving
-      "newTab": true                      // false opens it in the same tab
+      "newTab": true,                     // false opens it in the same tab
+      "needsNetwork": true                // optional: dims the tile offline (other sites are dimmed automatically)
     }
   ]
 }
 ```
 
 There is no add button in the UI: new apps go in `apps.json`. Edits made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
+
+## Offline
+
+The service worker caches the launcher and every built-in app (any `url` and `icon` in `apps.json` that points inside this repo) when it installs, so built-in apps open with no connection. A new app needs no edit to `sw.js`. Apps on other sites, plus ones marked `"needsNetwork": true` (Orca, Comet), are dimmed while offline. The last app list is also kept in the browser, so the launcher paints instantly instead of waiting for `apps.json`.
 
 ## Apps inside the launcher
 
