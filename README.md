@@ -44,7 +44,7 @@ There is no add button in the UI: new apps go in `apps.json`. Edits made in the 
 Apps with `"embed": true` open in a player inside the launcher, with a back button, full screen and an "open in its own tab" button.
 
 - **Project SuperInk** is still its own game with its own site and repo. The launcher just plays that site in the player.
-- **Stellar Forge** is built in too: the space sandbox from [breeezyy111/space](https://github.com/breeezyy111/space) lives in `stellar-forge/` (one self-contained `index.html`). To update it, copy that repo's `index.html` over it.
+- **Stellar Forge** is built in too: the space sandbox lives in `stellar-forge/` (one self-contained `index.html`). It started as a copy of [breeezyy111/space](https://github.com/breeezyy111/space) and has since grown here (777K object cap, new events, gravity brushes, achievements), so edit this copy rather than copying that repo over it.
 - **Neon Drift**, **Fusion**, **Jot** and **Focus** are small built-in apps, each one self-contained `index.html` in its own folder (`neon-drift/`, `fusion/`, `jot/`, `focus/`). Scores, notes and timer counts are saved in the browser.
 - **Krazy Kombat** is a built-in one-on-one fighting game in `krazy-kombat/` (one self-contained `index.html`): six original fighters, vs CPU or 2 players on one keyboard, gamepads and touch controls. Add `?demo` to the URL to watch CPU vs CPU.
 - **Snake** (`snake/`) and **Stackfall** (`stackfall/`, a falling-block puzzler) are built-in single-file games. Snake lets you pick map size, speed and apple count; Stackfall has pixel/smooth styles and sound toggles.
