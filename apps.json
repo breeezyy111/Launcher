@@ -308,6 +308,24 @@
       "label": "SK"
     },
     {
+      "id": "roblox",
+      "name": "Roblox",
+      "description": "Launches the Roblox app on this device. If Roblox isn't installed, you get the official download page instead.",
+      "url": "https://www.roblox.com/download",
+      "icon": "icons/roblox.svg",
+      "color": "#e63946",
+      "category": "Games",
+      "tags": [
+        "game",
+        "online",
+        "multiplayer",
+        "app"
+      ],
+      "status": "live",
+      "embed": false,
+      "appLink": "roblox://"
+    },
+    {
       "id": "jot",
       "name": "Jot",
       "description": "Quick notes that save as you type. Search everything, first line is the title.",

@@ -100,10 +100,44 @@
   }
 
   const STATUS = { live: 'Live', beta: 'Beta', dev: 'In dev', archived: 'Archived' };
-  const ctaLabel = (app) => (app.embed ? (/game/i.test(app.category || '') ? 'Play' : 'Open') : 'Visit');
+  const ctaLabel = (app) => (appLink(app) ? 'Launch' : app.embed ? (/game/i.test(app.category || '') ? 'Play' : 'Open') : 'Visit');
+
+  // "appLink" opens an installed desktop/phone app through its own link scheme (e.g. roblox://).
+  // Web and script schemes are refused; "url" is the fallback page when the app isn't installed.
+  function appLink(app) {
+    const m = /^([a-z][a-z0-9+.-]*):/i.exec(app.appLink || '');
+    return m && !['http', 'https', 'javascript', 'data', 'vbscript', 'file', 'blob', 'about'].includes(m[1].toLowerCase()) ? app.appLink : null;
+  }
+
+  function openNativeApp(app, link) {
+    let left = false;
+    const away = () => { left = true; };
+    const onVis = () => { if (document.hidden) left = true; };
+    window.addEventListener('blur', away);
+    window.addEventListener('pagehide', away);
+    document.addEventListener('visibilitychange', onVis);
+    location.href = link;
+    setTimeout(() => {
+      window.removeEventListener('blur', away);
+      window.removeEventListener('pagehide', away);
+      document.removeEventListener('visibilitychange', onVis);
+      if (left) return;
+      // Nothing took over the screen, so the app probably isn't installed: offer the download page.
+      const fallback = safeHref(app.url);
+      if (fallback === '#') return;
+      const w = window.open(fallback, '_blank', 'noopener');
+      if (!w) toast(`${app.name} isn't installed? Get it from ${new URL(fallback).host}`);
+    }, 2500);
+  }
 
   function launch(app, el, e) {
     recordLaunch(app.id);
+    const link = appLink(app);
+    if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      openNativeApp(app, link);
+      return;
+    }
     // Plain clicks on embeddable apps play inside the launcher; ctrl/cmd-click still opens a tab.
     if (app.embed && el.getAttribute('href') !== '#' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
       e.preventDefault();
