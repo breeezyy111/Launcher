@@ -252,7 +252,7 @@
       ],
       "status": "live",
       "embed": true,
-      "label": "SK"
+      "label": "LTZ"
     },
     {
       "id": "stackfall",
@@ -270,7 +270,7 @@
       ],
       "status": "live",
       "embed": true,
-      "label": "SK"
+      "label": "LTZ"
     },
     {
       "id": "tiny-roads",
@@ -286,9 +286,9 @@
         "strategy",
         "canvas"
       ],
-      "status": "live",
+      "status": "beta",
       "embed": true,
-      "label": "SK"
+      "label": "LTZ"
     },
     {
       "id": "grid-pop",
@@ -306,7 +306,25 @@
       ],
       "status": "live",
       "embed": true,
-      "label": "SK"
+      "label": "LTZ"
+    },
+    {
+      "id": "money-clicker",
+      "name": "Money Clicker",
+      "description": "Idle clicker: tap the bill to earn cash, buy coin jars, lemonade stands and real estate, unlock upgrades and achievements, and watch the money roll in.",
+      "url": "money-clicker/",
+      "icon": "icons/money-clicker.svg",
+      "color": "#2e9e57",
+      "category": "Games",
+      "tags": [
+        "idle",
+        "clicker",
+        "game",
+        "touch"
+      ],
+      "status": "beta",
+      "embed": true,
+      "label": "LTZ"
     },
     {
       "id": "soundbloom",
