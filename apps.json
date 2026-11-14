@@ -184,7 +184,8 @@
         "assistant"
       ],
       "status": "beta",
-      "embed": true
+      "embed": true,
+      "needsNetwork": true
     },
     {
       "id": "stellar-forge",
@@ -370,7 +371,8 @@
         "tabs"
       ],
       "status": "beta",
-      "embed": true
+      "embed": true,
+      "needsNetwork": true
     }
   ]
 }
