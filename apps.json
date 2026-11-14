@@ -309,6 +309,24 @@
       "label": "SK"
     },
     {
+      "id": "soundbloom",
+      "name": "Soundbloom",
+      "description": "Music playground: make full songs on a grid, loop polyrhythm drums, jam on keys, draw your own waveforms. Share songs as links and export WAV or MIDI.",
+      "url": "soundbloom/",
+      "icon": "icons/soundbloom.svg",
+      "color": "#ff7a59",
+      "category": "Music",
+      "tags": [
+        "music",
+        "song maker",
+        "drums",
+        "synth",
+        "creative"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "jot",
       "name": "Jot",
       "description": "Quick notes that save as you type. Search everything, first line is the title.",
