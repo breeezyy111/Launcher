@@ -77,9 +77,21 @@ display:flex;align-items:center;justify-content:space-between;padding:0 14px;fon
 .up{width:44px;height:44px;font-size:24px;border:2px solid var(--gold);background:var(--panel2);border-radius:6px;cursor:pointer;color:inherit;padding:0}
 .up:hover{filter:brightness(1.3)}.up.no{opacity:.45;filter:grayscale(.6);cursor:not-allowed}
 #boost{margin-top:6px;color:var(--gold);font-weight:700;font-size:13px}#boost[hidden]{display:none}
-#gold{position:fixed;z-index:8;width:90px;height:52px;cursor:pointer;background:linear-gradient(135deg,#fff3a6,#f2c94c 45%,#b8860b);clip-path:polygon(10% 0,90% 0,100% 100%,0 100%);display:flex;align-items:center;justify-content:center;font-weight:800;color:#6b4a00;font-size:14px;animation:glint .8s infinite alternate;-webkit-tap-highlight-color:transparent}
+#gold{position:fixed;z-index:8;width:90px;height:52px;cursor:pointer;background:linear-gradient(135deg,#fff3a6,#f2c94c 45%,#b8860b);border-radius:14px;border:2px solid #8a6508;box-shadow:0 0 14px #f2c94c99;display:flex;align-items:center;justify-content:center;font-weight:800;color:#6b4a00;font-size:14px;animation:glint .4s infinite alternate,grow 13s linear forwards;-webkit-tap-highlight-color:transparent}
+@keyframes grow{from{transform:scale(.8)}to{transform:scale(1.8)}}
 @keyframes glint{from{filter:brightness(1)}to{filter:brightness(1.3)}}
 .beta{margin-left:8px;font-size:10px;font-weight:700;background:var(--gold);color:#000;border-radius:4px;padding:1px 6px;vertical-align:middle}
+#gold.plat{background:linear-gradient(135deg,#fff,#cfe3ee 45%,#7e97aa);color:#2b4152;border-color:#5d7385;box-shadow:0 0 14px #bfe6ffaa;font-size:12px}
+#bin{width:150px;background:#000b;color:#fff;border:1px solid var(--gold);border-radius:4px;padding:2px 6px;font:inherit}#bin[hidden]{display:none}
+#bname{cursor:pointer}#bname::after{content:" ✏️";font-size:11px;opacity:.7}
+#dev{margin:0 10px 10px;padding:8px;border:1px dashed var(--gold);border-radius:6px;background:#000b;color:#fff;font-size:12px}#dev[hidden]{display:none}
+#dev .dg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+#dev button{background:#000a;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px;cursor:pointer;font:inherit}
+#stats div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
+#stats b{color:var(--good)}
+#sets label{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px}
+#sets select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:2px 6px;font:inherit}
+#achbox #saverow,#achbox #io{margin:0 0 8px}
 #tip{position:fixed;z-index:9;display:none;width:260px;background:#000e;color:#fff;border:1px solid var(--gold);border-radius:6px;padding:10px;font-size:12px;pointer-events:none}
 #tip b{font-size:15px}#tip i{display:block;margin:6px 0;color:#cde}
 #toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-80px);background:#000e;color:#fff;border:1px solid var(--gold);padding:10px 16px;border-radius:8px;transition:.35s;z-index:10;pointer-events:none;font-size:13px}
@@ -90,16 +102,21 @@ display:flex;align-items:center;justify-content:space-between;padding:0 14px;fon
 <body>
 <div id="game">
   <div class="col" id="left">
-    <div class="bar title"><span>Your Bank <span class="beta">BETA 1.0</span></span></div>
+    <div class="bar title"><span><span id="bname" title="Click to rename your bank">Your Bank</span><input id="bin" maxlength="32" hidden> <span class="beta">BETA 1.2.1</span></span></div>
     <div id="bank"><div id="money">$0</div><div id="mps">per second: 0</div><div id="boost" hidden></div></div>
     <div class="billwrap" id="bw"><div id="bill" role="button" aria-label="Click the dollar bill"><span>$</span><span class="c">💵</span><span>$</span></div></div>
+    <div id="dev" hidden><div>🛠️ Dev Tools <span style="opacity:.7">(payoff times shown in store)</span></div><div class="dg"><button data-d="gold">Spawn Gold</button><button data-d="plat">Spawn Platinum</button><button data-d="k">+$1K</button><button data-d="m">+$1M</button><button data-d="b">+$1B</button><button data-d="clr">Clear Rushes</button></div></div>
     <div id="ticker"></div>
-    <div id="saverow"><button id="sv">Save</button><button id="ex">Export</button><button id="im">Import</button><button id="reset">Wipe</button></div>
-    <div id="io" hidden><textarea id="iot" rows="4" placeholder="Paste a save code here" spellcheck="false"></textarea><div><button id="iogo">Load code</button><button id="ioclose">Close</button></div></div>
+    
+    
   </div>
   <div class="col" id="mid">
-    <div class="tabs"><div class="on">Achievements</div><div>Total: <span id="total">$0</span></div><button class="tg" aria-label="Open or close achievements">−</button></div>
-    <div id="achbox"><h3>Unlocked <span id="acount"></span></h3><div id="tiles"></div><h3 style="margin-top:18px">Upgrades <span id="ucount"></span></h3><div id="utiles" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
+    <div class="tabs"><div class="on">Information</div><button class="tg" aria-label="Open or close information">−</button></div>
+    <div id="achbox"><h3>Run information</h3><div id="stats"><div><span>Total money earned</span><b id="total">$0</b></div><div><span>Earned from clicking</span><b id="st_click"></b></div><div><span>Total clicks</span><b id="st_clicks"></b></div><div><span>Buildings owned</span><b id="st_b"></b></div><div><span>Run time</span><b id="st_time"></b></div></div><h3 style="margin-top:18px">Achievements <span id="acount"></span></h3><div id="tiles"></div><h3 style="margin-top:18px">Upgrades <span id="ucount"></span></h3><div id="utiles" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+<h3 style="margin-top:18px">Settings</h3><div id="sets"><label><input type="checkbox" data-s="pops"> Floating click numbers</label><label><input type="checkbox" data-s="ticker"> News ticker</label><label><input type="checkbox" data-s="offline"> Offline earnings</label><label><input type="checkbox" data-s="short"> Short numbers (1.5M)</label><label>Theme <select id="theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select></label></div>
+<h3 style="margin-top:18px">Save data</h3>
+<div id="saverow"><button id="sv">Save</button><button id="ex">Export</button><button id="im">Import</button><button id="reset">Wipe</button></div>
+<div id="io" hidden><textarea id="iot" rows="4" placeholder="Paste a save code here" spellcheck="false"></textarea><div><button id="iogo">Load code</button><button id="ioclose">Close</button></div></div></div>
   </div>
   <div class="col" id="right">
     <div class="bar title"><span class="lbl">Store</span><button class="tg" aria-label="Open or close store">−</button></div>
@@ -122,7 +139,8 @@ const ACH=[
  {id:"a2",ic:"💯",name:"Hundredaire",at:100,desc:"Get a total of $100 in the run."},
  {id:"a3",ic:"💰",name:"Thousandaire",at:1e3,desc:"Get a total of $1K in the run."},
  {id:"a4",ic:"🤑",name:"Serious Money",at:1e5,desc:"Get a total of $100K in the run."},
- {id:"a5",ic:"👑",name:"Millionaire",at:1e6,desc:"Get a total of $1M in the run."}
+ {id:"a5",ic:"👑",name:"Millionaire",at:1e6,desc:"Get a total of $1M in the run."},
+ {id:"a6",ic:"🏷️",name:"Branding",at:Infinity,desc:"Rename your bank."}
 ];
 const NEWS=["News: local child discovers piggy bank, immediately becomes tycoon.","News: economists baffled by your sudden interest in dollar bills.","News: lemonade prices up 300%, experts blame you.","News: “Just save more,” says man with six houses.","News: coin jar shortage reported nationwide.","News: your landlord is now your biggest fan."];
 const GROWTH=1.15, KEY="moneyClicker2";
@@ -130,13 +148,14 @@ let S={money:0,total:0,owned:{},ach:{},up:{}};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 const $=id=>document.getElementById(id);
 function fmt(n,d=0){
- if(n>=1e6){const u=[[1e12,"trillion"],[1e9,"billion"],[1e6,"million"]];
-  for(const[v,s]of u)if(n>=v)return (n/v).toFixed(3).replace(/\.?0+$/,"")+" "+s}
+ if(n>=1e6){const u=S.set&&S.set.short?[[1e12,"T"],[1e9,"B"],[1e6,"M"]]:[[1e12," trillion"],[1e9," billion"],[1e6," million"]];
+  for(const[v,s]of u)if(n>=v)return (n/v).toFixed(3).replace(/\.?0+$/,"")+s}
  return n.toLocaleString("en-US",{maximumFractionDigits:d})}
 const cost=b=>Math.ceil(b.cost*Math.pow(GROWTH,S.owned[b.id]||0));
 if(!S.up||typeof S.up!=="object")S.up={};
 const eff=b=>b.mps*(S.up[b.id]?2:1);
 const mps=()=>BUILD.reduce((t,b)=>t+eff(b)*(S.owned[b.id]||0),0);
+const clickVal=()=>1+mps()*0.01*UPS.filter(u=>u.k&&S.up[u.b]).length;
 const tip=$("tip");
 function showTip(h,e){tip.innerHTML=h;tip.style.display="block";
  const r=e.currentTarget.getBoundingClientRect(),w=260;
@@ -150,18 +169,25 @@ const UPS=[
  {b:"job",ic:"🎁",name:"First Bonus",cost:12500,desc:"Doubles MPS gained from Day Job.",q:"Finally you’re not making minimum wage!"},
  {b:"bank",ic:"💳",name:"Interest Payments",cost:135000,desc:"Doubles MPS gained from Bank Account.",q:"Slow and steady"},
  {b:"index",ic:"🐂",name:"High Yields",cost:1650000,desc:"Doubles MPS gained from Index Fund.",q:"It’s a bull market"},
- {b:"re",ic:"🗝️",name:"Junior Landlord",cost:15000000,desc:"Doubles MPS gained from Real Estate.",q:"Why be productive when you can just own land?"}
+ {b:"re",ic:"🗝️",name:"Junior Landlord",cost:15000000,desc:"Doubles MPS gained from Real Estate.",q:"Why be productive when you can just own land?"},
+ {b:"m1",k:1,ic:"🖱️",name:"Penny Mouse",cost:100,desc:"Clicking gains +1% of MPS.",q:"Costs more to make than it’s worth"},
+ {b:"m2",k:500,ic:"🖱️",name:"Nickel Mouse",cost:5000,desc:"Clicking gains +1% of MPS.",q:"Only made up of 25% nickel"},
+ {b:"m3",k:1000,ic:"🖱️",name:"Dime Mouse",cost:10000,desc:"Clicking gains +1% of MPS.",q:"Smallest coin, not the smallest upgrade"},
+ {b:"m4",k:5000,ic:"🖱️",name:"Quarter Mouse",cost:25000,desc:"Clicking gains +1% of MPS.",q:"The greatest coin to have been minted"},
+ {b:"m5",k:10000,ic:"🖱️",name:"Half Dollar Mouse",cost:50000,desc:"Clicking gains +1% of MPS.",q:"Half way there"},
+ {b:"m6",k:25000,ic:"🖱️",name:"Dollar Coin",cost:100000,desc:"Clicking gains +1% of MPS.",q:"One whole dollar"}
 ];
+const COL={m1:"#b87333",m2:"#a9afb8",m3:"#a9afb8",m4:"#a9afb8",m5:"#a9afb8",m6:"#ffd24a"};
 const uEl={},uTile={};
 function upTip(u){return `<b>${u.name}</b> <span style="float:right;color:#8f8">$${fmt(u.cost)}</span><i>${u.desc}</i><em style="color:#9ab">“${u.q}”</em>`}
-UPS.forEach(u=>{const el=document.createElement("button");el.className="up";el.textContent=u.ic;el.hidden=true;
+UPS.forEach(u=>{const el=document.createElement("button");el.className="up";el.textContent=u.ic;el.hidden=true;if(COL[u.b]){el.style.borderColor=COL[u.b];el.style.background=`radial-gradient(circle,${COL[u.b]}cc,${COL[u.b]}44)`}
  el.onclick=()=>{if(!S.up[u.b]&&S.money>=u.cost){S.money-=u.cost;S.up[u.b]=1;hideTip();render()}};
  el.onmouseenter=e=>showTip(upTip(u),e);el.onmouseleave=hideTip;
  $("ups").appendChild(el);uEl[u.b]=el;
  const t=document.createElement("div");t.className="tile off";t.textContent="?";
- t.onmouseenter=e=>showTip(S.up[u.b]?upTip(u):`<b>???</b><i>Own 1 ${BUILD.find(b=>b.id===u.b).name} to unlock.</i>`,e);t.onmouseleave=hideTip;
+ t.onmouseenter=e=>showTip(S.up[u.b]?upTip(u):`<b>???</b><i>${u.k?"Make $"+fmt(u.k)+" from clicking to unlock.":"Own 1 "+BUILD.find(b=>b.id===u.b).name+" to unlock."}</i>`,e);t.onmouseleave=hideTip;
  $("utiles").appendChild(t);uTile[u.b]=t});
-function renderUps(){let any=false;UPS.forEach(u=>{const el=uEl[u.b],show=(S.owned[u.b]||0)>=1&&!S.up[u.b];el.hidden=!show;if(show){any=true;el.classList.toggle("no",S.money<u.cost)}});$("ups").hidden=!any;let c=0;UPS.forEach(u=>{const t=uTile[u.b],on=!!S.up[u.b];if(on)c++;t.className="tile "+(on?"on":"off");t.textContent=on?u.ic:"?"});$("ucount").textContent="("+c+"/"+UPS.length+")"}
+function renderUps(){let any=false;UPS.forEach(u=>{const el=uEl[u.b],show=(u.k?(S.clickTotal||0)>=u.k:(S.owned[u.b]||0)>=1)&&!S.up[u.b];el.hidden=!show;if(show){any=true;el.classList.toggle("no",S.money<u.cost)}});$("ups").hidden=!any;let c=0;UPS.forEach(u=>{const t=uTile[u.b],on=!!S.up[u.b];if(on)c++;t.className="tile "+(on?"on":"off");t.textContent=on?u.ic:"?";const cc=COL[u.b];t.style.borderColor=on&&cc?cc:"";t.style.background=on&&cc?`radial-gradient(circle,${cc}cc,${cc}44)`:""});$("ucount").textContent="("+c+"/"+UPS.length+")"}
 const bEl={};
 BUILD.forEach(b=>{
  const el=document.createElement("button");el.className="item";
@@ -189,30 +215,33 @@ function earn(n){S.money+=n;S.total+=n;
 function render(){
  $("money").textContent="$"+fmt(Math.floor(S.money*100)/100<1e6?Math.floor(S.money):S.money);
  $("total").textContent="$"+fmt(Math.floor(S.total));
- $("mps").textContent="per second: "+fmt(mps()*gm(),2);
- const bl=Math.ceil(((S.boostEnd||0)-Date.now())/1000);$("boost").hidden=bl<=0;if(bl>0)$("boost").textContent="💰 Gold Rush ×8 · "+bl+"s";
- document.title="$"+fmt(Math.floor(S.money))+" - Money Clicker BETA 1.0";
+ $("st_click").textContent="$"+fmt(Math.floor(S.clickTotal||0));$("st_clicks").textContent=fmt(S.clicks||0);
+ $("st_b").textContent=fmt(BUILD.reduce((t,b)=>t+(S.owned[b.id]||0),0));$("st_time").textContent=dur((Date.now()-(S.start||Date.now()))/1000);
+ $("bname").textContent=S.bank||"Your Bank";devUI();
+ $("mps").textContent="per second: "+fmt(mps()*gm(),2)+" · per click: "+fmt(clickVal()*pm(),2);
+ const bl=Math.ceil(((S.boostEnd||0)-Date.now())/1000);const pl=((S.platEnd||0)-Date.now())/1000,bt=[];if(bl>0)bt.push("🪙 Gold Rush ×8 MPS · "+bl+"s");if(pl>0)bt.push("💎 Platinum Rush ×78 clicks · "+pl.toFixed(1)+"s");$("boost").hidden=!bt.length;$("boost").innerHTML=bt.join("<br>");
+ document.title="$"+fmt(Math.floor(S.money))+" - Money Clicker BETA 1.2.1";
  BUILD.forEach(b=>{const el=bEl[b.id],c=cost(b);
-  el.querySelector(".pr").textContent="$"+fmt(c);
+  el.querySelector(".pr").textContent="$"+fmt(c)+(devOn()?" · payoff "+payoff(c,eff(b)):"");
   el.querySelector(".own").textContent=S.owned[b.id]||"";
   el.classList.toggle("no",S.money<c)});
  let k=0;ACH.forEach(a=>{const on=!!S.ach[a.id];if(on)k++;const t=aEl[a.id];t.className="tile "+(on?"on":"off");t.textContent=on?a.ic:"?"});
  $("acount").textContent="("+k+"/"+ACH.length+")";renderUps();
 }
 $("bill").addEventListener("pointerdown",e=>{
- const cv=gm();earn(cv);render();
- const p=document.createElement("div");p.className="pop";p.textContent="+$"+cv;
+ const cv=clickVal()*pm();S.clickTotal=(S.clickTotal||0)+cv;S.clicks=(S.clicks||0)+1;earn(cv);render();if(!setting("pops"))return;
+ const p=document.createElement("div");p.className="pop";p.textContent="+$"+fmt(cv,2);
  const r=$("bw").getBoundingClientRect();
  p.style.left=(e.clientX-r.left-12)+"px";p.style.top=(e.clientY-r.top-24)+"px";
  $("bw").appendChild(p);setTimeout(()=>p.remove(),900);
 });
-$("reset").onclick=()=>{if(confirm("Wipe your save? All progress will be lost.")){S={money:0,total:0,owned:{},ach:{},up:{}};render();save()}};
+$("reset").onclick=()=>{if(confirm("Wipe your save? All progress will be lost.")){S={money:0,total:0,owned:{},ach:{},up:{},set:S.set,start:Date.now()};render();save()}};
 function save(manual){try{S.t=Date.now();S.closed={mid:$("mid").classList.contains("closed"),right:$("right").classList.contains("closed")};localStorage.setItem(KEY,JSON.stringify(S));if(manual===true)note("Game saved.");return true}catch(e){if(manual===true)note("Couldn’t save here. Use Export to keep a copy.");return false}}
 function note(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),3000)}
 function loadCode(c){try{const o=JSON.parse(atob(c.trim()));
  if(!o||!isFinite(o.money)||!isFinite(o.total)||typeof o.owned!=="object"||!o.owned)throw 0;
  const owned={};BUILD.forEach(b=>{owned[b.id]=Math.max(0,Math.floor(Number(o.owned[b.id])||0))});
- S={money:Math.max(0,o.money),total:Math.max(0,o.total),owned,ach:(o.ach&&typeof o.ach==="object")?o.ach:{},up:(o.up&&typeof o.up==="object")?o.up:{},t:o.t,closed:o.closed};
+ S={money:Math.max(0,o.money),total:Math.max(0,o.total),owned,ach:(o.ach&&typeof o.ach==="object")?o.ach:{},up:(o.up&&typeof o.up==="object")?o.up:{},clickTotal:Math.max(0,Number(o.clickTotal)||0),bank:typeof o.bank==="string"?o.bank.slice(0,32):undefined,clicks:Math.max(0,Number(o.clicks)||0),start:Number(o.start)||Date.now(),set:S.set,t:o.t,closed:o.closed};
  save();render();note("Save loaded!");return true}catch(e){note("That save code isn’t valid.");return false}}
 let ni=0;function news(){$("ticker").textContent=NEWS[ni++%NEWS.length]}
 document.querySelectorAll(".tg").forEach(b=>b.onclick=()=>{const c=b.closest(".col"),cl=c.classList.toggle("closed"),m=c.id==="mid";
@@ -225,18 +254,41 @@ $("ex").onclick=()=>{save();const c=btoa(JSON.stringify(S));$("io").hidden=false
 $("im").onclick=()=>{$("io").hidden=false;$("iot").value="";$("iot").focus()};
 $("iogo").onclick=()=>{if(!$("iot").value.trim())return note("Paste a save code first.");if(confirm("Loading will replace your current progress. Continue?")&&loadCode($("iot").value))$("io").hidden=true};
 $("ioclose").onclick=()=>{$("io").hidden=true};
+const DEVKEY="helpuswithoursealaddiction";
+const devOn=()=>(S.bank||"").trim().toLowerCase()===DEVKEY;
+function devUI(){$("dev").hidden=!devOn()}
+function payoff(c,m){const s=c/m;return s<60?Math.round(s)+"s":s<3600?(s/60).toFixed(1)+"m":(s/3600).toFixed(1)+"h"}
+function devSpawn(k){if(goldEl){goldEl.remove();goldEl=null}spawnGold(k)}
+$("dev").onclick=e=>{const d=e.target.dataset&&e.target.dataset.d;if(!d||!devOn())return;
+ if(d==="gold"||d==="plat")devSpawn(d);else if(d==="k")earn(1e3);else if(d==="m")earn(1e6);else if(d==="b")earn(1e9);else if(d==="clr"){S.boostEnd=0;S.platEnd=0}render()};
+function commitName(){const i=$("bin");if(i.hidden)return;const cancel=i.dataset.x==="1";i.dataset.x="";i.hidden=true;$("bname").hidden=false;
+ const v=i.value.trim().slice(0,32);
+ if(!cancel&&v&&v!==(S.bank||"Your Bank")){S.bank=v;if(!S.ach.a6){S.ach.a6=1;toast("Branding")}save()}render()}
+$("bname").onclick=()=>{$("bin").value=S.bank||"";$("bname").hidden=true;$("bin").hidden=false;$("bin").focus();$("bin").select()};
+$("bin").onblur=commitName;
+$("bin").onkeydown=e=>{if(e.key==="Enter")$("bin").blur();else if(e.key==="Escape"){$("bin").dataset.x="1";$("bin").blur()}};
+function dur(s){s=Math.floor(Math.max(0,s));const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+"d ":"")+(h||d?h+"h ":"")+m+"m "+(s%60)+"s"}
+function setting(k){const s=S.set||{};return k==="short"?!!s.short:s[k]!==false}
+function applySettings(){const s=S.set||{};document.querySelectorAll("#sets input[data-s]").forEach(i=>i.checked=setting(i.dataset.s));
+ $("theme").value=s.theme||"auto";$("ticker").style.display=setting("ticker")?"":"none";
+ if(s.theme==="dark"||s.theme==="light")document.documentElement.dataset.theme=s.theme;else delete document.documentElement.dataset.theme}
+document.querySelectorAll("#sets input[data-s]").forEach(i=>i.onchange=()=>{S.set=S.set||{};S.set[i.dataset.s]=i.checked;applySettings();render();save()});
+$("theme").onchange=()=>{S.set=S.set||{};S.set.theme=$("theme").value;applySettings();save()};
 news();setInterval(news,9000);
-if(S.t){const away=Math.min((Date.now()-S.t)/1000,28800),m=mps();if(away>60&&m>0){const g=m*away;earn(g);setTimeout(()=>note("Welcome back! You earned $"+fmt(Math.floor(g))+" while away."),500)}}
+if(S.t&&setting("offline")){const away=Math.min((Date.now()-S.t)/1000,28800),m=mps();if(away>60&&m>0){const g=m*away;earn(g);setTimeout(()=>note("Welcome back! You earned $"+fmt(Math.floor(g))+" while away."),500)}}
 const gm=()=>Date.now()<(S.boostEnd||0)?8:1;
+const pm=()=>Date.now()<(S.platEnd||0)?78:1;
 const goldDelay=()=>Date.now()+(300+Math.random()*300)*1000;
 let nextGold=goldDelay(),goldEl=null,goldEnd=0;
-function spawnGold(){const g=document.createElement("div");g.id="gold";g.innerHTML="<span>GOLD</span>";
+function spawnGold(kind){const g=document.createElement("div");g.id="gold";const plat=kind==="plat"||(kind!=="gold"&&Math.random()<0.25);if(plat)g.classList.add("plat");g.innerHTML=plat?"<span>PLATINUM</span>":"<span>GOLD</span>";
  g.style.left=(20+Math.random()*Math.max(0,innerWidth-130))+"px";g.style.top=(70+Math.random()*Math.max(0,innerHeight-160))+"px";
- g.onpointerdown=e=>{e.stopPropagation();S.boostEnd=Date.now()+79000;g.remove();goldEl=null;nextGold=goldDelay();note("🪙 Gold Bar! 8x money for 79 seconds!");render()};
+ g.onpointerdown=e=>{e.stopPropagation();if(plat)S.platEnd=Date.now()+7800;else S.boostEnd=Date.now()+79000;g.remove();goldEl=null;nextGold=goldDelay();note(plat?"💎 Platinum Rush! ×78 clicks for 7.8 seconds!":"🪙 Gold Rush! ×8 MPS for 79 seconds!");render()};
  document.body.appendChild(g);goldEl=g;goldEnd=Date.now()+13000}
 function goldTick(){const n=Date.now();
+ if(goldEl){const p=Math.max(0,Math.min(1,1-(goldEnd-n)/13000)),s=Math.floor(p*26);if(s!==goldEl._s){goldEl._s=s;goldEl.style.animationDuration=(0.4+1.4*p).toFixed(2)+"s,13s"}}
  if(goldEl&&n>goldEnd){goldEl.remove();goldEl=null;nextGold=goldDelay()}
  else if(!goldEl&&n>=nextGold&&!document.hidden)spawnGold()}
+if(!S.start)S.start=Date.now();applySettings();
 let last=performance.now();
 setInterval(()=>{const n=performance.now(),dt=(n-last)/1000;last=n;const m=mps();if(m>0)earn(m*dt*gm());goldTick();render()},100);
 setInterval(save,5000);
