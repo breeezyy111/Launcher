@@ -11,6 +11,7 @@
   'use strict';
 
   const STORE_KEY = 'launcher:v1';
+  const APPS_CACHE_KEY = 'launcher:apps-cache';
   const $ = (sel) => document.querySelector(sel);
 
   // ---------- state ----------
@@ -64,6 +65,13 @@
     }
   }
 
+  /** Apps that can't work offline: other sites, or ones flagged "needsNetwork" in apps.json. */
+  function needsNet(app) {
+    if (app.needsNetwork) return true;
+    try { return new URL(app.url, location.href).origin !== location.origin; } catch { return false; }
+  }
+  const isOffline = () => navigator.onLine === false;
+
   function matches(app, q) {
     if (!q) return true;
     const hay = [app.name, app.description, app.category, app.url, ...(app.tags || [])].join(' ').toLowerCase();
@@ -103,6 +111,12 @@
   const ctaLabel = (app) => (app.embed ? (/game/i.test(app.category || '') ? 'Play' : 'Open') : 'Visit');
 
   function launch(app, el, e) {
+    if (isOffline() && needsNet(app)) {
+      e.preventDefault();
+      toast(`${app.name} needs the internet`);
+      return;
+    }
+    el.classList.remove('launching'); void el.offsetWidth; el.classList.add('launching');
     recordLaunch(app.id);
     // Plain clicks on embeddable apps play inside the launcher; ctrl/cmd-click still opens a tab.
     if (app.embed && el.getAttribute('href') !== '#' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
@@ -130,6 +144,7 @@
     a.dataset.id = app.id;
     if (!app.embed && app.newTab !== false) { a.target = '_blank'; a.rel = 'noopener'; }
     if (app.color) a.style.setProperty('--tile-color', app.color);
+    if (needsNet(app)) a.classList.add('needs-net');
 
     const ico = document.createElement('div');
     ico.className = 'ico';
@@ -224,7 +239,11 @@
     $('#allTitle').parentElement.hidden = rest.length === 0 && pinned.length > 0;
     $('#allTitle').textContent = pinned.length ? 'Everything else' : (category === 'All' ? 'All apps' : category);
     $('#allCount').textContent = rest.length || '';
+    $('#grid').removeAttribute('aria-busy');
     $('#empty').hidden = visible.length > 0;
+    const filtered = !!query || category !== 'All';
+    $('#emptyText').textContent = filtered ? 'No apps match that.' : 'Couldn’t load your apps.';
+    $('#emptyBtn').textContent = filtered ? (query ? 'Clear search' : 'Show all apps') : 'Try again';
     tiles().forEach((t, i) => t.style.setProperty('--i', i));
 
     renderIntro(apps);
@@ -286,7 +305,16 @@
     local.pinned = local.pinned.includes(id) ? local.pinned.filter((p) => p !== id) : [...local.pinned, id];
     saveLocal();
     render();
+    document.querySelector(`.tile[data-id="${CSS.escape(id)}"] .tile-tools button`)?.classList.add('popped');
   }
+
+  $('#emptyBtn').addEventListener('click', () => {
+    if (query || category !== 'All') {
+      search.value = ''; query = ''; category = 'All'; selected = 0; render();
+    } else {
+      boot();
+    }
+  });
 
   // ---------- editor ----------
   const dialog = $('#editor');
@@ -403,20 +431,48 @@
   // ---------- player (apps that run inside the launcher) ----------
   const player = $('#player');
   const frame = $('#playerFrame');
+  const loading = $('#playerLoading');
   let playingId = null;
+  let stuckTimer;
+
+  // Cover the frame with the app's icon until it has actually loaded, so it never opens blank.
+  function showLoading(app, href) {
+    clearTimeout(stuckTimer);
+    loading.classList.remove('done', 'stuck');
+    loading.hidden = false;
+    loading.style.setProperty('--tile-color', app.color || '');
+    setIcon($('#playerLoadingIcon'), app);
+    $('#playerLoadingText').textContent = `Loading ${app.name}…`;
+    const open = $('#playerLoadingOpen');
+    open.href = href;
+    open.hidden = true;
+    stuckTimer = setTimeout(() => {
+      loading.classList.add('stuck');
+      $('#playerLoadingText').textContent = isOffline() && needsNet(app)
+        ? `${app.name} needs the internet. You’re offline.`
+        : `${app.name} is taking a while.`;
+      open.hidden = false;
+    }, isOffline() && needsNet(app) ? 0 : 8000);
+  }
+  frame.addEventListener('load', () => {
+    if (!playingId) return;
+    clearTimeout(stuckTimer);
+    loading.classList.add('done');
+    setTimeout(() => { if (loading.classList.contains('done')) loading.hidden = true; }, 300);
+  });
 
   function syncPlayer() {
     const m = location.hash.match(/^#\/play\/(.+)$/);
     const app = m && allApps().find((a) => a.id === decodeURIComponent(m[1]));
     const href = app ? safeHref(app.url) : '#';
     if (!app || href === '#') {
-      if (playingId) { frame.src = 'about:blank'; playingId = null; }
+      if (playingId) { playingId = null; frame.src = 'about:blank'; clearTimeout(stuckTimer); loading.hidden = true; }
       player.hidden = true;
       document.body.classList.remove('playing');
       document.title = 'Launcher';
       return;
     }
-    if (playingId !== app.id) { frame.src = href; playingId = app.id; }
+    if (playingId !== app.id) { playingId = app.id; showLoading(app, href); frame.src = href; }
     $('#playerName').textContent = app.name;
     const icon = $('#playerIcon');
     icon.hidden = !isImage(app.icon);
@@ -469,21 +525,52 @@
   });
 
   // ---------- boot ----------
+  const toApps = (data) => (data.apps || []).map((a) => ({ ...a, id: a.id || slug(a.name) }));
+  let booted = false;
+
   async function boot() {
+    // Show the last known app list right away; refresh it from the network behind the scenes.
+    let cachedRaw = null;
+    if (!booted) {
+      try { cachedRaw = localStorage.getItem(APPS_CACHE_KEY); } catch { /* ignore */ }
+      if (cachedRaw) {
+        try { baseApps = toApps(JSON.parse(cachedRaw)); firstPaint(); } catch { cachedRaw = null; }
+      }
+    }
     try {
       const res = await fetch('apps.json', { cache: 'no-cache' });
       if (!res.ok) throw new Error(res.status);
-      const data = await res.json();
-      baseApps = (data.apps || []).map((a) => ({ ...a, id: a.id || slug(a.name) }));
+      const raw = await res.text();
+      if (raw !== cachedRaw || !booted) {
+        baseApps = toApps(JSON.parse(raw));
+        try { localStorage.setItem(APPS_CACHE_KEY, raw); } catch { /* ignore */ }
+        booted ? render() : firstPaint();
+      }
     } catch {
-      baseApps = [];
-      toast('Couldn’t load apps.json — showing local apps only');
+      if (!booted) firstPaint();
+      if (!cachedRaw) toast(isOffline() ? 'You’re offline' : 'Couldn’t load apps.json');
     }
+  }
+
+  function firstPaint() {
     render();
+    if (booted) return;
+    booted = true;
     syncPlayer();
     // Cards rise in once on load, not on every search keystroke.
     setTimeout(() => document.body.classList.add('settled'), 900);
   }
+
+  // ---------- offline ----------
+  function syncOnline(announce) {
+    const off = isOffline();
+    document.body.classList.toggle('offline', off);
+    $('#offline').hidden = !off;
+    if (announce) toast(off ? 'You’re offline. Built-in apps still work.' : 'Back online');
+  }
+  window.addEventListener('online', () => { syncOnline(true); boot(); });
+  window.addEventListener('offline', () => syncOnline(true));
+  syncOnline(false);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
