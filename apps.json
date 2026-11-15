@@ -327,6 +327,23 @@
       "label": "LTZ"
     },
     {
+      "id": "dino-game",
+      "name": "Dino Game",
+      "description": "Endless runner: help Rex dash across the desert, jumping thornblooms and boulders and ducking pterodactyls. Gets faster the longer you last.",
+      "url": "dino-game/",
+      "icon": "icons/dino-game.svg",
+      "color": "#2ec4b6",
+      "category": "Games",
+      "tags": [
+        "runner",
+        "game",
+        "arcade",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true
+    },
+    {
       "id": "soundbloom",
       "name": "Soundbloom",
       "description": "Music playground: make full songs on a grid, loop polyrhythm drums, jam on keys, draw your own waveforms. Share songs as links and export WAV or MIDI.",
