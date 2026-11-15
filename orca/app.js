@@ -22,9 +22,22 @@ let busy = false;
 
 // ---------- Rendering ----------
 
+// Orca's answers can be steered by text hidden in files or pages it reads ("prompt injection").
+// So answers never load images (an image link could quietly send chat text to another site)
+// and links always open in a new tab, away from Orca.
+if (window.DOMPurify) {
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+const PURIFY_OPTIONS = { FORBID_TAGS: ['img', 'picture', 'source', 'video', 'audio', 'iframe', 'form', 'input', 'button', 'style'], FORBID_ATTR: ['style', 'srcset'] };
+
 function renderMarkdown(text) {
   if (window.marked && window.DOMPurify) {
-    return DOMPurify.sanitize(marked.parse(text));
+    return DOMPurify.sanitize(marked.parse(text), PURIFY_OPTIONS);
   }
   const div = document.createElement('div');
   div.textContent = text;
