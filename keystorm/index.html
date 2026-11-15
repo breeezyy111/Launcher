@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keystorm</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#10131a; --panel:#181d27; --text:#e6e9f0; --dim:#5a6378; --muted:#8a93a8; --accent:#ffd23f; --bad:#ff5c7a; --good:#e6e9f0; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f4f5f8; --panel:#ffffff; --text:#1a1e27; --dim:#a9b0bf; --muted:#6a7387; --accent:#e0a800; --good:#1a1e27; } }
+  * { box-sizing:border-box; margin:0; }
+  html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; justify-content:center; padding:24px 16px calc(24px + env(safe-area-inset-bottom)); }
+  main { width:min(820px,100%); display:flex; flex-direction:column; gap:22px; }
+  header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  h1 { font-size:22px; letter-spacing:-.02em; margin-right:auto; display:flex; align-items:center; gap:8px; }
+  h1 b { color:var(--accent); }
+  .modes { display:flex; gap:4px; background:var(--panel); padding:4px; border-radius:12px; flex-wrap:wrap; }
+  .modes button { border:0; background:none; color:var(--muted); font:inherit; font-weight:700; border-radius:9px; min-height:36px; padding:0 12px; cursor:pointer; }
+  .modes button[aria-pressed=true] { color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  .modes i { width:1px; background:var(--dim); margin:6px 4px; opacity:.5; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .live { display:flex; gap:22px; font-size:22px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; min-height:30px; }
+  .live span small { font-size:13px; color:var(--muted); font-weight:600; margin-left:4px; }
+  #box { position:relative; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:clamp(20px,3.4vw,28px); line-height:1.6; height:calc(1.6em * 3); overflow:hidden; color:var(--dim); cursor:text; outline:none; }
+  #words { display:flex; flex-wrap:wrap; gap:0 .6em; }
+  .w { position:relative; }
+  .w.err { text-decoration:underline var(--bad) 2px; text-underline-offset:6px; }
+  .c.ok { color:var(--good); }
+  .c.bad { color:var(--bad); }
+  .c.extra { color:var(--bad); opacity:.7; }
+  #caret { position:absolute; width:2.5px; height:1.2em; background:var(--accent); border-radius:2px; transition:left .08s, top .08s; animation:blink 1s step-end infinite; }
+  #caret.typing { animation:none; }
+  @keyframes blink { 50% { opacity:0; } }
+  #focusHint { position:absolute; inset:0; display:grid; place-items:center; background:color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter:blur(4px); color:var(--text); font-family:system-ui; font-size:18px; font-weight:600; }
+  #hidden { position:absolute; opacity:0; left:0; top:0; width:1px; height:1px; }
+  .help { color:var(--muted); font-size:13px; text-align:center; }
+  .help kbd { background:var(--panel); border-radius:5px; padding:2px 6px; font-size:12px; }
+  #results { display:grid; gap:16px; }
+  .big { display:flex; gap:28px; flex-wrap:wrap; }
+  .big div { display:flex; flex-direction:column; }
+  .big small { color:var(--muted); font-weight:600; font-size:14px; }
+  .big b { font-size:52px; color:var(--accent); line-height:1.1; font-variant-numeric:tabular-nums; }
+  .big .s b { font-size:28px; color:var(--text); }
+  #chart { width:100%; height:140px; background:var(--panel); border-radius:14px; }
+  .again { align-self:start; border:0; background:var(--accent); color:#1a1400; font:inherit; font-weight:800; border-radius:12px; min-height:46px; padding:0 22px; cursor:pointer; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><b>⌁</b>Keystorm</h1>
+    <div class="modes" id="modes">
+      <button data-m="time" data-v="15">15s</button><button data-m="time" data-v="30">30s</button><button data-m="time" data-v="60">60s</button><i></i>
+      <button data-m="words" data-v="25">25 words</button><button data-m="words" data-v="50">50 words</button><i></i>
+      <button data-x="punct">Punctuation</button><button data-x="nums">Numbers</button>
+    </div>
+  </header>
+  <div class="live" id="live"></div>
+  <div id="test">
+    <div id="box" tabindex="0" aria-label="Typing area. Start typing.">
+      <div id="words"></div><div id="caret"></div>
+      <div id="focusHint" hidden>Click or tap here to keep typing</div>
+    </div>
+    <input id="hidden" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-hidden="true">
+  </div>
+  <div id="results" hidden>
+    <div class="big">
+      <div><small>WPM</small><b id="rWpm"></b></div>
+      <div><small>Accuracy</small><b id="rAcc"></b></div>
+      <div class="s"><small>Raw</small><b id="rRaw"></b></div>
+      <div class="s"><small>Best</small><b id="rBest"></b></div>
+    </div>
+    <canvas id="chart"></canvas>
+    <p class="sub" id="rNote" style="color:var(--muted)"></p>
+    <button class="again" id="again">Try again</button>
+  </div>
+  <p class="help"><kbd>Tab</kbd> restart · typing starts the timer · spaces jump to the next word</p>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id), KEY = 'keystorm:';
+  const WORDS = ('the be of and a to in he have it that for they with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line city put close case force meet once water upon war build hear light unite live every country bring center let side try provide continue name certain power pay result question study woman member until far night always service away report something company week church toward start social room figure nature though young less enough almost read include president nothing yet better big boy cost business value second why clear expect family complete act sense mind experience art next near direct car law industry important girl god several matter usual rather per often kind among white reason action return foot care simple within love human along appear doctor believe speak active student month drive concern best door hope example inform body ever least probable understand reach effect different idea whole control condition field pass fall note special talk particular today measure walk team sort death').split(' ');
+  let mode = JSON.parse(localStorage.getItem(KEY + 'mode') || '{"m":"time","v":30,"punct":false,"nums":false}');
+  let words, typed, wi, start, timer, done, samples, keys, errs;
+
+  function makeWords(n) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      let w = WORDS[Math.floor(Math.random() * WORDS.length)];
+      if (mode.nums && Math.random() < .12) w = String(Math.floor(Math.random() * 1000));
+      if (mode.punct) {
+        if (i === 0 || /[.?!]$/.test(out[i - 1] || '')) w = w[0].toUpperCase() + w.slice(1);
+        const r = Math.random();
+        if (r < .08) w += ','; else if (r < .13) w += '.'; else if (r < .15) w += '?'; else if (r < .16) w = `"${w}"`;
+      }
+      out.push(w);
+    }
+    return out;
+  }
+
+  function reset() {
+    clearInterval(timer); start = 0; done = false; wi = 0; samples = []; keys = 0; errs = 0;
+    words = makeWords(mode.m === 'words' ? mode.v : 120); typed = words.map(() => '');
+    $('results').hidden = true; $('test').hidden = false;
+    $('words').style.transform = '';
+    $('words').replaceChildren(...words.map((w) => { const d = document.createElement('span'); d.className = 'w'; for (const ch of w) { const c = document.createElement('span'); c.className = 'c'; c.textContent = ch; d.append(c); } return d; }));
+    document.querySelectorAll('#modes [data-m]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.m === mode.m && +b.dataset.v === mode.v)));
+    document.querySelectorAll('#modes [data-x]').forEach((b) => b.setAttribute('aria-pressed', String(!!mode[b.dataset.x])));
+    $('hidden').value = '';
+    live(); place(); focusBox();
+  }
+
+  function paintWord(i) {
+    const el = $('words').children[i], w = words[i], t = typed[i];
+    el.querySelectorAll('.extra').forEach((x) => x.remove());
+    [...el.children].forEach((c, k) => { c.className = 'c' + (k < t.length ? (t[k] === w[k] ? ' ok' : ' bad') : ''); });
+    for (let k = w.length; k < t.length && k < w.length + 10; k++) { const c = document.createElement('span'); c.className = 'c extra'; c.textContent = t[k]; el.append(c); }
+    el.classList.toggle('err', i < wi && t !== w);
+  }
+
+  function place() {
+    const el = $('words').children[wi]; if (!el) return;
+    // Keep the current line as the second visible line.
+    const lineH = el.offsetHeight, top = el.offsetTop;
+    $('words').style.transform = top > lineH ? `translateY(${lineH - top}px)` : '';
+    const chars = el.children, k = typed[wi].length, box = $('box').getBoundingClientRect();
+    if (k < chars.length) { const r = chars[k].getBoundingClientRect(); setCaret(r.left - box.left, r.top - box.top, r.height); }
+    else { const r = (chars[chars.length - 1] || el).getBoundingClientRect(); setCaret(r.right - box.left, r.top - box.top, r.height); }
+  }
+  function setCaret(x, y, h) { const c = $('caret'); c.style.left = x + 'px'; c.style.top = y + h * .15 + 'px'; }
+
+  function onInput(ch) {
+    if (done) return;
+    if (!start) { start = performance.now(); timer = setInterval(tick, 200); }
+    keys++;
+    $('caret').classList.add('typing'); clearTimeout(onInput.t); onInput.t = setTimeout(() => $('caret').classList.remove('typing'), 500);
+    if (ch === ' ') {
+      if (!typed[wi]) return;
+      if (typed[wi] !== words[wi]) errs++;
+      wi++; paintWord(wi - 1);
+      if (mode.m === 'words' && wi >= words.length) return finish();
+      if (wi > words.length - 30 && mode.m === 'time') { const more = makeWords(60); words.push(...more); typed.push(...more.map(() => '')); $('words').append(...more.map((w) => { const d = document.createElement('span'); d.className = 'w'; for (const c of w) { const s = document.createElement('span'); s.className = 'c'; s.textContent = c; d.append(s); } return d; })); }
+    } else {
+      const w = words[wi];
+      if (typed[wi].length < w.length + 10) typed[wi] += ch;
+      if (typed[wi].length <= w.length && ch !== w[typed[wi].length - 1]) errs++;
+      paintWord(wi);
+      if (mode.m === 'words' && wi === words.length - 1 && typed[wi] === w) { wi++; return finish(); }
+    }
+    place(); live();
+  }
+  function back(word) {
+    if (done) return;
+    if (!typed[wi] && wi > 0 && typed[wi - 1] !== words[wi - 1]) { wi--; paintWord(wi); }
+    else typed[wi] = word ? '' : typed[wi].slice(0, -1);
+    paintWord(wi); place(); live();
+  }
+
+  function correctChars() { let n = 0; for (let i = 0; i < wi; i++) if (typed[i] === words[i]) n += words[i].length + 1; for (let k = 0; k < typed[wi]?.length; k++) if (typed[wi][k] === words[wi]?.[k]) n++; return n; }
+  function typedChars() { let n = 0; for (let i = 0; i <= wi && i < typed.length; i++) n += typed[i].length + (i < wi ? 1 : 0); return n; }
+  const mins = () => start ? (performance.now() - start) / 60000 : 0;
+  function live() {
+    const left = mode.m === 'time' ? Math.max(0, mode.v - Math.floor(mins() * 60)) : `${wi}/${words.length}`;
+    const wpm = mins() > 0.02 ? Math.round(correctChars() / 5 / mins()) : 0;
+    $('live').innerHTML = `<span>${left}</span><span>${start ? wpm : ''}${start ? '<small>wpm</small>' : ''}</span>`;
+  }
+  function tick() {
+    const t = mins() * 60;
+    if (Math.floor(t) > samples.length - 1) samples.push(Math.round(correctChars() / 5 / Math.max(mins(), 1 / 60)));
+    if (mode.m === 'time' && t >= mode.v) return finish();
+    live();
+  }
+  function finish() {
+    done = true; clearInterval(timer);
+    const m = mins(), wpm = Math.round(correctChars() / 5 / m), raw = Math.round(typedChars() / 5 / m);
+    const acc = keys ? Math.max(0, Math.round((1 - errs / keys) * 100)) : 0;
+    const bk = KEY + 'best-' + mode.m + mode.v, best = +localStorage.getItem(bk) || 0;
+    if (wpm > best && acc >= 75) localStorage.setItem(bk, wpm);
+    $('rWpm').textContent = wpm; $('rAcc').textContent = acc + '%'; $('rRaw').textContent = raw; $('rBest').textContent = Math.max(best, acc >= 75 ? wpm : 0);
+    $('rNote').textContent = wpm > best && acc >= 75 ? 'New personal best!' : acc < 75 ? 'Accuracy under 75% doesn’t count for a best. Slow down a little.' : `${mode.m === 'time' ? mode.v + ' seconds' : mode.v + ' words'}${mode.punct ? ' · punctuation' : ''}${mode.nums ? ' · numbers' : ''}`;
+    $('test').hidden = true; $('results').hidden = false; $('live').innerHTML = '';
+    drawChart(samples.length > 1 ? samples : [wpm, wpm]);
+    $('again').focus();
+  }
+  function drawChart(s) {
+    const cv = $('chart'), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w * dpr; cv.height = h * dpr; const x = cv.getContext('2d'); x.scale(dpr, dpr);
+    const max = Math.max(...s, 10) * 1.15, px = (i) => 16 + (i / (s.length - 1)) * (w - 32), py = (v) => h - 16 - (v / max) * (h - 32);
+    const css = getComputedStyle(document.documentElement);
+    x.strokeStyle = css.getPropertyValue('--dim'); x.globalAlpha = .4; x.lineWidth = 1;
+    for (let k = 1; k < 4; k++) { x.beginPath(); x.moveTo(16, py(max * k / 4)); x.lineTo(w - 16, py(max * k / 4)); x.stroke(); }
+    x.globalAlpha = 1; x.strokeStyle = css.getPropertyValue('--accent'); x.lineWidth = 3; x.lineJoin = 'round';
+    x.beginPath(); s.forEach((v, i) => i ? x.lineTo(px(i), py(v)) : x.moveTo(px(i), py(v))); x.stroke();
+  }
+
+  function focusBox() { $('hidden').focus({ preventScroll: true }); $('focusHint').hidden = true; }
+  $('box').addEventListener('click', focusBox);
+  $('hidden').addEventListener('blur', () => { setTimeout(() => { if (document.activeElement !== $('hidden') && !done && !$('test').hidden) $('focusHint').hidden = false; }, 100); });
+  // Phones type into a hidden input; desktop keys come through keydown too.
+  $('hidden').addEventListener('input', (e) => {
+    const v = $('hidden').value; $('hidden').value = '';
+    if (e.inputType === 'deleteContentBackward') return back();
+    for (const ch of v) onInput(ch);
+  });
+  $('hidden').addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') { e.preventDefault(); reset(); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); back(e.ctrlKey || e.altKey || e.metaKey); return; }
+  });
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && document.activeElement !== $('hidden')) { e.preventDefault(); reset(); }
+    else if (e.key === 'Enter' && done) reset();
+  });
+  document.querySelectorAll('#modes [data-m]').forEach((b) => b.addEventListener('click', () => { mode.m = b.dataset.m; mode.v = +b.dataset.v; localStorage.setItem(KEY + 'mode', JSON.stringify(mode)); reset(); }));
+  document.querySelectorAll('#modes [data-x]').forEach((b) => b.addEventListener('click', () => { mode[b.dataset.x] = !mode[b.dataset.x]; localStorage.setItem(KEY + 'mode', JSON.stringify(mode)); reset(); }));
+  $('again').addEventListener('click', reset);
+  addEventListener('resize', place);
+  reset();
+})();
+</script>
+</body>
+</html>

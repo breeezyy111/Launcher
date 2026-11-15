@@ -12,14 +12,34 @@
 
   const STORE_KEY = 'launcher:v1';
   const APPS_CACHE_KEY = 'launcher:apps-cache';
+  const VIEW_KEY = 'launcher:view';
   const $ = (sel) => document.querySelector(sel);
 
   // ---------- state ----------
   let baseApps = [];
   let local = loadLocal();
   let query = '';
-  let category = 'All';
   let selected = 0;
+  // Where you are: 'Home' (rows by group), 'All', or one section such as 'Games'.
+  // genre narrows Games down (Action, Puzzle…). sort applies to the grid views.
+  let { view, genre, sort } = loadView();
+
+  // Sections and game types show in this order; anything else in apps.json goes after, A to Z.
+  const SECTION_ORDER = ['Games', 'Create', 'Tools', 'Learn & Explore'];
+  const GENRE_ORDER = ['Action', 'Arcade', 'Puzzle', 'Casual', 'Board & Party'];
+  const NEW_DAYS = 21;
+
+  function loadView() {
+    const d = { view: 'Home', genre: 'All', sort: 'recent' };
+    try { return { ...d, ...JSON.parse(localStorage.getItem(VIEW_KEY) || '{}') }; } catch { return d; }
+  }
+  function saveView() {
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify({ view, genre, sort })); } catch { /* ignore */ }
+  }
+  function go(v, g = 'All') {
+    view = v; genre = g; selected = 0; saveView(); render();
+    window.scrollTo({ top: Math.min(window.scrollY, $('#filters').offsetTop - 80), behavior: 'smooth' });
+  }
 
   function loadLocal() {
     const empty = { overrides: {}, pinned: [], launches: {} };
@@ -74,16 +94,27 @@
 
   function matches(app, q) {
     if (!q) return true;
-    const hay = [app.name, app.description, app.category, app.url, ...(app.tags || [])].join(' ').toLowerCase();
+    const hay = [app.name, app.description, app.category, app.genre, app.url, ...(app.tags || [])].join(' ').toLowerCase();
     return q.toLowerCase().split(/\s+/).every((term) => hay.includes(term));
   }
 
-  function sortApps(apps) {
+  function sortApps(apps, by = 'recent') {
     const l = local.launches;
-    return apps.sort((a, b) =>
-      ((l[b.id]?.last || 0) - (l[a.id]?.last || 0)) || a.name.localeCompare(b.name)
-    );
+    const az = (a, b) => a.name.localeCompare(b.name);
+    const cmp = {
+      recent: (a, b) => ((l[b.id]?.last || 0) - (l[a.id]?.last || 0)) || az(a, b),
+      most: (a, b) => ((l[b.id]?.count || 0) - (l[a.id]?.count || 0)) || az(a, b),
+      new: (a, b) => (b.added || '').localeCompare(a.added || '') || az(a, b),
+      az,
+    }[by] || az;
+    return apps.sort(cmp);
   }
+
+  const isNew = (app) => !!app.added && (Date.now() - Date.parse(app.added)) / 864e5 < NEW_DAYS;
+  const ordered = (list, order) => [...new Set(list)].sort((a, b) => {
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
 
   let toastTimer;
   function toast(msg) {
@@ -100,6 +131,9 @@
     edit: '<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/>',
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     play: '<path d="M7 4.5v15l12-7.5z"/>',
+    home: '<path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/>',
+    left: '<path d="M15 6l-6 6 6 6"/>',
+    right: '<path d="M9 6l6 6-6 6"/>',
   };
   function icon(name, fill) {
     const span = document.createElement('span');
@@ -164,8 +198,9 @@
 
     const meta = document.createElement('div');
     meta.className = 'meta';
-    if (app.status) meta.append(badge(app.status, STATUS[app.status] || app.status));
-    if (app.category) meta.append(badge('', app.category));
+    if (isNew(app)) meta.append(badge('new', 'New'));
+    if (app.status && !(isNew(app) && app.status === 'live')) meta.append(badge(app.status, STATUS[app.status] || app.status));
+    meta.append(badge('', app.genre || app.category || 'App'));
     if (app.label) meta.append(badge('label', app.label));
     const cta = document.createElement('span');
     cta.className = 'tile-cta';
@@ -178,7 +213,7 @@
     tools.className = 'tile-tools';
     const pinned = local.pinned.includes(app.id);
     tools.append(
-      toolBtn(icon('star', pinned), pinned ? 'Unpin' : 'Pin', () => togglePin(app.id), pinned),
+      toolBtn(icon('star', pinned), pinned ? 'Remove from favorites' : 'Add to favorites', () => togglePin(app.id), pinned),
       toolBtn(icon('edit'), 'Edit', () => openEditor(app))
     );
     a.append(tools);
@@ -205,57 +240,172 @@
     return b;
   }
 
-  function render() {
-    const apps = allApps();
-
-    // Category chips
-    const cats = ['All', ...new Set(apps.map((a) => a.category).filter(Boolean).sort())];
-    if (!cats.includes(category)) category = 'All';
-    const filters = $('#filters');
-    filters.replaceChildren(...cats.map((c) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'chip';
-      const n = c === 'All' ? apps.length : apps.filter((a) => a.category === c).length;
+  function chip(label, n, pressed, onClick, ico) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    if (ico) b.append(icon(ico));
+    b.append(label);
+    if (n !== undefined) {
       const count = document.createElement('span');
       count.className = 'chip-count';
       count.textContent = n;
-      b.append(c, count);
-      b.setAttribute('aria-pressed', String(c === category));
-      b.addEventListener('click', () => { category = c; selected = 0; render(); });
-      return b;
-    }));
-    filters.hidden = cats.length <= 2;
-    $('#categoryList').replaceChildren(...cats.slice(1).map((c) => Object.assign(document.createElement('option'), { value: c })));
+      b.append(count);
+    }
+    b.setAttribute('aria-pressed', String(pressed));
+    b.addEventListener('click', onClick);
+    return b;
+  }
 
-    const visible = sortApps(apps.filter((a) => matches(a, query) && (category === 'All' || a.category === category)));
-    const pinned = visible.filter((a) => local.pinned.includes(a.id))
-      .sort((a, b) => local.pinned.indexOf(a.id) - local.pinned.indexOf(b.id));
-    const rest = visible.filter((a) => !local.pinned.includes(a.id));
+  function render() {
+    const apps = allApps();
+    const sections = ordered(apps.map((a) => a.category).filter(Boolean), SECTION_ORDER);
+    if (view !== 'Home' && view !== 'All' && !sections.includes(view)) view = 'Home';
+    const inView = (a) => view === 'Home' || view === 'All' || a.category === view;
+    const genres = ordered(apps.filter((a) => a.category === view && a.genre).map((a) => a.genre), GENRE_ORDER);
+    if (genre !== 'All' && !genres.includes(genre)) genre = 'All';
 
-    $('#pinnedSection').hidden = pinned.length === 0;
-    $('#pinned').replaceChildren(...pinned.map(tile));
-    $('#grid').replaceChildren(...rest.map(tile));
-    $('#allTitle').parentElement.hidden = rest.length === 0 && pinned.length > 0;
-    $('#allTitle').textContent = pinned.length ? 'Everything else' : (category === 'All' ? 'All apps' : category);
-    $('#allCount').textContent = rest.length || '';
+    // Section chips: Home, All, then each section. A section with types (Games) gets a second row.
+    $('#filters').replaceChildren(
+      chip('Home', undefined, view === 'Home' && !query, () => { clearSearch(); go('Home'); }, 'home'),
+      chip('All', apps.length, view === 'All', () => go('All')),
+      ...sections.map((c) => chip(c, apps.filter((a) => a.category === c).length, view === c && genre === 'All', () => go(c)))
+    );
+    const sub = $('#subfilters');
+    sub.hidden = genres.length < 2 || view === 'Home' || view === 'All';
+    if (!sub.hidden) {
+      sub.replaceChildren(
+        chip(`All ${view.toLowerCase()}`, undefined, genre === 'All', () => go(view)),
+        ...genres.map((g) => chip(g, apps.filter((a) => a.category === view && a.genre === g).length, genre === g, () => go(view, g)))
+      );
+    }
+    $('#categoryList').replaceChildren(...sections.map((c) => Object.assign(document.createElement('option'), { value: c })));
+    $('#genreList').replaceChildren(...ordered(apps.map((a) => a.genre).filter(Boolean), GENRE_ORDER)
+      .map((g) => Object.assign(document.createElement('option'), { value: g })));
+
+    const home = view === 'Home' && !query;
+    $('#shelves').hidden = !home;
+    $('#gridSection').hidden = home;
+    $('#sortWrap').hidden = !!query;
+
+    if (home) {
+      renderShelves(apps, sections);
+      $('#pinnedSection').hidden = true;
+      $('#empty').hidden = apps.length > 0;
+    } else {
+      // Search looks through everything; otherwise show the chosen section/type as one grid.
+      const visible = sortApps(apps.filter((a) => matches(a, query) &&
+        (query || (inView(a) && (genre === 'All' || a.genre === genre)))), query ? 'recent' : sort);
+      const pinned = query ? [] : visible.filter((a) => local.pinned.includes(a.id))
+        .sort((a, b) => local.pinned.indexOf(a.id) - local.pinned.indexOf(b.id));
+      const rest = visible.filter((a) => !pinned.includes(a));
+      $('#pinnedSection').hidden = pinned.length === 0;
+      $('#pinned').replaceChildren(...pinned.map(tile));
+      $('#grid').replaceChildren(...rest.map(tile));
+      const where = query ? 'Results' : view === 'All' ? 'All apps' : genre !== 'All' ? genre : view;
+      $('#allTitle').textContent = pinned.length ? `More in ${where === 'All apps' ? 'all apps' : where}` : where;
+      $('#allCount').textContent = rest.length || '';
+      $('#gridSection').querySelector('.grid-head').hidden = rest.length === 0 && pinned.length > 0;
+      $('#sort').value = sort;
+      $('#empty').hidden = visible.length > 0;
+    }
     $('#grid').removeAttribute('aria-busy');
-    $('#empty').hidden = visible.length > 0;
-    const filtered = !!query || category !== 'All';
-    $('#emptyText').textContent = filtered ? 'No apps match that.' : 'Couldn’t load your apps.';
-    $('#emptyBtn').textContent = filtered ? (query ? 'Clear search' : 'Show all apps') : 'Try again';
-    tiles().forEach((t, i) => t.style.setProperty('--i', i));
+    const filtered = !!query || !home;
+    $('#emptyText').textContent = query ? `Nothing matches “${query}”.` : filtered ? 'Nothing here yet.' : 'Couldn’t load your apps.';
+    $('#emptyBtn').textContent = query ? 'Clear search' : filtered ? 'Go home' : 'Try again';
+    tiles().forEach((t, i) => t.style.setProperty('--i', Math.min(i, 16)));
 
     renderIntro(apps);
     renderHero(apps);
     highlight();
   }
 
+  /** Home: a row per shelf. Recently played, favorites and new first, then each type and section. */
+  function renderShelves(apps, sections) {
+    const l = local.launches;
+    const shelves = [];
+    const recent = apps.filter((a) => l[a.id]?.last).sort((a, b) => l[b.id].last - l[a.id].last).slice(0, 12);
+    if (recent.length) shelves.push({ title: 'Recently played', apps: recent, see: () => { sort = 'recent'; go('All'); } });
+    const favs = local.pinned.map((id) => apps.find((a) => a.id === id)).filter(Boolean);
+    if (favs.length) shelves.push({ title: 'Favorites', apps: favs, star: true });
+    const fresh = sortApps(apps.filter(isNew), 'new');
+    if (fresh.length) shelves.push({ title: 'New', apps: fresh, see: () => { sort = 'new'; go('All'); } });
+    for (const sec of sections) {
+      const inSec = apps.filter((a) => a.category === sec);
+      const types = ordered(inSec.map((a) => a.genre).filter(Boolean), GENRE_ORDER);
+      if (types.length > 1) {
+        for (const g of types) {
+          shelves.push({ title: g, kicker: sec, apps: sortApps(inSec.filter((a) => a.genre === g)), see: () => go(sec, g) });
+        }
+        const loose = inSec.filter((a) => !a.genre);
+        if (loose.length) shelves.push({ title: `More ${sec.toLowerCase()}`, apps: sortApps(loose), see: () => go(sec) });
+      } else {
+        shelves.push({ title: sec, apps: sortApps(inSec), see: () => go(sec) });
+      }
+    }
+    const loose = apps.filter((a) => !a.category);
+    if (loose.length) shelves.push({ title: 'Other', apps: sortApps(loose), see: () => go('All') });
+
+    $('#shelves').replaceChildren(...shelves.map((sh) => {
+      const sec = document.createElement('section');
+      sec.className = 'shelf';
+      const head = document.createElement('div');
+      head.className = 'shelf-head';
+      const h = document.createElement('h2');
+      h.className = 'section-title';
+      if (sh.kicker) {
+        const k = document.createElement('span');
+        k.className = 'kicker';
+        k.textContent = sh.kicker;
+        h.append(k);
+      }
+      h.append(sh.title);
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = sh.apps.length;
+      h.append(' ', count);
+      head.append(h);
+      const row = document.createElement('div');
+      row.className = 'grid shelf-row' + (sh.apps.length > 3 ? ' two' : '');
+      row.append(...sh.apps.map(tile));
+      const nav = document.createElement('div');
+      nav.className = 'shelf-nav';
+      const scrollBy = (dir) => row.scrollBy({ left: dir * row.clientWidth * 0.85, behavior: 'smooth' });
+      const prev = toolBtn(icon('left'), 'Scroll left', () => scrollBy(-1));
+      const next = toolBtn(icon('right'), 'Scroll right', () => scrollBy(1));
+      nav.append(prev, next);
+      if (sh.see) {
+        const see = document.createElement('button');
+        see.type = 'button';
+        see.className = 'see-all';
+        see.textContent = 'See all';
+        see.addEventListener('click', sh.see);
+        head.append(see);
+      }
+      head.append(nav);
+      const syncNav = () => {
+        prev.disabled = row.scrollLeft < 4;
+        next.disabled = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
+        nav.hidden = prev.disabled && next.disabled;
+      };
+      row.addEventListener('scroll', syncNav, { passive: true });
+      requestAnimationFrame(syncNav);
+      sec.append(head, row);
+      return sec;
+    }));
+  }
+
+  window.addEventListener('resize', () => {
+    document.querySelectorAll('.shelf-row').forEach((r) => r.dispatchEvent(new Event('scroll')));
+  });
+
   function renderIntro(apps) {
     const h = new Date().getHours();
     $('#greeting').textContent = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-    const live = apps.filter((a) => a.status === 'live').length;
-    $('#summary').textContent = `${apps.length} app${apps.length === 1 ? '' : 's'}` + (live ? `, ${live} live` : '') + '. Pick one and go.';
+    const games = apps.filter((a) => a.category === 'Games').length;
+    const fresh = apps.filter(isNew).length;
+    $('#summary').textContent = `${apps.length} app${apps.length === 1 ? '' : 's'}` +
+      (games ? `, ${games} of them games` : '') + (fresh ? `. ${fresh} new` : '') + '. Pick one and go.';
   }
 
   /** The big banner: the app you used last, else your first pin, else the first live app. */
@@ -266,7 +416,7 @@
     const used = recent && l[recent.id];
     const app = used ? recent
       : apps.find((a) => local.pinned[0] === a.id) || apps.find((a) => a.status === 'live') || apps[0];
-    hero.hidden = !app || !!query || category !== 'All';
+    hero.hidden = !app || !!query || view !== 'Home';
     if (hero.hidden) return;
     hero.style.setProperty('--tile-color', app.color || '');
     $('#heroEyebrow').textContent = used ? 'Jump back in' : 'Featured';
@@ -308,13 +458,15 @@
     document.querySelector(`.tile[data-id="${CSS.escape(id)}"] .tile-tools button`)?.classList.add('popped');
   }
 
+  function clearSearch() { search.value = ''; query = ''; }
+
   $('#emptyBtn').addEventListener('click', () => {
-    if (query || category !== 'All') {
-      search.value = ''; query = ''; category = 'All'; selected = 0; render();
-    } else {
-      boot();
-    }
+    if (query) { clearSearch(); render(); }
+    else if (view !== 'Home') go('Home');
+    else boot();
   });
+
+  $('#sort').addEventListener('change', (e) => { sort = e.target.value; saveView(); render(); });
 
   // ---------- editor ----------
   const dialog = $('#editor');
@@ -332,7 +484,8 @@
     f.description.value = app?.description ?? '';
     f.icon.value = app?.icon ?? '';
     f.color.value = /^#[0-9a-f]{6}$/i.test(app?.color ?? '') ? app.color : '#6366f1';
-    f.category.value = app?.category ?? (category !== 'All' ? category : '');
+    f.category.value = app?.category ?? '';
+    f.genre.value = app?.genre ?? '';
     f.status.value = app?.status ?? '';
     f.tags.value = (app?.tags ?? []).join(', ');
     f.embed.checked = !!app?.embed;
@@ -353,6 +506,7 @@
       icon: f.icon.value.trim(),
       color: f.color.value,
       category: f.category.value.trim(),
+      genre: f.genre.value.trim(),
       status: f.status.value,
       tags: f.tags.value.split(',').map((t) => t.trim()).filter(Boolean),
       embed: f.embed.checked,
@@ -515,7 +669,11 @@
   document.addEventListener('keydown', (e) => {
     if (dialog.open || !player.hidden) return;
     const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-    if (e.key === '/' && !typing) { e.preventDefault(); search.focus(); search.select(); return; }
+    if ((e.key === '/' && !typing) || (e.key === 'k' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); search.focus(); search.select(); return; }
+    if (!typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key === 'h') { clearSearch(); go('Home'); return; }
+      if (e.key === 'g') { clearSearch(); go('Games'); return; }
+    }
     if (e.target !== search) return;
     const ts = tiles();
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); selected = Math.min(selected + 1, ts.length - 1); highlight(); }

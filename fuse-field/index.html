@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fuse Field</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#0f1420; --panel:#182033; --cell:#26324d; --cell-hi:#2f3d5d; --open:#121a2a; --text:#e8edf8; --muted:#8d99b5; --accent:#ff9f1c; --boom:#ff4d6d; --flag:#ffd166; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f3f5fb; --panel:#ffffff; --cell:#c9d3ea; --cell-hi:#b9c6e3; --open:#eef1f8; --text:#1a2238; --muted:#5d6886; } }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; flex-direction:column; align-items:center; padding:16px 12px calc(16px + env(safe-area-inset-bottom)); gap:12px; user-select:none; -webkit-user-select:none; }
+  header { width:min(640px,100%); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  h1 { font-size:20px; letter-spacing:-.02em; margin-right:auto; display:flex; align-items:center; gap:8px; }
+  h1 i { width:12px; height:12px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); }
+  .stats { display:flex; gap:8px; }
+  .stat { background:var(--panel); border-radius:10px; padding:6px 12px; font-variant-numeric:tabular-nums; font-weight:700; min-width:64px; text-align:center; }
+  .stat small { display:block; font-size:11px; color:var(--muted); font-weight:600; }
+  .bar { width:min(640px,100%); display:flex; gap:8px; flex-wrap:wrap; }
+  button { font:inherit; font-weight:600; border:0; border-radius:10px; background:var(--panel); color:var(--text); min-height:40px; padding:0 14px; cursor:pointer; }
+  button[aria-pressed=true] { background:var(--accent); color:#1a1200; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .spacer { flex:1; }
+  #wrap { flex:1; width:100%; display:grid; place-items:center; min-height:0; }
+  #board { display:grid; gap:3px; padding:8px; background:var(--panel); border-radius:14px; touch-action:manipulation; }
+  .c { width:var(--s); height:var(--s); border-radius:6px; background:var(--cell); display:grid; place-items:center; font-weight:800; font-size:calc(var(--s) * .55); cursor:pointer; transition:background .1s, transform .1s; }
+  .c:hover { background:var(--cell-hi); }
+  .c.o { background:var(--open); cursor:default; animation:op .18s ease-out; }
+  @keyframes op { from { transform:scale(.8); } }
+  .c.f::after { content:""; width:45%; height:45%; background:var(--flag); clip-path:polygon(15% 0,100% 30%,15% 60%,15% 100%,0 100%,0 0); }
+  .c.m { background:var(--boom); }
+  .c.m::after { content:""; width:50%; height:50%; border-radius:50%; background:#1b0a10; box-shadow:0 0 0 3px #ffd0d8; }
+  .c.x::before { content:"✕"; position:absolute; color:var(--boom); }
+  .c.x { position:relative; }
+  .n1{color:#5aa9ff}.n2{color:#4cd38a}.n3{color:#ff6b6b}.n4{color:#b18cff}.n5{color:#ff9f1c}.n6{color:#2ad4d4}.n7{color:#e8edf8}.n8{color:#8d99b5}
+  #msg { position:fixed; inset:0; display:grid; place-items:center; background:rgba(5,8,15,.55); backdrop-filter:blur(3px); }
+  #msg div { background:var(--panel); padding:24px 28px; border-radius:18px; text-align:center; max-width:320px; box-shadow:0 20px 50px rgba(0,0,0,.4); }
+  #msg h2 { font-size:26px; margin-bottom:6px; }
+  #msg p { color:var(--muted); margin-bottom:16px; }
+  #msg button { background:var(--accent); color:#1a1200; padding:0 24px; }
+  .help { color:var(--muted); font-size:13px; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1><i></i>Fuse Field</h1>
+  <div class="stats">
+    <div class="stat"><small>Fuses</small><span id="left">0</span></div>
+    <div class="stat"><small>Time</small><span id="time">0</span></div>
+    <div class="stat"><small>Best</small><span id="best">–</span></div>
+  </div>
+</header>
+<div class="bar">
+  <button data-size="easy">Small</button>
+  <button data-size="mid">Medium</button>
+  <button data-size="hard">Large</button>
+  <span class="spacer"></span>
+  <button id="flagMode" aria-pressed="false" title="Tap to flag (F)">Flag mode</button>
+  <button id="new">New</button>
+</div>
+<div id="wrap"><div id="board" role="grid" aria-label="Field"></div></div>
+<p class="help">Clear every safe tile. Numbers count the fuses touching a tile. Right-click, long-press or Flag mode to mark a fuse.</p>
+<div id="msg" hidden><div><h2 id="mt"></h2><p id="mp"></p><button id="again">Play again</button></div></div>
+<script>
+(() => {
+  const SIZES = { easy: [9, 9, 10], mid: [14, 14, 32], hard: [16, 24, 70] };
+  const KEY = 'fuse-field:';
+  let size = localStorage.getItem(KEY + 'size') || 'easy';
+  let R, C, M, cells, started, over, opened, flags, t0, timer, flagMode = false;
+  const board = document.getElementById('board');
+  const $ = (id) => document.getElementById(id);
+
+  function fit() {
+    const w = Math.min(window.innerWidth - 40, 900), h = window.innerHeight - 220;
+    // On narrow screens a wide board turns sideways so it fits.
+    const [rr, cc] = (window.innerWidth < window.innerHeight && C > R) ? [C, R] : [R, C];
+    const s = Math.max(22, Math.min(44, Math.floor(Math.min((w - 16) / cc, (h - 16) / rr) - 3)));
+    board.style.setProperty('--s', s + 'px');
+    return [rr, cc];
+  }
+
+  function newGame() {
+    [R, C, M] = SIZES[size];
+    const [rr, cc] = fit();
+    R = rr; C = cc;
+    cells = []; started = false; over = false; opened = 0; flags = 0;
+    clearInterval(timer); $('time').textContent = 0;
+    board.style.gridTemplateColumns = `repeat(${C}, var(--s))`;
+    board.replaceChildren();
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const el = document.createElement('div');
+      el.className = 'c'; el.setAttribute('role', 'gridcell');
+      const cell = { r, c, el, mine: false, n: 0, open: false, flag: false };
+      cells.push(cell);
+      let press;
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button === 2) return;
+        press = setTimeout(() => { press = null; toggleFlag(cell); navigator.vibrate?.(20); }, 380);
+      });
+      el.addEventListener('pointerup', (e) => {
+        if (e.button === 2) return;
+        if (press) { clearTimeout(press); press = null; flagMode ? toggleFlag(cell) : (cell.open ? chord(cell) : open(cell)); }
+      });
+      el.addEventListener('pointerleave', () => { clearTimeout(press); press = null; });
+      el.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleFlag(cell); });
+      board.append(el);
+    }
+    $('left').textContent = M;
+    document.querySelectorAll('[data-size]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.size === size)));
+    const best = localStorage.getItem(KEY + 'best-' + size);
+    $('best').textContent = best ? best + 's' : '–';
+    $('msg').hidden = true;
+  }
+
+  const at = (r, c) => (r >= 0 && c >= 0 && r < R && c < C) ? cells[r * C + c] : null;
+  const around = (cell) => { const o = []; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { if (dr || dc) { const n = at(cell.r + dr, cell.c + dc); if (n) o.push(n); } } return o; };
+
+  function plant(safe) {
+    // First tap is always safe and opens an area.
+    const keep = new Set([safe, ...around(safe)]);
+    const pool = cells.filter((c) => !keep.has(c));
+    for (let i = 0; i < M; i++) { const j = i + Math.floor(Math.random() * (pool.length - i)); [pool[i], pool[j]] = [pool[j], pool[i]]; pool[i].mine = true; }
+    for (const c of cells) c.n = around(c).filter((n) => n.mine).length;
+    started = true; t0 = Date.now();
+    timer = setInterval(() => { $('time').textContent = Math.floor((Date.now() - t0) / 1000); }, 250);
+  }
+
+  function open(cell) {
+    if (over || cell.open || cell.flag) return;
+    if (!started) plant(cell);
+    if (cell.mine) return lose(cell);
+    const stack = [cell];
+    while (stack.length) {
+      const c = stack.pop();
+      if (c.open || c.flag) continue;
+      c.open = true; opened++;
+      c.el.classList.add('o');
+      if (c.n) { c.el.textContent = c.n; c.el.classList.add('n' + c.n); }
+      else stack.push(...around(c).filter((n) => !n.open));
+    }
+    if (opened === R * C - M) win();
+  }
+
+  function chord(cell) {
+    if (over || !cell.n) return;
+    const near = around(cell);
+    if (near.filter((n) => n.flag).length !== cell.n) return;
+    near.forEach(open);
+  }
+
+  function toggleFlag(cell) {
+    if (over || cell.open) return;
+    cell.flag = !cell.flag; flags += cell.flag ? 1 : -1;
+    cell.el.classList.toggle('f', cell.flag);
+    $('left').textContent = M - flags;
+  }
+
+  function lose(hit) {
+    over = true; clearInterval(timer);
+    for (const c of cells) {
+      if (c.mine && !c.flag) c.el.classList.add('m', 'o');
+      if (!c.mine && c.flag) c.el.classList.add('x');
+    }
+    hit.el.style.boxShadow = '0 0 0 3px #fff inset';
+    navigator.vibrate?.([60, 40, 120]);
+    setTimeout(() => show('Boom!', 'A fuse went off. Try again?'), 700);
+  }
+  function win() {
+    over = true; clearInterval(timer);
+    const s = Math.round((Date.now() - t0) / 1000);
+    cells.filter((c) => c.mine).forEach((c) => c.el.classList.add('f'));
+    const k = KEY + 'best-' + size, best = +localStorage.getItem(k) || Infinity;
+    const rec = s < best;
+    if (rec) localStorage.setItem(k, s);
+    $('best').textContent = Math.min(s, best) + 's';
+    show('Field cleared!', rec ? `New best: ${s} seconds.` : `${s} seconds. Best is ${best}.`);
+  }
+  function show(t, p) { $('mt').textContent = t; $('mp').textContent = p; $('msg').hidden = false; $('again').focus(); }
+
+  document.querySelectorAll('[data-size]').forEach((b) => b.addEventListener('click', () => { size = b.dataset.size; localStorage.setItem(KEY + 'size', size); newGame(); }));
+  $('new').addEventListener('click', newGame);
+  $('again').addEventListener('click', newGame);
+  $('flagMode').addEventListener('click', () => { flagMode = !flagMode; $('flagMode').setAttribute('aria-pressed', String(flagMode)); });
+  addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') $('flagMode').click();
+    if (e.key === 'n' || e.key === 'N' || (e.key === 'Enter' && !$('msg').hidden)) newGame();
+  });
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (!started) newGame(); else fit(); }, 200); });
+  newGame();
+})();
+</script>
+</body>
+</html>

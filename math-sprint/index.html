@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Math Sprint</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#eefaf4; --panel:#ffffff; --text:#11251b; --muted:#5f7a6c; --accent:#12b76a; --bad:#f04438; --line:#d5eee1; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0b1711; --panel:#13241b; --text:#e6f6ed; --muted:#8fb3a0; --line:#1f3a2c; } }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; justify-content:center; padding:16px 12px calc(16px + env(safe-area-inset-bottom)); user-select:none; }
+  main { width:min(440px,100%); display:flex; flex-direction:column; gap:14px; }
+  h1 { font-size:22px; letter-spacing:-.02em; }
+  .opts { display:flex; flex-direction:column; gap:10px; background:var(--panel); border-radius:18px; padding:16px; }
+  .opts h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+  .seg button { flex:1; min-width:56px; border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:12px; min-height:44px; font:inherit; font-weight:700; font-size:18px; cursor:pointer; }
+  .seg button[aria-pressed=true] { background:var(--accent); color:#fff; border-color:transparent; }
+  .go { min-height:56px; border:0; border-radius:16px; background:var(--accent); color:#fff; font:inherit; font-weight:800; font-size:20px; cursor:pointer; box-shadow:0 10px 24px -12px var(--accent); }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .bests { color:var(--muted); font-size:14px; text-align:center; }
+  #play { display:flex; flex-direction:column; gap:12px; }
+  .top { display:flex; justify-content:space-between; font-weight:800; font-variant-numeric:tabular-nums; font-size:18px; }
+  .timebar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; }
+  .timebar i { display:block; height:100%; background:var(--accent); border-radius:4px; transition:width .2s linear; }
+  .q { background:var(--panel); border-radius:22px; padding:26px 16px; text-align:center; }
+  #q { font-size:clamp(40px,12vw,58px); font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  #ans { font-size:clamp(34px,10vw,48px); font-weight:700; color:var(--accent); min-height:1.3em; font-variant-numeric:tabular-nums; }
+  .q.right { animation:ok .25s; } .q.wrong { animation:no .3s; }
+  @keyframes ok { 50% { background:color-mix(in srgb, var(--accent) 22%, var(--panel)); } }
+  @keyframes no { 25% { translate:-6px; background:color-mix(in srgb, var(--bad) 18%, var(--panel)); } 75% { translate:6px; } }
+  .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .pad button { min-height:clamp(54px,13vw,64px); border:0; border-radius:16px; background:var(--panel); color:var(--text); font:inherit; font-size:26px; font-weight:700; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+  .pad button:active { transform:scale(.95); }
+  .pad .alt { background:var(--line); font-size:20px; }
+  #end { display:flex; flex-direction:column; gap:14px; text-align:center; }
+  #end .score { font-size:72px; font-weight:900; color:var(--accent); line-height:1; }
+  #end ul { list-style:none; padding:0; text-align:left; background:var(--panel); border-radius:16px; padding:6px 14px; max-height:220px; overflow:auto; }
+  #end li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  #end li:last-child { border:0; }
+  #end li.bad b { color:var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Math Sprint</h1>
+  <section id="setup">
+    <div class="opts">
+      <h2>Practice</h2>
+      <div class="seg" id="ops"><button data-op="+">+</button><button data-op="-">−</button><button data-op="*">×</button><button data-op="/">÷</button></div>
+      <h2>Level</h2>
+      <div class="seg" id="lvl"><button data-l="1">Easy</button><button data-l="2">Medium</button><button data-l="3">Hard</button></div>
+      <h2>Time</h2>
+      <div class="seg" id="dur"><button data-d="30">30s</button><button data-d="60">60s</button><button data-d="120">2 min</button></div>
+    </div>
+    <p class="bests" id="bests" style="margin:12px 0"></p>
+    <button class="go" id="go" style="width:100%">Start</button>
+  </section>
+  <section id="play" hidden>
+    <div class="top"><span id="score">0</span><span id="streak"></span><span id="clock"></span></div>
+    <div class="timebar"><i id="bar"></i></div>
+    <div class="q" id="qbox"><div id="q"></div><div id="ans"></div></div>
+    <div class="pad" id="pad"></div>
+  </section>
+  <section id="end" hidden>
+    <div><div class="score" id="final"></div><p id="endNote" style="color:var(--muted);margin-top:6px"></p></div>
+    <ul id="log"></ul>
+    <button class="go" id="again">Go again</button>
+    <button class="seg" id="back" style="border:0;background:none;color:var(--muted);font:inherit;font-weight:700;cursor:pointer;min-height:40px">Change settings</button>
+  </section>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id), KEY = 'math-sprint:';
+  let cfg = JSON.parse(localStorage.getItem(KEY + 'cfg') || '{"ops":["+","-","*"],"l":1,"d":60}');
+  let cur, input, score, streak, endAt, timer, log;
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+  function sync() {
+    document.querySelectorAll('[data-op]').forEach((b) => b.setAttribute('aria-pressed', String(cfg.ops.includes(b.dataset.op))));
+    document.querySelectorAll('[data-l]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.l === cfg.l)));
+    document.querySelectorAll('[data-d]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.d === cfg.d)));
+    localStorage.setItem(KEY + 'cfg', JSON.stringify(cfg));
+    const best = localStorage.getItem(bestKey());
+    $('bests').textContent = best ? `Best for this setup: ${best}` : 'No best yet for this setup.';
+  }
+  const bestKey = () => KEY + 'best-' + [...cfg.ops].sort().join('') + cfg.l + '-' + cfg.d;
+  document.querySelectorAll('[data-op]').forEach((b) => b.onclick = () => { const o = b.dataset.op; cfg.ops = cfg.ops.includes(o) ? (cfg.ops.length > 1 ? cfg.ops.filter((x) => x !== o) : cfg.ops) : [...cfg.ops, o]; sync(); });
+  document.querySelectorAll('[data-l]').forEach((b) => b.onclick = () => { cfg.l = +b.dataset.l; sync(); });
+  document.querySelectorAll('[data-d]').forEach((b) => b.onclick = () => { cfg.d = +b.dataset.d; sync(); });
+
+  // Questions get a bit harder as your streak grows.
+  function question() {
+    const op = cfg.ops[R(0, cfg.ops.length - 1)], up = Math.min(Math.floor(streak / 5), 3), L = cfg.l + up * .5;
+    const max = [0, 10, 25, 99][Math.min(3, Math.round(cfg.l))] + up * 10;
+    let a, b, ans;
+    if (op === '+') { a = R(1, max); b = R(1, max); ans = a + b; }
+    if (op === '-') { a = R(1, max); b = R(1, max); if (b > a) [a, b] = [b, a]; ans = a - b; }
+    if (op === '*') { const m = L < 1.5 ? 6 : L < 2.5 ? 12 : 15; a = R(2, m); b = R(2, cfg.l === 3 ? 25 : m); ans = a * b; }
+    if (op === '/') { const m = L < 1.5 ? 6 : L < 2.5 ? 12 : 15; b = R(2, m); ans = R(1, m); a = b * ans; }
+    return { a, b, op, ans, text: `${a} ${{ '+': '+', '-': '−', '*': '×', '/': '÷' }[op]} ${b}` };
+  }
+  function next() { cur = question(); input = ''; $('q').textContent = cur.text; $('ans').textContent = ''; }
+
+  function start() {
+    score = 0; streak = 0; log = []; endAt = performance.now() + cfg.d * 1000;
+    $('setup').hidden = true; $('end').hidden = true; $('play').hidden = false;
+    $('score').textContent = 0; $('streak').textContent = '';
+    next(); clearInterval(timer); timer = setInterval(tickClock, 100); tickClock();
+  }
+  function tickClock() {
+    const left = Math.max(0, endAt - performance.now());
+    $('clock').textContent = Math.ceil(left / 1000) + 's';
+    $('bar').style.width = (left / (cfg.d * 1000)) * 100 + '%';
+    if (left <= 0) finish();
+  }
+  function key(k) {
+    if ($('play').hidden) return;
+    if (k === '⌫') input = input.slice(0, -1);
+    else if (k === 'skip') { log.push([cur.text, cur.ans, '—']); streak = 0; $('streak').textContent = ''; return next(); }
+    else if (input.length < 6) input += k;
+    $('ans').textContent = input;
+    // Auto-check once the answer has as many digits as the right one.
+    if (input.length >= String(cur.ans).length) {
+      const ok = +input === cur.ans;
+      const box = $('qbox'); box.classList.remove('right', 'wrong'); void box.offsetWidth; box.classList.add(ok ? 'right' : 'wrong');
+      if (ok) { streak++; score += 1 + Math.floor(streak / 5); log.push([cur.text, cur.ans, input]); $('score').textContent = score; $('streak').textContent = streak >= 3 ? `🔥 ${streak}` : ''; next(); }
+      else { navigator.vibrate?.(40); log.push([cur.text, cur.ans, input]); streak = 0; $('streak').textContent = ''; setTimeout(() => { input = ''; $('ans').textContent = ''; }, 250); }
+    }
+  }
+  function finish() {
+    clearInterval(timer); $('play').hidden = true; $('end').hidden = false;
+    const k = bestKey(), best = +localStorage.getItem(k) || 0;
+    if (score > best) localStorage.setItem(k, score);
+    $('final').textContent = score;
+    const right = log.filter(([, a, g]) => +g === a).length;
+    $('endNote').textContent = (score > best ? 'New best! ' : `Best: ${best}. `) + `${right} right out of ${log.length}.`;
+    $('log').replaceChildren(...log.map(([q, a, g]) => { const li = document.createElement('li'); if (+g !== a) li.className = 'bad'; li.innerHTML = '<span></span><b></b>'; li.firstChild.textContent = `${q} = ${a}`; li.lastChild.textContent = +g === a ? '✓' : g; return li; }));
+    $('again').focus();
+  }
+
+  for (const k of ['7', '8', '9', '4', '5', '6', '1', '2', '3', 'skip', '0', '⌫']) {
+    const b = document.createElement('button'); b.textContent = k === 'skip' ? 'Skip' : k; if (k === 'skip' || k === '⌫') b.className = 'alt';
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); key(k); }); $('pad').append(b);
+  }
+  addEventListener('keydown', (e) => {
+    if (/^\d$/.test(e.key)) key(e.key);
+    else if (e.key === 'Backspace') key('⌫');
+    else if (e.key === 'Tab' && !$('play').hidden) { e.preventDefault(); key('skip'); }
+    else if (e.key === 'Enter' && $('play').hidden) start();
+  });
+  $('go').onclick = start; $('again').onclick = start;
+  $('back').onclick = () => { $('end').hidden = true; $('setup').hidden = false; sync(); };
+  sync();
+})();
+</script>
+</body>
+</html>

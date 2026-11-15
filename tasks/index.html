@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tasks</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#f5f7fb; --panel:#ffffff; --text:#151a26; --muted:#6a7387; --line:#e3e7ef; --accent:#4f6bff; --done:#a3abbd; --star:#f5a524; --danger:#e5484d; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0d1017; --panel:#161b25; --text:#e9edf5; --muted:#8e98ad; --line:#252c3a; --accent:#7d93ff; --done:#5c667b; } }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; justify-content:center; padding:16px 12px calc(24px + env(safe-area-inset-bottom)); }
+  main { width:min(640px,100%); display:flex; flex-direction:column; gap:14px; }
+  h1 { font-size:28px; letter-spacing:-.03em; display:flex; align-items:baseline; gap:10px; }
+  h1 small { font-size:14px; color:var(--muted); font-weight:600; letter-spacing:0; }
+  .lists { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px; }
+  .lists::-webkit-scrollbar { display:none; }
+  .lists button { flex:none; border:1px solid var(--line); background:var(--panel); color:var(--text); border-radius:999px; min-height:38px; padding:0 14px; font:inherit; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .lists button[aria-pressed=true] { background:var(--text); color:var(--bg); border-color:transparent; }
+  .lists button span { font-size:12px; opacity:.7; }
+  .lists .add { color:var(--accent); border-style:dashed; }
+  .bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--accent); transition:width .3s; border-radius:3px; }
+  form { display:flex; gap:8px; }
+  #newTask { flex:1; min-height:48px; border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--text); font:inherit; font-size:16px; padding:0 16px; outline:none; }
+  #newTask:focus { border-color:var(--accent); box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent); }
+  form button { min-height:48px; padding:0 18px; border:0; border-radius:14px; background:var(--accent); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+  ul { list-style:none; padding:0; display:flex; flex-direction:column; gap:6px; }
+  li { display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:6px 6px 6px 12px; min-height:52px; }
+  li.fresh { animation:in .2s ease-out; }
+  @keyframes in { from { opacity:0; transform:translateY(-4px); } }
+  li.dragging { opacity:.5; }
+  .chk { width:24px; height:24px; border-radius:50%; border:2px solid var(--muted); background:none; cursor:pointer; flex:none; display:grid; place-items:center; color:#fff; padding:0; }
+  li.done .chk { background:var(--accent); border-color:var(--accent); }
+  li.done .chk::after { content:""; width:10px; height:6px; border:solid #fff; border-width:0 0 2.5px 2.5px; transform:rotate(-45deg) translate(1px,-1px); }
+  .txt { flex:1; min-width:0; font-size:16px; line-height:1.35; outline:none; word-break:break-word; padding:4px 0; border-radius:6px; }
+  .txt:focus { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+  li.done .txt { color:var(--done); text-decoration:line-through; }
+  .tag { font-size:12px; color:var(--muted); background:var(--bg); border-radius:999px; padding:2px 8px; flex:none; }
+  .ib { width:38px; height:38px; border:0; background:none; color:var(--muted); border-radius:10px; cursor:pointer; display:grid; place-items:center; flex:none; }
+  .ib:hover { background:var(--bg); color:var(--text); }
+  .ib svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .star.on { color:var(--star); } .star.on svg { fill:currentColor; }
+  .grip { cursor:grab; touch-action:none; }
+  .sec { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; margin-top:8px; display:flex; justify-content:space-between; align-items:center; }
+  .sec button { border:0; background:none; color:var(--accent); font:inherit; font-size:13px; font-weight:700; cursor:pointer; text-transform:none; letter-spacing:0; padding:6px; }
+  .empty { text-align:center; color:var(--muted); padding:36px 0; }
+  .foot { display:flex; justify-content:flex-end; gap:8px; }
+  .foot button { border:0; background:none; color:var(--muted); font:inherit; font-size:13px; cursor:pointer; padding:8px; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tasks <small id="sub"></small></h1>
+  <div class="lists" id="lists"></div>
+  <div class="bar"><i id="prog" style="width:0"></i></div>
+  <form id="form"><input id="newTask" placeholder="Add a task…" autocomplete="off" maxlength="200" aria-label="New task"><button>Add</button></form>
+  <ul id="todo"></ul>
+  <div class="sec" id="doneHead" hidden><span id="doneCount"></span><button id="clearDone">Clear completed</button></div>
+  <ul id="done"></ul>
+  <p class="empty" id="empty" hidden>Nothing here. Add your first task above.</p>
+  <div class="foot"><button id="renameList">Rename list</button><button id="deleteList">Delete list</button></div>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id), KEY = 'tasks:data';
+  const ICON = {
+    star: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+    del: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    grip: '<svg viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="3"/></svg>',
+  };
+  let data;
+  try { data = JSON.parse(localStorage.getItem(KEY)); } catch {}
+  if (!data?.lists) data = { lists: [{ id: 'today', name: 'Today' }, { id: 'school', name: 'School' }, { id: 'ideas', name: 'Ideas' }], tasks: [], view: 'today' };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} };
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const SMART = [{ id: '*all', name: 'All' }, { id: '*star', name: 'Starred' }];
+
+  function inView(t) { return data.view === '*all' ? true : data.view === '*star' ? t.star : t.list === data.view; }
+
+  function render() {
+    const lists = [...SMART, ...data.lists];
+    if (!lists.some((l) => l.id === data.view)) data.view = data.lists[0]?.id || '*all';
+    $('lists').replaceChildren(...lists.map((l) => {
+      const b = document.createElement('button');
+      const n = data.tasks.filter((t) => !t.done && (l.id === '*all' || (l.id === '*star' ? t.star : t.list === l.id))).length;
+      b.append(l.name); if (n) { const s = document.createElement('span'); s.textContent = n; b.append(s); }
+      b.setAttribute('aria-pressed', String(l.id === data.view));
+      b.onclick = () => { data.view = l.id; save(); render(); };
+      return b;
+    }), Object.assign(document.createElement('button'), { className: 'add', textContent: '+ New list', onclick: newList }));
+    const items = data.tasks.filter(inView);
+    const todo = items.filter((t) => !t.done), done = items.filter((t) => t.done);
+    $('todo').replaceChildren(...todo.map(row));
+    $('done').replaceChildren(...done.map(row));
+    $('doneHead').hidden = !done.length; $('doneCount').textContent = `Completed · ${done.length}`;
+    $('empty').hidden = items.length > 0;
+    $('prog').style.width = items.length ? `${(done.length / items.length) * 100}%` : '0';
+    $('sub').textContent = items.length ? `${done.length} of ${items.length} done` : '';
+    const smart = data.view.startsWith('*');
+    $('renameList').hidden = $('deleteList').hidden = smart;
+    $('newTask').placeholder = smart ? `Add a task to ${data.lists[0]?.name || 'a list'}…` : 'Add a task…';
+    freshId = null;
+  }
+
+  function row(t) {
+    const li = document.createElement('li'); li.className = (t.done ? 'done' : '') + (t.id === freshId ? ' fresh' : ''); li.dataset.id = t.id;
+    const chk = document.createElement('button'); chk.className = 'chk'; chk.setAttribute('aria-label', t.done ? 'Mark not done' : 'Mark done');
+    chk.onclick = () => { t.done = !t.done; t.doneAt = Date.now(); navigator.vibrate?.(10); save(); render(); };
+    const txt = document.createElement('div'); txt.className = 'txt'; txt.textContent = t.text; try { txt.contentEditable = 'plaintext-only'; } catch { txt.contentEditable = 'true'; } txt.spellcheck = true;
+    txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); } if (e.key === 'Escape') { txt.textContent = t.text; txt.blur(); } });
+    txt.addEventListener('blur', () => { const v = txt.textContent.trim(); if (!v) { remove(t); return; } if (v !== t.text) { t.text = v; save(); } });
+    li.append(chk, txt);
+    if (data.view.startsWith('*')) { const l = data.lists.find((x) => x.id === t.list); if (l) { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.name; li.append(tag); } }
+    const star = document.createElement('button'); star.className = 'ib star' + (t.star ? ' on' : ''); star.innerHTML = ICON.star; star.setAttribute('aria-label', t.star ? 'Unstar' : 'Star');
+    star.onclick = () => { t.star = !t.star; save(); render(); };
+    const del = document.createElement('button'); del.className = 'ib'; del.innerHTML = ICON.del; del.setAttribute('aria-label', 'Delete');
+    del.onclick = () => remove(t);
+    li.append(star, del);
+    if (!t.done) { const g = document.createElement('button'); g.className = 'ib grip'; g.innerHTML = ICON.grip; g.setAttribute('aria-label', 'Drag to reorder'); dragger(g, li, t); li.append(g); }
+    return li;
+  }
+
+  let lastRemoved = null, freshId = null;
+  function remove(t) { lastRemoved = { t, i: data.tasks.indexOf(t) }; data.tasks = data.tasks.filter((x) => x !== t); save(); render(); }
+
+  // Drag the grip to reorder (works with mouse and touch).
+  function dragger(grip, li, t) {
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); grip.setPointerCapture(e.pointerId); li.classList.add('dragging');
+      const move = (ev) => {
+        const sibs = [...$('todo').children].filter((x) => x !== li);
+        const after = sibs.find((s) => ev.clientY < s.getBoundingClientRect().top + s.offsetHeight / 2);
+        $('todo').insertBefore(li, after || null);
+      };
+      const up = () => {
+        grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); li.classList.remove('dragging');
+        const order = [...$('todo').children].map((x) => x.dataset.id);
+        const moved = order.map((id) => data.tasks.find((x) => x.id === id));
+        const rest = data.tasks.filter((x) => !order.includes(x.id));
+        data.tasks = [...moved, ...rest]; save(); render();
+      };
+      grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up);
+    });
+  }
+
+  function newList() {
+    const name = prompt('Name for the new list:', '')?.trim(); if (!name) return;
+    const id = uid(); data.lists.push({ id, name: name.slice(0, 30) }); data.view = id; save(); render(); $('newTask').focus();
+  }
+  $('form').addEventListener('submit', (e) => {
+    e.preventDefault(); const v = $('newTask').value.trim(); if (!v) return;
+    const list = data.view.startsWith('*') ? data.lists[0]?.id : data.view;
+    if (!list) return newList();
+    freshId = uid();
+    data.tasks.unshift({ id: freshId, text: v, list, done: false, star: data.view === '*star', at: Date.now() });
+    $('newTask').value = ''; save(); render();
+  });
+  $('clearDone').onclick = () => { data.tasks = data.tasks.filter((t) => !(t.done && inView(t))); save(); render(); };
+  $('renameList').onclick = () => { const l = data.lists.find((x) => x.id === data.view); const n = prompt('Rename list:', l.name)?.trim(); if (n) { l.name = n.slice(0, 30); save(); render(); } };
+  $('deleteList').onclick = () => {
+    const l = data.lists.find((x) => x.id === data.view); const n = data.tasks.filter((t) => t.list === l.id).length;
+    if (!confirm(`Delete “${l.name}”` + (n ? ` and its ${n} task${n === 1 ? '' : 's'}?` : '?'))) return;
+    data.lists = data.lists.filter((x) => x !== l); data.tasks = data.tasks.filter((t) => t.list !== l.id); data.view = '*all'; save(); render();
+  };
+  addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && lastRemoved && document.activeElement.tagName !== 'INPUT' && !document.activeElement.isContentEditable) {
+      data.tasks.splice(lastRemoved.i, 0, lastRemoved.t); lastRemoved = null; save(); render();
+    }
+    if (e.key === 'n' && document.activeElement === document.body) { e.preventDefault(); $('newTask').focus(); }
+  });
+  render();
+})();
+</script>
+</body>
+</html>

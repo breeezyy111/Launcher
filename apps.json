@@ -15,7 +15,8 @@
         "vite"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Action"
     },
     {
       "id": "krazy-kombat",
@@ -32,7 +33,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Action"
     },
     {
       "id": "sky-hopper",
@@ -49,7 +51,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Arcade"
     },
     {
       "id": "block-bash",
@@ -66,7 +69,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Board & Party"
     },
     {
       "id": "turbo-tanks",
@@ -83,7 +87,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Action"
     },
     {
       "id": "dungeon-dash",
@@ -100,7 +105,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Action"
     },
     {
       "id": "rhythm-rush",
@@ -117,7 +123,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Arcade"
     },
     {
       "id": "gravity-golf",
@@ -134,7 +141,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Arcade"
     },
     {
       "id": "zombie-holdout",
@@ -151,7 +159,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Action"
     },
     {
       "id": "word-blitz",
@@ -167,7 +176,8 @@
         "puzzle"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Puzzle"
     },
     {
       "id": "orca",
@@ -176,7 +186,7 @@
       "url": "orca/",
       "icon": "orca/icons/icon.svg",
       "color": "#6d4ff5",
-      "category": "AI",
+      "category": "Tools",
       "tags": [
         "ai",
         "chat",
@@ -194,7 +204,7 @@
       "url": "stellar-forge/",
       "icon": "icons/stellar-forge.svg",
       "color": "#38bdf8",
-      "category": "Simulations",
+      "category": "Learn & Explore",
       "tags": [
         "space",
         "physics",
@@ -218,7 +228,8 @@
         "canvas"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Arcade"
     },
     {
       "id": "fusion",
@@ -234,7 +245,8 @@
         "2048"
       ],
       "status": "live",
-      "embed": true
+      "embed": true,
+      "genre": "Puzzle"
     },
     {
       "id": "snake",
@@ -252,7 +264,8 @@
       ],
       "status": "live",
       "embed": true,
-      "label": "LTZ"
+      "label": "LTZ",
+      "genre": "Arcade"
     },
     {
       "id": "stackfall",
@@ -270,7 +283,8 @@
       ],
       "status": "live",
       "embed": true,
-      "label": "LTZ"
+      "label": "LTZ",
+      "genre": "Puzzle"
     },
     {
       "id": "tiny-roads",
@@ -288,7 +302,8 @@
       ],
       "status": "beta",
       "embed": true,
-      "label": "LTZ"
+      "label": "LTZ",
+      "genre": "Casual"
     },
     {
       "id": "grid-pop",
@@ -306,7 +321,8 @@
       ],
       "status": "live",
       "embed": true,
-      "label": "LTZ"
+      "label": "LTZ",
+      "genre": "Puzzle"
     },
     {
       "id": "money-clicker",
@@ -324,7 +340,8 @@
       ],
       "status": "beta",
       "embed": true,
-      "label": "LTZ"
+      "label": "LTZ",
+      "genre": "Casual"
     },
     {
       "id": "soundbloom",
@@ -333,7 +350,7 @@
       "url": "soundbloom/",
       "icon": "icons/soundbloom.svg",
       "color": "#ff7a59",
-      "category": "Music",
+      "category": "Create",
       "tags": [
         "music",
         "song maker",
@@ -391,6 +408,240 @@
       "status": "beta",
       "embed": true,
       "needsNetwork": true
+    },
+    {
+      "id": "star-swarm",
+      "name": "Star Swarm",
+      "description": "Space shooter: dodge swarms that swoop in waves, grab gun upgrades and shields, and take down a boss every fifth wave.",
+      "url": "star-swarm/",
+      "icon": "icons/star-swarm.svg",
+      "color": "#b47bff",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "shooter",
+        "space",
+        "game",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "paddle-panic",
+      "name": "Paddle Panic",
+      "description": "Brick breaker with new layouts every level, tough bricks, and power-ups: wide paddle, multi-ball, slow-mo and lasers.",
+      "url": "paddle-panic/",
+      "icon": "icons/paddle-panic.svg",
+      "color": "#ff5d8f",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "bricks",
+        "arcade",
+        "game",
+        "canvas"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "fuse-field",
+      "name": "Fuse Field",
+      "description": "Logic puzzle: clear the field without setting off a fuse. Numbers tell you how many fuses touch each tile. Three sizes and best times.",
+      "url": "fuse-field/",
+      "icon": "icons/fuse-field.svg",
+      "color": "#ff9f1c",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "sudoku",
+      "name": "Sudoku",
+      "description": "Fresh number puzzles in four levels, with notes, hints, undo and mistake checking. Your game saves as you go.",
+      "url": "sudoku/",
+      "icon": "icons/sudoku.svg",
+      "color": "#3b6fd8",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "numbers",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "mind-match",
+      "name": "Mind Match",
+      "description": "Flip cards and find the pairs in as few moves as you can. 12, 20 or 30 cards.",
+      "url": "mind-match/",
+      "icon": "icons/mind-match.svg",
+      "color": "#c056e8",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "memory",
+        "cards",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "drop-four",
+      "name": "Drop Four",
+      "description": "Drop discs and get four in a row before your opponent. Three CPU levels or two players on one screen.",
+      "url": "drop-four/",
+      "icon": "icons/drop-four.svg",
+      "color": "#2747c9",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "board",
+        "2-player",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "reversi",
+      "name": "Reversi",
+      "description": "Classic flip-the-discs board game on an 8x8 board. Play a corner-hungry CPU or a friend.",
+      "url": "reversi/",
+      "icon": "icons/reversi.svg",
+      "color": "#1f7a52",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "board",
+        "strategy",
+        "2-player",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "calc",
+      "name": "Calc",
+      "description": "Calculator with history, plus a unit converter for length, weight, temperature, speed, data and more.",
+      "url": "calc/",
+      "icon": "icons/calc.svg",
+      "color": "#ff8a3d",
+      "category": "Tools",
+      "tags": [
+        "calculator",
+        "converter",
+        "math"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "tasks",
+      "name": "Tasks",
+      "description": "To-do lists that save as you go: several lists, stars, drag to reorder and a progress bar.",
+      "url": "tasks/",
+      "icon": "icons/tasks.svg",
+      "color": "#4f6bff",
+      "category": "Tools",
+      "tags": [
+        "todo",
+        "lists",
+        "productivity"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "decider",
+      "name": "Decider",
+      "description": "Can’t choose? Flip a coin, roll dice, spin a wheel of your own options, pick a number or split people into teams.",
+      "url": "decider/",
+      "icon": "icons/decider.svg",
+      "color": "#ff7a1a",
+      "category": "Tools",
+      "tags": [
+        "random",
+        "dice",
+        "wheel",
+        "coin"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "sketch",
+      "name": "Sketch",
+      "description": "Drawing pad with pen, marker, spray, fill, shapes, undo and PNG export. Your page is kept between visits.",
+      "url": "sketch/",
+      "icon": "icons/sketch.svg",
+      "color": "#ff5c39",
+      "category": "Create",
+      "tags": [
+        "drawing",
+        "paint",
+        "art",
+        "creative"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "keystorm",
+      "name": "Keystorm",
+      "description": "Typing speed test: timed or word-count runs, punctuation and numbers modes, live WPM and a speed chart.",
+      "url": "keystorm/",
+      "icon": "icons/keystorm.svg",
+      "color": "#ffd23f",
+      "category": "Learn & Explore",
+      "tags": [
+        "typing",
+        "wpm",
+        "keyboard"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
+    },
+    {
+      "id": "math-sprint",
+      "name": "Math Sprint",
+      "description": "Quick-fire mental maths against the clock. Pick +, −, ×, ÷ and a level; questions get harder as your streak grows.",
+      "url": "math-sprint/",
+      "icon": "icons/math-sprint.svg",
+      "color": "#12b76a",
+      "category": "Learn & Explore",
+      "tags": [
+        "math",
+        "practice",
+        "numbers"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-15"
     }
   ]
 }
