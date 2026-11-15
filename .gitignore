@@ -1,0 +1,9 @@
+# Secrets and local settings never belong in git (the site is public).
+.env
+.env.*
+!.env.example
+.dev.vars
+*.pem
+*.key
+.DS_Store
+node_modules/
