@@ -236,6 +236,56 @@ main { max-width: 1160px; margin: 0 auto; padding: 0 16px 48px; }
 .section-title .count { font-weight: 600; letter-spacing: 0; opacity: .8; }
 .section-title .count:empty { display: none; }
 
+/* Second row of chips (game types) */
+.filters.sub { margin-top: 6px; }
+.filters.sub .chip { min-height: 34px; font-size: 14px; padding: 0 6px 0 12px; background: transparent; }
+.filters.sub .chip[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.filters.sub .chip[aria-pressed="true"] .chip-count { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.chip .i { width: 16px; height: 16px; margin-left: -4px; }
+.chip:not(:has(.chip-count)) { padding-right: 16px; }
+
+/* Grid header with the sort picker */
+.grid-head { display: flex; align-items: flex-end; gap: 12px; }
+.grid-head .section-title { flex: 1; }
+.sort { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.sort select {
+  height: 36px; padding: 0 30px 0 12px; border-radius: 10px; border: 1px solid var(--border); background-color: var(--surface);
+  color: var(--text); font-size: 14px; cursor: pointer; -webkit-appearance: none; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 15px top 16px, right 10px top 16px; background-size: 5px 5px; background-repeat: no-repeat;
+}
+
+/* ---------- Home shelves: one scrolling row per group ---------- */
+.shelf { margin-top: 8px; }
+.shelf-head { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; }
+.shelf-head .section-title { margin: 0; flex: 1; min-width: 0; }
+.kicker { opacity: .65; font-weight: 600; }
+.kicker::after { content: "/"; margin: 0 6px; opacity: .6; }
+.see-all {
+  border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 14px; cursor: pointer;
+  padding: 8px 6px; border-radius: 8px; min-height: 36px;
+}
+.see-all:hover { text-decoration: underline; }
+.shelf-nav { display: flex; gap: 6px; }
+.shelf-nav button {
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  display: grid; place-items: center; cursor: pointer;
+}
+.shelf-nav button:disabled { opacity: .35; cursor: default; }
+.shelf-nav .i { width: 16px; height: 16px; }
+@media (hover: none) { .shelf-nav { display: none; } }
+.grid.shelf-row {
+  grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: minmax(260px, 290px);
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding: 0 16px;
+  margin: 0 -16px; padding: 6px 16px 14px; scrollbar-width: none;
+}
+.grid.shelf-row::-webkit-scrollbar { display: none; }
+.shelf-row > .tile { scroll-snap-align: start; }
+@media (max-width: 600px) { .grid.shelf-row { grid-auto-columns: 80%; } }
+
+.badge.new { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+@media (prefers-color-scheme: dark) { .badge.new { color: #fbbf24; } }
+
 /* ---------- Cards (default skin) ---------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 @media (max-width: 600px) { .grid { grid-template-columns: 1fr; gap: 12px; } }
@@ -613,3 +663,34 @@ body.offline .tile.needs-net .tile-cta { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .tile:active, .chip:active, .tile-tools button:active { transform: none; }
 }
+
+/* ---------- Shelves in the other skins ---------- */
+body[data-skin="springboard"] .grid.shelf-row { grid-auto-columns: 88px; gap: 18px 12px; }
+body[data-skin="springboard"] .see-all, body[data-skin="springboard"] .kicker { color: #fff; }
+body[data-skin="springboard"] .shelf-nav button { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.25); }
+body[data-skin="springboard"] .filters.sub .chip[aria-pressed="true"] { background: rgba(255,255,255,.9); color: #312e81; }
+body[data-skin="arcade"] .grid.shelf-row { grid-auto-columns: 180px; }
+body[data-skin="arcade"] .badge.new { background: #f59e0b26; color: #fcd34d; box-shadow: 0 0 10px #f59e0b55; }
+body[data-skin="poster"] .badge.new { background: rgba(0,0,0,.22); color: #fff; }
+/* Terminal: every shelf is just a titled list */
+body[data-skin="terminal"] .grid.shelf-row { grid-auto-flow: row; grid-template-columns: 1fr; overflow: visible; margin: 0; padding: 0; scroll-snap-type: none; }
+body[data-skin="terminal"] .shelf-nav { display: none; }
+body[data-skin="terminal"] .see-all { color: var(--accent); border-radius: 0; }
+body[data-skin="terminal"] .sort select, body[data-skin="terminal"] .shelf-nav button { border-radius: 0; }
+
+/* Cards skin: shelves use compact tiles, two rows deep, so Home stays short */
+body[data-skin="cards"] .grid.shelf-row.two { grid-template-rows: repeat(2, auto); }
+body[data-skin="cards"] .grid.shelf-row { grid-auto-columns: calc((100% - 36px) / 4); gap: 12px; }
+@media (max-width: 960px) { body[data-skin="cards"] .grid.shelf-row { grid-auto-columns: calc((100% - 24px) / 3); } }
+body[data-skin="cards"] .shelf-row .tile {
+  display: grid; grid-template-columns: 52px 1fr; grid-template-rows: auto auto; column-gap: 14px; row-gap: 2px;
+  align-items: center; min-height: 0; padding: 14px 16px; border-radius: 18px;
+}
+body[data-skin="cards"] .shelf-row .tile .ico { grid-row: 1 / 3; width: 52px; height: 52px; border-radius: 14px; margin: 0; font-size: 26px; }
+body[data-skin="cards"] .shelf-row .tile .name { font-size: 16px; align-self: end; }
+@media (hover: none) { body[data-skin="cards"] .shelf-row .tile .name { padding-right: 76px; } }
+body[data-skin="cards"] .shelf-row .tile .desc { font-size: 13.5px; -webkit-line-clamp: 1; align-self: start; }
+body[data-skin="cards"] .shelf-row .tile .meta { display: none; }
+body[data-skin="cards"] .shelf-row .tile-tools { top: 8px; right: 8px; }
+body[data-skin="cards"] .shelf-row .tile-tools button { width: 32px; height: 32px; }
+@media (max-width: 600px) { body[data-skin="cards"] .grid.shelf-row { grid-auto-columns: 86%; } }

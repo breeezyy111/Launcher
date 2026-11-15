@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mind Match</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#fdf3f8; --panel:#ffffff; --back1:#8b5cf6; --back2:#ec4899; --text:#2a1830; --muted:#8a7590; --face:#ffffff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#160d1c; --panel:#221629; --text:#f6ecfa; --muted:#a993b3; --face:#2b1d33; } }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px 12px calc(16px + env(safe-area-inset-bottom)); user-select:none; }
+  header, .bar { width:min(620px,100%); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  h1 { font-size:22px; letter-spacing:-.02em; margin-right:auto; }
+  .stats { display:flex; gap:8px; }
+  .stat { background:var(--panel); border-radius:12px; padding:5px 12px; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; min-width:62px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .stat small { display:block; font-size:11px; color:var(--muted); font-weight:600; }
+  button { font:inherit; font-weight:600; border:0; border-radius:10px; background:var(--panel); color:var(--text); min-height:40px; padding:0 14px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  button[aria-pressed=true] { background:linear-gradient(135deg,var(--back1),var(--back2)); color:#fff; }
+  button:focus-visible { outline:2px solid var(--back1); outline-offset:2px; }
+  .spacer { flex:1; }
+  #grid { width:min(620px,100%); display:grid; gap:clamp(6px,1.6vw,12px); perspective:900px; }
+  .card { aspect-ratio:3/4; position:relative; cursor:pointer; transform-style:preserve-3d; transition:transform .4s cubic-bezier(.3,1.4,.5,1); border-radius:14px; }
+  .card.up, .card.done { transform:rotateY(180deg); }
+  .card.done { cursor:default; }
+  .card.done .front { box-shadow:0 0 0 3px var(--c) inset; }
+  .card.done .front svg { animation:yay .5s ease; }
+  @keyframes yay { 50% { transform:scale(1.2) rotate(8deg); } }
+  .card.miss { animation:shake .35s; }
+  @keyframes shake { 25% { translate:-4px; } 75% { translate:4px; } }
+  .side { position:absolute; inset:0; border-radius:14px; backface-visibility:hidden; -webkit-backface-visibility:hidden; display:grid; place-items:center; }
+  .back { background:linear-gradient(135deg,var(--back1),var(--back2)); box-shadow:0 6px 16px -8px #8b5cf6aa; }
+  .back::after { content:""; width:40%; aspect-ratio:1; border-radius:50%; border:3px solid rgba(255,255,255,.4); }
+  .front { background:var(--face); transform:rotateY(180deg); box-shadow:0 6px 16px -10px rgba(0,0,0,.3), 0 0 0 1px rgba(0,0,0,.06) inset; }
+  .front svg { width:62%; height:62%; }
+  .card:focus-visible { outline:3px solid var(--back1); outline-offset:3px; }
+  #win { position:fixed; inset:0; display:grid; place-items:center; background:rgba(20,8,30,.5); backdrop-filter:blur(3px); }
+  #win div { background:var(--panel); border-radius:20px; padding:26px; text-align:center; width:min(320px,90vw); }
+  #win h2 { font-size:28px; margin-bottom:6px; }
+  #win p { color:var(--muted); margin-bottom:16px; }
+  #win button { background:linear-gradient(135deg,var(--back1),var(--back2)); color:#fff; padding:0 22px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mind Match</h1>
+  <div class="stats">
+    <div class="stat"><small>Moves</small><span id="moves">0</span></div>
+    <div class="stat"><small>Time</small><span id="time">0</span></div>
+    <div class="stat"><small>Best</small><span id="best">–</span></div>
+  </div>
+</header>
+<div class="bar">
+  <button data-n="6">12 cards</button><button data-n="10">20 cards</button><button data-n="15">30 cards</button>
+  <span class="spacer"></span>
+  <button id="new">Shuffle</button>
+</div>
+<div id="grid"></div>
+<div id="win" hidden><div><h2>All matched!</h2><p id="winText"></p><button id="again">Play again</button></div></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id), KEY = 'mind-match:';
+  // Original shape set: simple SVG symbols in distinct colours.
+  const SHAPES = [
+    ['#ef4444', '<circle cx="50" cy="50" r="38"/>'],
+    ['#f97316', '<rect x="14" y="14" width="72" height="72" rx="12"/>'],
+    ['#eab308', '<path d="M50 8 61 38h32L67 57l10 32-27-19-27 19 10-32L7 38h32z"/>'],
+    ['#22c55e', '<path d="M50 10 90 85H10z"/>'],
+    ['#06b6d4', '<path d="M50 6 94 50 50 94 6 50z"/>'],
+    ['#3b82f6', '<path d="M50 88S10 62 10 36a20 20 0 0 1 40-6 20 20 0 0 1 40 6c0 26-40 52-40 52z"/>'],
+    ['#8b5cf6', '<path d="M50 6l38 22v44L50 94 12 72V28z"/>'],
+    ['#ec4899', '<path d="M36 10h28v26h26v28H64v26H36V64H10V36h26z"/>'],
+    ['#14b8a6', '<path d="M70 14a40 40 0 1 0 0 72 32 32 0 1 1 0-72z"/>'],
+    ['#f43f5e', '<path d="M50 12c10 18 34 22 34 46a34 34 0 0 1-68 0c0-24 24-28 34-46z"/>'],
+    ['#84cc16', '<path d="M50 50 50 8a42 42 0 0 1 42 42zM50 50 8 50a42 42 0 0 1 42-42zM50 50l0 42a42 42 0 0 1-42-42zM50 50h42a42 42 0 0 1-42 42z" opacity=".9"/><circle cx="50" cy="50" r="12" fill="#fff"/>'],
+    ['#0ea5e9', '<path d="M10 60 30 30l20 30 20-30 20 30v26H10z"/>'],
+    ['#a855f7', '<circle cx="30" cy="30" r="20"/><circle cx="70" cy="30" r="20"/><circle cx="30" cy="70" r="20"/><circle cx="70" cy="70" r="20"/>'],
+    ['#d97706', '<path d="M20 20h60v20H20zM20 50h60v30H20z"/>'],
+    ['#10b981', '<path d="M50 8a42 42 0 1 1 0 84 42 42 0 0 1 0-84zm0 22a20 20 0 1 0 0 40 20 20 0 0 0 0-40z" fill-rule="evenodd"/>'],
+  ];
+  let pairs = +localStorage.getItem(KEY + 'n') || 10;
+  let deck, open, moves, matched, t0, timer, lock;
+
+  function newGame() {
+    clearInterval(timer); t0 = 0; moves = 0; matched = 0; open = []; lock = false;
+    const pick = [...SHAPES].sort(() => Math.random() - .5).slice(0, pairs);
+    deck = [...pick, ...pick].map((s, i) => ({ s, i })).sort(() => Math.random() - .5);
+    let cols = pairs === 6 ? 4 : pairs === 10 ? 5 : 6;
+    if (innerWidth < 500 && cols > 4) cols = pairs === 15 ? 5 : 4;
+    const rows = Math.ceil(pairs * 2 / cols);
+    $('grid').style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    // Keep every card on screen: cap the grid width by the height that's left.
+    $('grid').style.maxWidth = `calc((100dvh - 150px) * ${cols / rows} * .72)`;
+    $('grid').replaceChildren(...deck.map((d, k) => {
+      const c = document.createElement('div');
+      c.className = 'card'; c.tabIndex = 0; c.setAttribute('role', 'button'); c.setAttribute('aria-label', 'Card ' + (k + 1));
+      c.style.setProperty('--c', d.s[0]);
+      c.innerHTML = `<div class="side back"></div><div class="side front"><svg viewBox="0 0 100 100" fill="${d.s[0]}">${d.s[1]}</svg></div>`;
+      c.addEventListener('click', () => flip(c, d));
+      c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(c, d); } });
+      return c;
+    }));
+    document.querySelectorAll('[data-n]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === pairs)));
+    const best = localStorage.getItem(KEY + 'best-' + pairs);
+    $('best').textContent = best ? JSON.parse(best).moves : '–';
+    $('moves').textContent = 0; $('time').textContent = 0; $('win').hidden = true;
+  }
+
+  function flip(el, d) {
+    if (lock || el.classList.contains('up') || el.classList.contains('done')) return;
+    if (!t0) { t0 = Date.now(); timer = setInterval(() => { $('time').textContent = Math.floor((Date.now() - t0) / 1000); }, 500); }
+    el.classList.add('up'); open.push([el, d]);
+    if (open.length < 2) return;
+    moves++; $('moves').textContent = moves;
+    const [[e1, d1], [e2, d2]] = open; open = [];
+    if (d1.s === d2.s) {
+      setTimeout(() => { e1.classList.add('done'); e2.classList.add('done'); navigator.vibrate?.(15); }, 250);
+      if (++matched === pairs) setTimeout(win, 700);
+    } else {
+      lock = true;
+      setTimeout(() => { e1.classList.add('miss'); e2.classList.add('miss'); }, 450);
+      setTimeout(() => { e1.classList.remove('up', 'miss'); e2.classList.remove('up', 'miss'); lock = false; }, 850);
+    }
+  }
+
+  function win() {
+    clearInterval(timer);
+    const secs = Math.round((Date.now() - t0) / 1000);
+    const k = KEY + 'best-' + pairs, prev = JSON.parse(localStorage.getItem(k) || 'null');
+    const rec = !prev || moves < prev.moves || (moves === prev.moves && secs < prev.secs);
+    if (rec) localStorage.setItem(k, JSON.stringify({ moves, secs }));
+    $('best').textContent = rec ? moves : prev.moves;
+    $('winText').textContent = `${moves} moves in ${secs}s.` + (rec ? ' New best!' : ` Best: ${prev.moves} moves.`);
+    $('win').hidden = false; $('again').focus();
+  }
+
+  document.querySelectorAll('[data-n]').forEach((b) => b.addEventListener('click', () => { pairs = +b.dataset.n; localStorage.setItem(KEY + 'n', pairs); newGame(); }));
+  $('new').addEventListener('click', newGame);
+  $('again').addEventListener('click', newGame);
+  newGame();
+})();
+</script>
+</body>
+</html>

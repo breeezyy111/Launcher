@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sketch</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#ecebe7; --panel:#ffffff; --text:#1e1d1a; --muted:#77736a; --line:#dedbd3; --accent:#ff5c39; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151514; --panel:#22211f; --text:#efede8; --muted:#9a968d; --line:#34322e; } }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+  body { display:flex; flex-direction:column; }
+  .bar { display:flex; align-items:center; gap:6px; padding:8px 10px; background:var(--panel); border-bottom:1px solid var(--line); overflow-x:auto; scrollbar-width:none; flex:none; }
+  .bar::-webkit-scrollbar { display:none; }
+  .grp { display:flex; gap:4px; align-items:center; padding-right:8px; margin-right:2px; border-right:1px solid var(--line); flex:none; }
+  .grp:last-child { border:0; }
+  button { width:40px; height:40px; border:0; border-radius:10px; background:transparent; color:var(--text); cursor:pointer; display:grid; place-items:center; flex:none; }
+  button:hover { background:color-mix(in srgb, var(--text) 8%, transparent); }
+  button[aria-pressed=true] { background:var(--text); color:var(--panel); }
+  button:disabled { opacity:.3; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .sw { width:26px; height:26px; border-radius:50%; border:2px solid var(--panel); box-shadow:0 0 0 1px var(--line); cursor:pointer; flex:none; padding:0; }
+  .sw[aria-pressed=true] { box-shadow:0 0 0 2px var(--text); }
+  input[type=color] { width:30px; height:30px; border:0; padding:0; background:none; cursor:pointer; flex:none; }
+  input[type=range] { width:96px; accent-color:var(--accent); flex:none; }
+  .size { font-size:12px; color:var(--muted); width:26px; text-align:right; font-variant-numeric:tabular-nums; flex:none; }
+  #stage { flex:1; position:relative; overflow:hidden; touch-action:none; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; }
+  #paper { background:#fff; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--panel); padding:10px 16px; border-radius:12px; opacity:0; transition:opacity .2s; pointer-events:none; font-weight:600; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="bar" role="toolbar" aria-label="Tools">
+  <div class="grp" id="tools">
+    <button data-tool="pen" title="Pen (B)" aria-label="Pen"><svg viewBox="0 0 24 24"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg></button>
+    <button data-tool="marker" title="Marker (M)" aria-label="Marker"><svg viewBox="0 0 24 24"><path d="m9 15 9-9-3-3-9 9-1 4z"/><path d="M4 20h7"/></svg></button>
+    <button data-tool="spray" title="Spray (S)" aria-label="Spray"><svg viewBox="0 0 24 24"><path d="M8 10h6v11H8zM10 10V6h2v4M16 5h.01M19 3h.01M19 7h.01M17 9h.01"/></svg></button>
+    <button data-tool="eraser" title="Eraser (E)" aria-label="Eraser"><svg viewBox="0 0 24 24"><path d="M20 20H8l-5-5 10-10 8 8-7 7"/></svg></button>
+    <button data-tool="fill" title="Fill (F)" aria-label="Fill"><svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7-7 7z"/><path d="M20 16s2 2.5 2 4a2 2 0 0 1-4 0c0-1.5 2-4 2-4z"/></svg></button>
+    <button data-tool="line" title="Line (L)" aria-label="Line"><svg viewBox="0 0 24 24"><path d="M5 19 19 5"/></svg></button>
+    <button data-tool="rect" title="Box (R)" aria-label="Box"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+    <button data-tool="ellipse" title="Circle (O)" aria-label="Circle"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="7"/></svg></button>
+  </div>
+  <div class="grp" id="swatches"></div>
+  <div class="grp"><input type="color" id="pick" value="#ff5c39" aria-label="Custom colour"></div>
+  <div class="grp"><input type="range" id="size" min="1" max="80" value="6" aria-label="Brush size"><span class="size" id="sizeOut">6</span></div>
+  <div class="grp">
+    <button id="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button id="redo" title="Redo (Ctrl+Y)" aria-label="Redo"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    <button id="clear" title="New page" aria-label="New page"><svg viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M12 11v6M9 14h6"/></svg></button>
+    <button id="save" title="Save as PNG" aria-label="Save as PNG"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+  </div>
+</div>
+<div id="stage"><canvas id="paper"></canvas><canvas id="preview"></canvas></div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const paper = $('paper'), pv = $('preview'), ctx = paper.getContext('2d', { willReadFrequently: true }), pctx = pv.getContext('2d');
+  const SAVE = 'sketch:page';
+  const COLORS = ['#1e1d1a', '#ffffff', '#ff5c39', '#ffb800', '#2fbf71', '#2e86ff', '#8b5cf6', '#ff4fa3', '#8a5a3c'];
+  let tool = 'pen', color = '#1e1d1a', size = 6, dpr = Math.min(devicePixelRatio || 1, 2);
+  const undoStack = [], redoStack = [];
+
+  function fitCanvas(keep) {
+    const r = $('stage').getBoundingClientRect();
+    const old = keep ? paper.toDataURL() : null;
+    for (const c of [paper, pv]) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, paper.width, paper.height);
+    if (old) drawImage(old);
+  }
+  function drawImage(url) { const im = new Image(); im.onload = () => ctx.drawImage(im, 0, 0); im.src = url; }
+  function snapshot() { undoStack.push(ctx.getImageData(0, 0, paper.width, paper.height)); if (undoStack.length > 40) undoStack.shift(); redoStack.length = 0; syncBtns(); }
+  function syncBtns() { $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length; }
+  let saveT; function persist() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(SAVE, paper.toDataURL('image/png')); } catch {} }, 400); }
+
+  // ---- drawing ----
+  let drawing = false, start, lastPt, pts = [];
+  const pos = (e) => { const r = paper.getBoundingClientRect(); return { x: (e.clientX - r.left) * dpr, y: (e.clientY - r.top) * dpr, p: e.pressure && e.pointerType !== 'mouse' ? e.pressure : .5 }; };
+  function stroke(c, a, b) {
+    c.lineCap = c.lineJoin = 'round';
+    if (tool === 'spray') {
+      const n = size * 1.5;
+      c.fillStyle = color;
+      for (let i = 0; i < n; i++) { const ang = Math.random() * 7, rad = Math.random() * size * dpr * 1.5; c.fillRect(b.x + Math.cos(ang) * rad, b.y + Math.sin(ang) * rad, dpr, dpr); }
+      return;
+    }
+    c.globalCompositeOperation = 'source-over';
+    c.strokeStyle = tool === 'eraser' ? '#fff' : color;
+    c.globalAlpha = tool === 'marker' ? .35 : 1;
+    c.lineWidth = size * dpr * (tool === 'pen' ? .5 + b.p : tool === 'eraser' ? 2 : 1.6);
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    c.globalAlpha = 1;
+  }
+  function shape(c, a, b) {
+    c.strokeStyle = color; c.lineWidth = size * dpr; c.lineCap = c.lineJoin = 'round';
+    c.beginPath();
+    if (tool === 'line') { c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); }
+    if (tool === 'rect') c.rect(a.x, a.y, b.x - a.x, b.y - a.y);
+    if (tool === 'ellipse') c.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, 7);
+    c.stroke();
+  }
+  pv.addEventListener('pointerdown', (e) => {
+    pv.setPointerCapture(e.pointerId);
+    const p = pos(e);
+    if (tool === 'fill') { snapshot(); fill(Math.round(p.x), Math.round(p.y)); persist(); return; }
+    snapshot(); drawing = true; start = lastPt = p;
+    if (tool === 'marker') pts = [p];
+    if (!['line', 'rect', 'ellipse', 'marker'].includes(tool)) stroke(ctx, p, p);
+  });
+  pv.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ev of evs) {
+      const p = pos(ev);
+      if (['line', 'rect', 'ellipse'].includes(tool)) { pctx.clearRect(0, 0, pv.width, pv.height); shape(pctx, start, e.shiftKey ? square(start, p) : p); }
+      else if (tool === 'marker') { pts.push(p); pctx.clearRect(0, 0, pv.width, pv.height); pctx.globalAlpha = .35; pctx.strokeStyle = color; pctx.lineWidth = size * dpr * 1.6; pctx.lineCap = pctx.lineJoin = 'round'; pctx.beginPath(); pts.forEach((q, i) => i ? pctx.lineTo(q.x, q.y) : pctx.moveTo(q.x, q.y)); pctx.stroke(); pctx.globalAlpha = 1; }
+      else { stroke(ctx, lastPt, p); }
+      lastPt = p;
+    }
+  });
+  const square = (a, b) => { const d = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)); return { x: a.x + Math.sign(b.x - a.x) * d, y: a.y + Math.sign(b.y - a.y) * d }; };
+  function end(e) {
+    if (!drawing) return; drawing = false;
+    if (['line', 'rect', 'ellipse'].includes(tool)) { shape(ctx, start, e.shiftKey ? square(start, lastPt) : lastPt); }
+    if (tool === 'marker') ctx.drawImage(pv, 0, 0);
+    pctx.clearRect(0, 0, pv.width, pv.height);
+    persist();
+  }
+  pv.addEventListener('pointerup', end); pv.addEventListener('pointercancel', end);
+
+  // Flood fill with a small tolerance so anti-aliased edges fill cleanly.
+  function fill(x0, y0) {
+    const W = paper.width, H = paper.height, img = ctx.getImageData(0, 0, W, H), d = img.data;
+    const i0 = (y0 * W + x0) * 4, tr = d[i0], tg = d[i0 + 1], tb = d[i0 + 2];
+    const n = parseInt(color.slice(1), 16), fr = n >> 16, fg = (n >> 8) & 255, fb = n & 255;
+    if (Math.abs(tr - fr) + Math.abs(tg - fg) + Math.abs(tb - fb) < 10) return;
+    const same = (i) => Math.abs(d[i] - tr) + Math.abs(d[i + 1] - tg) + Math.abs(d[i + 2] - tb) < 90;
+    const seen = new Uint8Array(W * H), stack = [x0, y0];
+    while (stack.length) {
+      const y = stack.pop(), x = stack.pop(); let l = x;
+      while (l >= 0 && !seen[y * W + l] && same((y * W + l) * 4)) l--;
+      l++;
+      let up = false, dn = false;
+      for (let xx = l; xx < W && !seen[y * W + xx] && same((y * W + xx) * 4); xx++) {
+        const k = y * W + xx; seen[k] = 1; d[k * 4] = fr; d[k * 4 + 1] = fg; d[k * 4 + 2] = fb; d[k * 4 + 3] = 255;
+        if (y > 0) { const u = !seen[k - W] && same((k - W) * 4); if (u && !up) stack.push(xx, y - 1); up = u; }
+        if (y < H - 1) { const v = !seen[k + W] && same((k + W) * 4); if (v && !dn) stack.push(xx, y + 1); dn = v; }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---- UI ----
+  function setTool(t) { tool = t; document.querySelectorAll('[data-tool]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t))); }
+  function setColor(c) { color = c; $('pick').value = c; document.querySelectorAll('.sw').forEach((s) => s.setAttribute('aria-pressed', String(s.dataset.c === c))); if (tool === 'eraser') setTool('pen'); }
+  for (const c of COLORS) { const s = document.createElement('button'); s.className = 'sw'; s.dataset.c = c; s.style.background = c; s.setAttribute('aria-label', 'Colour ' + c); s.onclick = () => setColor(c); $('swatches').append(s); }
+  document.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  $('pick').addEventListener('input', (e) => setColor(e.target.value));
+  $('size').addEventListener('input', (e) => { size = +e.target.value; $('sizeOut').textContent = size; });
+  $('undo').onclick = () => { if (!undoStack.length) return; redoStack.push(ctx.getImageData(0, 0, paper.width, paper.height)); ctx.putImageData(undoStack.pop(), 0, 0); syncBtns(); persist(); };
+  $('redo').onclick = () => { if (!redoStack.length) return; undoStack.push(ctx.getImageData(0, 0, paper.width, paper.height)); ctx.putImageData(redoStack.pop(), 0, 0); syncBtns(); persist(); };
+  $('clear').onclick = () => { snapshot(); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, paper.width, paper.height); persist(); toast('New page. Undo brings the old one back.'); };
+  $('save').onclick = () => { const a = document.createElement('a'); a.download = `sketch-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.png`; a.href = paper.toDataURL('image/png'); a.click(); toast('Saved PNG'); };
+  addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? $('redo').click() : $('undo').click(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); $('redo').click(); return; }
+    const t = { b: 'pen', m: 'marker', s: 'spray', e: 'eraser', f: 'fill', l: 'line', r: 'rect', o: 'ellipse' }[e.key.toLowerCase()];
+    if (t && !e.ctrlKey && !e.metaKey) setTool(t);
+    if (e.key === '[') { $('size').value = size = Math.max(1, size - 2); $('sizeOut').textContent = size; }
+    if (e.key === ']') { $('size').value = size = Math.min(80, size + 2); $('sizeOut').textContent = size; }
+  });
+  let tt; function toast(m) { $('toast').textContent = m; $('toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), 1800); }
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => fitCanvas(true), 150); });
+
+  fitCanvas(false);
+  try { const saved = localStorage.getItem(SAVE); if (saved) drawImage(saved); } catch {}
+  setTool('pen'); setColor(COLORS[0]); syncBtns();
+})();
+</script>
+</body>
+</html>

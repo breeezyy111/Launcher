@@ -69,14 +69,29 @@
       <div class="hero-art" aria-hidden="true"><div class="hero-icon" id="heroIcon"></div></div>
     </section>
 
-    <nav id="filters" class="filters" aria-label="Categories"></nav>
+    <nav id="filters" class="filters" aria-label="Sections"></nav>
+    <nav id="subfilters" class="filters sub" aria-label="Game types" hidden></nav>
+
+    <!-- Home: rows of apps (recent, favorites, new, then one row per group) -->
+    <div id="shelves" class="shelves"></div>
 
     <section id="pinnedSection" hidden>
-      <h2 class="section-title">Pinned</h2>
+      <h2 class="section-title">Favorites</h2>
       <div id="pinned" class="grid"></div>
     </section>
-    <section>
-      <h2 class="section-title"><span id="allTitle">All apps</span> <span class="count" id="allCount"></span></h2>
+    <section id="gridSection">
+      <div class="grid-head">
+        <h2 class="section-title"><span id="allTitle">All apps</span> <span class="count" id="allCount"></span></h2>
+        <label class="sort" id="sortWrap">
+          <span>Sort</span>
+          <select id="sort" aria-label="Sort apps">
+            <option value="recent">Recently played</option>
+            <option value="az">A to Z</option>
+            <option value="most">Most played</option>
+            <option value="new">Newest</option>
+          </select>
+        </label>
+      </div>
       <div id="grid" class="grid" aria-busy="true">
         <div class="tile skeleton" aria-hidden="true"><div class="ico"></div><div class="sk-line w60"></div><div class="sk-line"></div><div class="sk-line w40"></div></div>
         <div class="tile skeleton" aria-hidden="true"><div class="ico"></div><div class="sk-line w60"></div><div class="sk-line"></div><div class="sk-line w40"></div></div>
@@ -92,7 +107,7 @@
       </div>
     </section>
 
-    <p class="hint"><kbd>/</kbd> search · <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> open</p>
+    <p class="hint"><kbd>/</kbd> search · <kbd>H</kbd> home · <kbd>G</kbd> games · <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> open</p>
   </main>
 
   <dialog id="editor">
@@ -106,7 +121,10 @@
         <label>Color <input name="color" type="color" value="#6366f1" /></label>
       </div>
       <div class="row">
-        <label>Category <input name="category" list="categoryList" placeholder="e.g. Tools" /></label>
+        <label>Section <input name="category" list="categoryList" placeholder="e.g. Tools" /></label>
+        <label>Type <input name="genre" list="genreList" placeholder="e.g. Puzzle" /></label>
+      </div>
+      <div class="row">
         <label>Status
           <select name="status">
             <option value="">—</option>
@@ -121,6 +139,7 @@
       <label class="check"><input name="embed" type="checkbox" /> Open inside the launcher</label>
       <label class="check"><input name="newTab" type="checkbox" checked /> Otherwise open in a new tab</label>
       <datalist id="categoryList"></datalist>
+      <datalist id="genreList"></datalist>
       <div class="dialog-actions">
         <button type="button" class="btn danger" id="deleteBtn">Delete</button>
         <span class="spacer"></span>

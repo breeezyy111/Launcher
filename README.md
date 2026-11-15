@@ -27,7 +27,9 @@ Edit **`apps.json`**:
       "description": "What it does",
       "icon": "🚀",                        // an emoji, or an image URL/path such as icons/my-app.png
       "color": "#6366f1",
-      "category": "Tools",                // becomes a filter chip
+      "category": "Tools",                // section: Games, Create, Tools or Learn & Explore
+      "genre": "Puzzle",                  // optional type inside a section (Games use Action, Arcade, Puzzle, Casual, Board & Party)
+      "added": "2026-11-15",              // optional: shows a New badge and the New row for 3 weeks
       "status": "live",                   // live | beta | dev | archived
       "tags": ["web"],
       "embed": true,                      // play it inside the launcher instead of leaving
@@ -39,6 +41,10 @@ Edit **`apps.json`**:
 ```
 
 There is no add button in the UI: new apps go in `apps.json`. Edits made in the UI are saved in that browser only. Use **⋯ → Export apps** to download a merged `apps.json` and commit it.
+
+## Finding things
+
+The launcher opens on **Home**: the featured banner, then rows for **Recently played**, **Favorites** (tap the star on any app), **New**, one row per game type (Action, Arcade, Puzzle, Casual, Board & Party) and one per section (Create, Tools, Learn & Explore). Rows scroll sideways and each has **See all**. The chips switch to **All** or a single section; picking **Games** adds a second row of chips for the game types, and grid views can be sorted by recently played, A to Z, most played or newest. Search (`/` or Ctrl+K) looks through everything. Keys: `H` home, `G` games. Your last view and sort are remembered in the browser.
 
 ## Offline
 
@@ -82,3 +88,4 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 | `orca/` | Orca's chat page, built into the launcher |
 | `sw.js`, `manifest.webmanifest` | Offline support and install as an app |
 | `.github/workflows/pages.yml` | Deploys to GitHub Pages |
+- **New in this batch** (each one self-contained `index.html` in its own folder, saving progress in the browser and working offline): **Star Swarm** (`star-swarm/`, wave space shooter with bosses), **Paddle Panic** (`paddle-panic/`, brick breaker with power-ups), **Fuse Field** (`fuse-field/`, logic puzzle where numbers count hidden fuses), **Sudoku** (`sudoku/`, generated puzzles in four levels with notes and hints), **Mind Match** (`mind-match/`, memory pairs), **Drop Four** (`drop-four/`, four-in-a-row vs CPU or a friend), **Reversi** (`reversi/`, vs CPU or a friend), **Calc** (`calc/`, calculator and unit converter), **Tasks** (`tasks/`, to-do lists), **Decider** (`decider/`, coin, dice, wheel, number and team picker), **Sketch** (`sketch/`, drawing pad with PNG export), **Keystorm** (`keystorm/`, typing speed test) and **Math Sprint** (`math-sprint/`, timed mental maths).

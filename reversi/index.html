@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reversi</title>
+<style>
+  [hidden] { display:none !important; }
+  :root { --bg:#f3efe6; --panel:#fffdf7; --felt:#1f7a52; --felt2:#1a6b47; --line:#14573a; --text:#202520; --muted:#6f7568; --dark:#1b1d22; --light:#f7f5ee; --accent:#1f7a52; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#101411; --panel:#1a201b; --text:#e9eee8; --muted:#97a196; --felt:#1b6a47; --felt2:#175c3e; --line:#0f4129; } }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px 12px calc(16px + env(safe-area-inset-bottom)); user-select:none; }
+  header, .bar, #status { width:min(520px,100%); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  h1 { font-size:22px; letter-spacing:-.02em; margin-right:auto; }
+  .count { display:flex; gap:8px; }
+  .count span { display:flex; align-items:center; gap:6px; background:var(--panel); border-radius:999px; padding:4px 12px 4px 6px; font-weight:800; font-variant-numeric:tabular-nums; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .count span.on { outline:2px solid var(--accent); }
+  .pc { width:20px; height:20px; border-radius:50%; display:inline-block; }
+  .pc.d { background:var(--dark); box-shadow:inset 0 -3px 0 rgba(255,255,255,.08); } .pc.l { background:var(--light); box-shadow:inset 0 -3px 0 rgba(0,0,0,.12), 0 0 0 1px #0002; }
+  button, select { font:inherit; font-weight:600; border:0; border-radius:10px; background:var(--panel); color:var(--text); min-height:40px; padding:0 14px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  button:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .spacer { flex:1; }
+  #status { font-weight:700; min-height:26px; }
+  #board { width:min(520px,100%); aspect-ratio:1; display:grid; grid-template-columns:repeat(8,1fr); background:var(--felt); border:8px solid #6b4a2b; border-radius:14px; box-shadow:0 18px 40px -18px rgba(0,0,0,.6); touch-action:manipulation; }
+  .sq { border:1px solid var(--line); display:grid; place-items:center; position:relative; cursor:default; }
+  .sq.ok { cursor:pointer; }
+  .sq.ok::after { content:""; width:26%; height:26%; border-radius:50%; background:rgba(255,255,255,.28); }
+  .sq.ok:hover::after { width:70%; height:70%; background:rgba(255,255,255,.18); }
+  .sq.cur { box-shadow:inset 0 0 0 3px #ffd34d; }
+  .sq.last::before { content:""; position:absolute; width:8px; height:8px; border-radius:50%; background:#ff5a5a; z-index:2; }
+  .disc { width:82%; height:82%; border-radius:50%; transition:transform .25s; }
+  .disc.d { background:radial-gradient(circle at 35% 30%, #4a4e57, var(--dark) 60%); box-shadow:0 3px 4px rgba(0,0,0,.4); }
+  .disc.l { background:radial-gradient(circle at 35% 30%, #fff, #e3dfd2 70%); box-shadow:0 3px 4px rgba(0,0,0,.35); }
+  .disc.flip { animation:flip .35s ease; }
+  @keyframes flip { 50% { transform:scaleX(0); } }
+  .disc.new { animation:pop .2s ease-out; }
+  @keyframes pop { from { transform:scale(.4); } }
+  .help { color:var(--muted); font-size:13px; width:min(520px,100%); text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Reversi</h1>
+  <div class="count"><span id="cd"><i class="pc d"></i><b id="nd">2</b></span><span id="cl"><i class="pc l"></i><b id="nl">2</b></span></div>
+</header>
+<div class="bar">
+  <select id="mode" aria-label="Opponent">
+    <option value="easy">vs CPU · Easy</option>
+    <option value="medium" selected>vs CPU · Medium</option>
+    <option value="hard">vs CPU · Hard</option>
+    <option value="2p">2 players</option>
+  </select>
+  <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)"><input type="checkbox" id="hints" checked> Show moves</label>
+  <span class="spacer"></span>
+  <button id="undo">Undo</button>
+  <button id="new">New game</button>
+</div>
+<div id="status"></div>
+<div id="board" role="grid" aria-label="Board"></div>
+<p class="help">Place a disc so it traps a line of your opponent’s discs between two of yours. They flip to your colour. Most discs at the end wins. Arrow keys + Enter work too.</p>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id), N = 8, KEY = 'reversi:';
+  const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  // Corner-heavy position weights for the CPU.
+  const WEIGHT = [
+    [100,-20,10,5,5,10,-20,100],[-20,-50,-2,-2,-2,-2,-50,-20],[10,-2,1,1,1,1,-2,10],[5,-2,1,0,0,1,-2,5],
+    [5,-2,1,0,0,1,-2,5],[10,-2,1,1,1,1,-2,10],[-20,-50,-2,-2,-2,-2,-50,-20],[100,-20,10,5,5,10,-20,100]];
+  let b, turn, history, last, cur = [2, 3], busy = false, over = false;
+  $('mode').value = localStorage.getItem(KEY + 'mode') || 'medium';
+  const sqs = [];
+  for (let i = 0; i < 64; i++) { const s = document.createElement('div'); s.className = 'sq'; s.addEventListener('click', () => human(Math.floor(i / 8), i % 8)); $('board').append(s); sqs.push(s); }
+
+  function flips(g, r, c, p) {
+    if (g[r][c]) return [];
+    const out = [];
+    for (const [dr, dc] of DIRS) {
+      const line = []; let rr = r + dr, cc = c + dc;
+      while (rr >= 0 && rr < N && cc >= 0 && cc < N && g[rr][cc] === 3 - p) { line.push([rr, cc]); rr += dr; cc += dc; }
+      if (line.length && rr >= 0 && rr < N && cc >= 0 && cc < N && g[rr][cc] === p) out.push(...line);
+    }
+    return out;
+  }
+  const movesFor = (g, p) => { const m = []; for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const f = flips(g, r, c, p); if (f.length) m.push([r, c, f]); } return m; };
+  const counts = (g) => { let d = 0, l = 0; for (const row of g) for (const v of row) { if (v === 1) d++; if (v === 2) l++; } return [d, l]; };
+  const vsCpu = () => $('mode').value !== '2p';
+
+  function newGame() {
+    b = [...Array(N)].map(() => Array(N).fill(0));
+    b[3][3] = b[4][4] = 2; b[3][4] = b[4][3] = 1;
+    turn = 1; history = []; last = null; over = false; busy = false;
+    draw(); 
+  }
+
+  function apply(r, c) {
+    const f = flips(b, r, c, turn); if (!f.length) return false;
+    history.push({ b: b.map((x) => x.slice()), turn, last });
+    b[r][c] = turn; for (const [rr, cc] of f) b[rr][cc] = turn;
+    last = [r, c];
+    draw(new Set(f.map(([rr, cc]) => rr * 8 + cc)), r * 8 + c);
+    navigator.vibrate?.(8);
+    // Next player; if they can't move, the other goes again; if neither can, game over.
+    if (movesFor(b, 3 - turn).length) turn = 3 - turn;
+    else if (!movesFor(b, turn).length) { over = true; }
+    setTimeout(() => { draw(); maybeCpu(); }, 380);
+    return true;
+  }
+
+  function human(r, c) {
+    if (busy || over || (vsCpu() && turn === 2)) return;
+    cur = [r, c]; apply(r, c);
+  }
+
+  function draw(flipped = new Set(), placed = -1) {
+    const ms = over ? [] : movesFor(b, turn);
+    const okSet = new Set(ms.map(([r, c]) => r * 8 + c));
+    const showHints = $('hints').checked && !(vsCpu() && turn === 2);
+    for (let i = 0; i < 64; i++) {
+      const r = Math.floor(i / 8), c = i % 8, v = b[r][c], s = sqs[i];
+      s.classList.toggle('ok', okSet.has(i) && showHints);
+      s.classList.toggle('last', !!last && last[0] === r && last[1] === c);
+      s.classList.toggle('cur', cur[0] === r && cur[1] === c && kbd);
+      const want = v ? (v === 1 ? 'd' : 'l') : '';
+      const disc = s.firstChild;
+      if (!want) { if (disc) s.replaceChildren(); continue; }
+      if (!disc) { const d = document.createElement('div'); d.className = `disc ${want}` + (i === placed ? ' new' : ''); s.append(d); }
+      else if (!disc.classList.contains(want)) { disc.className = `disc ${want}` + (flipped.has(i) ? ' flip' : ''); }
+    }
+    const [d, l] = counts(b);
+    $('nd').textContent = d; $('nl').textContent = l;
+    $('cd').classList.toggle('on', turn === 1 && !over); $('cl').classList.toggle('on', turn === 2 && !over);
+    let msg;
+    if (over) msg = d === l ? 'Draw!' : vsCpu() ? (d > l ? `You win ${d}–${l}!` : `CPU wins ${l}–${d}.`) : `${d > l ? 'Dark' : 'Light'} wins ${Math.max(d, l)}–${Math.min(d, l)}!`;
+    else if (vsCpu()) msg = turn === 1 ? 'Your move (dark)' : 'CPU is thinking…';
+    else msg = `${turn === 1 ? 'Dark' : 'Light'} to move`;
+    if (!over && history.length && history[history.length - 1].turn === turn && !busy) msg += ' · other side had to pass';
+    $('status').textContent = msg;
+  }
+
+  // CPU: negamax with alpha-beta over position weights + mobility.
+  function evalBoard(g, p) {
+    let s = 0;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (g[r][c]) s += (g[r][c] === p ? 1 : -1) * WEIGHT[r][c];
+    return s + 3 * (movesFor(g, p).length - movesFor(g, 3 - p).length);
+  }
+  function nega(g, depth, a, bb, p) {
+    const ms = movesFor(g, p);
+    if (depth === 0 || (!ms.length && !movesFor(g, 3 - p).length)) {
+      if (!ms.length && !movesFor(g, 3 - p).length) { const [d, l] = counts(g); const diff = p === 1 ? d - l : l - d; return diff * 1000; }
+      return evalBoard(g, p);
+    }
+    if (!ms.length) return -nega(g, depth - 1, -bb, -a, 3 - p);
+    let best = -Infinity;
+    for (const [r, c, f] of ms) {
+      const g2 = g.map((x) => x.slice()); g2[r][c] = p; for (const [rr, cc] of f) g2[rr][cc] = p;
+      const v = -nega(g2, depth - 1, -bb, -a, 3 - p);
+      if (v > best) best = v; if (best > a) a = best; if (a >= bb) break;
+    }
+    return best;
+  }
+  function cpuPick() {
+    const ms = movesFor(b, 2), lvl = $('mode').value;
+    if (lvl === 'easy') return ms[Math.floor(Math.random() * ms.length)];
+    const depth = lvl === 'medium' ? 2 : 4;
+    let best = -Infinity, pick = ms[0];
+    for (const m of ms) {
+      const g2 = b.map((x) => x.slice()); g2[m[0]][m[1]] = 2; for (const [rr, cc] of m[2]) g2[rr][cc] = 2;
+      const v = -nega(g2, depth - 1, -Infinity, Infinity, 1) + Math.random();
+      if (v > best) { best = v; pick = m; }
+    }
+    return pick;
+  }
+  function maybeCpu() {
+    if (!vsCpu() || turn !== 2 || over) return;
+    busy = true; draw();
+    setTimeout(() => { const m = cpuPick(); busy = false; if (m) apply(m[0], m[1]); }, 450);
+  }
+
+  let kbd = false;
+  addEventListener('keydown', (e) => {
+    const d = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+    if (d) { e.preventDefault(); kbd = true; cur = [Math.max(0, Math.min(7, cur[0] + d[0])), Math.max(0, Math.min(7, cur[1] + d[1]))]; draw(); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kbd = true; over ? newGame() : human(cur[0], cur[1]); }
+  });
+  addEventListener('pointerdown', () => { if (kbd) { kbd = false; draw(); } });
+  $('new').addEventListener('click', newGame);
+  $('hints').addEventListener('change', () => draw());
+  $('mode').addEventListener('change', () => { localStorage.setItem(KEY + 'mode', $('mode').value); newGame(); });
+  $('undo').addEventListener('click', () => {
+    if (busy || !history.length) return;
+    // vs CPU: go back to your last move.
+    let h = history.pop();
+    while (vsCpu() && h.turn !== 1 && history.length) h = history.pop();
+    b = h.b; turn = h.turn; last = h.last; over = false;
+    sqs.forEach((s) => s.replaceChildren()); draw();
+  });
+  newGame();
+})();
+</script>
+</body>
+</html>
