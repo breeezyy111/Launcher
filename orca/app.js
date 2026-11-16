@@ -22,9 +22,22 @@ let busy = false;
 
 // ---------- Rendering ----------
 
+// Orca's answers can be steered by text hidden in files or pages it reads ("prompt injection").
+// So answers never load images (an image link could quietly send chat text to another site)
+// and links always open in a new tab, away from Orca.
+if (window.DOMPurify) {
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+const PURIFY_OPTIONS = { FORBID_TAGS: ['img', 'picture', 'source', 'video', 'audio', 'iframe', 'form', 'input', 'button', 'style'], FORBID_ATTR: ['style', 'srcset'] };
+
 function renderMarkdown(text) {
   if (window.marked && window.DOMPurify) {
-    return DOMPurify.sanitize(marked.parse(text));
+    return DOMPurify.sanitize(marked.parse(text), PURIFY_OPTIONS);
   }
   const div = document.createElement('div');
   div.textContent = text;
@@ -252,7 +265,15 @@ async function send() {
   } catch {
     typing.remove();
     history.pop();
-    addMessage('assistant', '⚠️ Could not reach the server. Is it running?').classList.add('error');
+    // The browser couldn't connect at all. Most often a school or work network blocks
+    // workers.dev, or the device is offline.
+    const where = API_BASE ? new URL(API_BASE).hostname : 'the server';
+    addMessage(
+      'assistant',
+      navigator.onLine === false
+        ? '⚠️ You look offline. Connect to the internet and try again.'
+        : `⚠️ Couldn't reach Orca's server (${where}). If you're on a school or work network, it may be blocked there; try another network.`,
+    ).classList.add('error');
   } finally {
     setBusy(false);
     input.focus();
