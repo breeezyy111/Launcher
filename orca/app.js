@@ -265,7 +265,15 @@ async function send() {
   } catch {
     typing.remove();
     history.pop();
-    addMessage('assistant', '⚠️ Could not reach the server. Is it running?').classList.add('error');
+    // The browser couldn't connect at all. Most often a school or work network blocks
+    // workers.dev, or the device is offline.
+    const where = API_BASE ? new URL(API_BASE).hostname : 'the server';
+    addMessage(
+      'assistant',
+      navigator.onLine === false
+        ? '⚠️ You look offline. Connect to the internet and try again.'
+        : `⚠️ Couldn't reach Orca's server (${where}). If you're on a school or work network, it may be blocked there; try another network.`,
+    ).classList.add('error');
   } finally {
     setBusy(false);
     input.focus();
