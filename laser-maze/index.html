@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laser Maze</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'laser-maze', W: 480, H: 720, bg: '#0d0a1a', accent: '#ff4f6d' });
+  const c = K.ctx;
+  let N, cells, emit, mirrors, left, level, beam, lit, won, cur, solution;
+  // cell: 0 empty, 1 wall, 2 crystal, '/' or '\\' mirror placed by you
+  function gen(lv) {
+    level = lv; N = Math.min(10, 6 + Math.floor(lv / 3)); const k = Math.min(7, 1 + Math.ceil(lv / 1.5));
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const g = Array.from({ length: N }, () => Array(N).fill(0)), used = new Set();
+      const side = K.randi(0, 3), t = K.randi(1, N - 2);
+      let x, y, dx, dy;
+      if (side === 0) { x = 0; y = t; dx = 1; dy = 0; } else if (side === 1) { x = N - 1; y = t; dx = -1; dy = 0; } else if (side === 2) { x = t; y = 0; dx = 0; dy = 1; } else { x = t; y = N - 1; dx = 0; dy = -1; }
+      const e = { x, y, dx, dy }; used.add(x + ',' + y);
+      const path = [], sol = [];
+      let ok = true;
+      for (let m = 0; m <= k && ok; m++) {
+        const L = K.randi(1, Math.max(2, N - 3));
+        for (let s = 0; s < L; s++) { x += dx; y += dy; if (x < 0 || y < 0 || x >= N || y >= N || used.has(x + ',' + y)) { ok = false; break; } used.add(x + ',' + y); path.push([x, y]); }
+        if (!ok) break;
+        if (m < k) { const turnL = Math.random() < .5, ndx = turnL ? dy : -dy, ndy = turnL ? -dx : dx; const type = ndx === -dy && ndy === -dx ? '/' : '\\'; sol.push([x, y, type]); path.pop(); dx = ndx; dy = ndy; }
+      }
+      if (!ok || path.length < 3) continue;
+      const end = path[path.length - 1]; g[end[1]][end[0]] = 2;
+      const mids = K.shuffle(path.slice(0, -1).filter(([a, b]) => !sol.some(([sx, sy]) => sx === a && sy === b)));
+      for (let i = 0; i < Math.min(mids.length, Math.floor(lv / 4)); i++) g[mids[i][1]][mids[i][0]] = 2;
+      for (let yy = 0; yy < N; yy++) for (let xx = 0; xx < N; xx++) if (!used.has(xx + ',' + yy) && Math.random() < .14 + Math.min(.1, lv * .01)) g[yy][xx] = 1;
+      cells = g; emit = e; left = k; solution = sol; mirrors = 0; won = false; cur = { x: Math.floor(N / 2), y: Math.floor(N / 2) };
+      trace(); if (!won) return; // never hand out a level that is already solved
+    }
+  }
+  function trace() {
+    beam = [[emit.x, emit.y]]; lit = new Set();
+    let x = emit.x, y = emit.y, dx = emit.dx, dy = emit.dy;
+    for (let i = 0; i < 400; i++) {
+      x += dx; y += dy;
+      if (x < 0 || y < 0 || x >= N || y >= N) { beam.push([x - dx * .5, y - dy * .5]); break; }
+      const v = cells[y][x];
+      if (v === 1) { beam.push([x - dx * .5, y - dy * .5]); break; }
+      if (v === 2) lit.add(x + ',' + y);
+      if (v === '/') { [dx, dy] = [-dy, -dx]; beam.push([x, y]); }
+      if (v === '\\') { [dx, dy] = [dy, dx]; beam.push([x, y]); }
+      if (i === 399) beam.push([x, y]);
+    }
+    const total = cells.flat().filter((v) => v === 2).length;
+    won = lit.size === total;
+  }
+  function tap(x, y) {
+    if (K.state !== 'play' || won) return;
+    if (x === emit.x && y === emit.y) return;
+    const v = cells[y][x];
+    if (v === 1 || v === 2) return K.sfx.bad();
+    if (v === 0) { if (left <= 0) { K.float(geo().ox + x * geo().S, geo().oy + y * geo().S, 'No mirrors left', '#ff4f6d'); return K.sfx.bad(); } cells[y][x] = '/'; left--; }
+    else if (v === '/') cells[y][x] = '\\';
+    else { cells[y][x] = 0; left++; }
+    mirrors++; K.tone(520, .05, 'triangle', .06);
+    trace();
+    if (won) { K.sfx.win(); K.submit(level); K.store.set('laser-maze:level', level + 1); setTimeout(() => K.screen({ title: 'All lit!', big: `Level ${level}`, text: 'Every crystal is glowing.', buttons: [{ label: 'Next level', act: () => { gen(level + 1); K.play(); } }] }), 700); }
+  }
+  const geo = () => { const S = Math.floor((K.W - 24) / N); return { S, ox: (K.W - S * N) / 2, oy: 130 }; };
+  K.onDown = (p) => { const { S, ox, oy } = geo(), x = Math.floor((p.x - ox) / S), y = Math.floor((p.y - oy) / S); if (x >= 0 && y >= 0 && x < N && y < N) { cur = { x, y }; tap(x, y); } };
+  function update() {
+    const dx = K.pressed('right') - K.pressed('left'), dy = K.pressed('down') - K.pressed('up');
+    if (dx || dy) { cur.x = K.clamp(cur.x + dx, 0, N - 1); cur.y = K.clamp(cur.y + dy, 0, N - 1); cur.kb = true; }
+    if (K.pressed('a')) tap(cur.x, cur.y);
+    if (K.pressed('b')) reset();
+  }
+  function reset() { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (cells[y][x] === '/' || cells[y][x] === '\\') { cells[y][x] = 0; left++; } trace(); }
+  K.onKey = (k) => { if ((k === 'r' || k === 'R') && K.state === 'play') reset(); };
+  function draw() {
+    K.begin('#0d0a1a');
+    const { S, ox, oy } = geo(), t = performance.now() / 300;
+    K.text(`Level ${level}`, 16, 34, { size: 26, weight: 900, color: '#ff4f6d' });
+    K.text(`Mirrors left: ${left}`, 16, 64, { size: 16, color: '#ddd' });
+    const total = cells.flat().filter((v) => v === 2).length;
+    K.text(`💎 ${lit.size}/${total}`, K.W - 16, 64, { size: 16, color: '#7ef0ff', align: 'right' });
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const v = cells[y][x], px = ox + x * S, py = oy + y * S;
+      c.fillStyle = (x + y) % 2 ? '#181330' : '#1c1638'; c.fillRect(px, py, S, S);
+      if (v === 1) { c.fillStyle = '#3d3566'; K.rr(px + 2, py + 2, S - 4, S - 4, 6); c.fill(); c.fillStyle = '#4c4280'; c.fillRect(px + 5, py + 5, S - 10, 4); }
+      if (v === 2) { const on = lit.has(x + ',' + y); c.save(); c.translate(px + S / 2, py + S / 2); c.rotate(t * .3); c.fillStyle = on ? '#7ef0ff' : '#3b6a7a'; if (on) { c.shadowColor = '#7ef0ff'; c.shadowBlur = 20; } c.beginPath(); c.moveTo(0, -S * .3); c.lineTo(S * .22, 0); c.lineTo(0, S * .3); c.lineTo(-S * .22, 0); c.fill(); c.restore(); }
+      if (v === '/' || v === '\\') { c.strokeStyle = '#e8e6ff'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); if (v === '/') { c.moveTo(px + 6, py + S - 6); c.lineTo(px + S - 6, py + 6); } else { c.moveTo(px + 6, py + 6); c.lineTo(px + S - 6, py + S - 6); } c.stroke(); }
+    }
+    // emitter
+    { const px = ox + emit.x * S + S / 2, py = oy + emit.y * S + S / 2; c.fillStyle = '#2a2244'; c.fillRect(px - S / 2 + 2, py - S / 2 + 2, S - 4, S - 4); c.save(); c.translate(px, py); c.rotate(Math.atan2(emit.dy, emit.dx)); c.fillStyle = '#ff4f6d'; c.fillRect(-S * .3, -S * .18, S * .6, S * .36); c.fillRect(S * .2, -S * .1, S * .2, S * .2); c.restore(); }
+    // beam
+    c.strokeStyle = '#ff4f6d'; c.lineWidth = 4; c.shadowColor = '#ff4f6d'; c.shadowBlur = 14; c.lineCap = 'round'; c.beginPath();
+    beam.forEach(([x, y], i) => { const px = ox + x * S + S / 2, py = oy + y * S + S / 2; i ? c.lineTo(px, py) : c.moveTo(px, py); }); c.stroke();
+    c.strokeStyle = '#ffd0d8'; c.lineWidth = 1.5; c.stroke(); c.shadowBlur = 0;
+    if (cur.kb) { c.strokeStyle = '#fff'; c.lineWidth = 2; c.strokeRect(ox + cur.x * S + 2, oy + cur.y * S + 2, S - 4, S - 4); }
+    K.drawParts();
+    K.text(K.isTouch ? 'Tap an empty square to place a mirror, tap again to flip or remove' : 'Click: place, flip, remove a mirror · R or X resets', K.W / 2, oy + N * S + 30, { size: 13, color: '#a49cd0', align: 'center' });
+    K.end();
+  }
+  K.fmtBest = (n) => 'Level ' + n;
+  const saved = K.store.get('laser-maze:level', 1);
+  gen(saved);
+  K.screen({ title: 'Laser Maze', text: 'Bounce the laser off mirrors so it passes through every crystal. You only get so many mirrors.', best: true,
+    lines: ['Tap a square: place a mirror / then flip it \\ then remove it', 'Walls stop the beam', 'Your level is saved'],
+    buttons: [{ label: saved > 1 ? `Continue level ${saved}` : 'Play', act: () => K.play() }, ...(saved > 1 ? [{ label: 'Start at level 1', alt: true, act: () => { gen(1); K.play(); } }] : [])] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

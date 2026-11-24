@@ -22,7 +22,7 @@
   .k-btn.alt{background:rgba(255,255,255,.12);color:#eef0ff}
   .k-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
   .k-top{position:fixed;top:8px;right:8px;display:flex;gap:8px;z-index:9}
-  .k-ib{width:40px;height:40px;border-radius:12px;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center}
+  .k-ib{width:40px;height:40px;border-radius:12px;border:0;background:rgba(30,32,60,.45);color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center}
   .k-touch{position:fixed;inset:auto 0 0 0;height:0;z-index:8;pointer-events:none}
   .k-stick{position:fixed;left:18px;bottom:18px;width:128px;height:128px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.18);pointer-events:auto;touch-action:none}
   .k-stick i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(255,255,255,.3)}

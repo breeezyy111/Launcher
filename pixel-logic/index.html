@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Logic</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'pixel-logic', W: 480, H: 760, bg: '#f4efe6', accent: '#5b5bd6' });
+  const c = K.ctx;
+  let N, sol, board, rowC, colC, markMode, cur, paint, startT, doneT, solved, hue;
+  const clues = (line) => { const out = []; let run = 0; for (const v of line) { if (v) run++; else if (run) { out.push(run); run = 0; } } if (run) out.push(run); return out.length ? out : [0]; };
+  function newPuzzle(n) {
+    N = n; hue = K.randi(0, 359);
+    // blobby random picture: noise smoothed once so it looks like shapes rather than static
+    let g = Array.from({ length: N }, () => Array.from({ length: N }, () => Math.random() < .55));
+    g = g.map((row, y) => row.map((v, x) => { let s = 0, t = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const r = g[y + dy]?.[x + dx]; if (r !== undefined) { t++; s += r; } } return s / t > .5 || (v && Math.random() < .3); }));
+    for (let y = 0; y < N; y++) if (!g[y].some(Boolean)) g[y][K.randi(0, N - 1)] = true;
+    sol = g; board = Array.from({ length: N }, () => Array(N).fill(0)); // 0 empty, 1 filled, 2 marked X
+    rowC = sol.map(clues); colC = sol[0].map((_, x) => clues(sol.map((r) => r[x])));
+    cur = { x: 0, y: 0 }; markMode = false; solved = false; startT = performance.now(); doneT = 0;
+  }
+  const lineOK = (line, cl) => { const a = clues(line.map((v) => v === 1)); return a.length === cl.length && a.every((v, i) => v === cl[i]); };
+  function check() {
+    const ok = board.every((r, y) => lineOK(r, rowC[y])) && colC.every((cl, x) => lineOK(board.map((r) => r[x]), cl));
+    if (ok && !solved) {
+      solved = true; doneT = performance.now(); K.sfx.win(); const n = K.store.get('pixel-logic:solved', 0) + 1; K.store.set('pixel-logic:solved', n); K.submit(n);
+      const t = (doneT - startT) / 1000, bk = 'pixel-logic:t' + N, bt = K.store.get(bk, 0); const rec = !bt || t < bt; if (rec) K.store.set(bk, t);
+      setTimeout(() => K.screen({ title: 'Solved!', big: `${t.toFixed(0)} s`, text: rec ? `New best for ${N}×${N}!` : `Best for ${N}×${N}: ${bt.toFixed(0)} s`, buttons: [{ label: 'Next puzzle', act: () => { newPuzzle(N); K.play(); } }, { label: 'Change size', alt: true, act: menu }] }), 900);
+    }
+  }
+  const geo = () => { const cw = Math.ceil(N / 2) * 15 + 10, S = Math.floor((K.W - 20 - cw) / N); return { S, ox: 10 + cw, oy: 90 + Math.ceil(N / 2) * 17 + 6, cw }; };
+  function set(x, y, v) { if (solved || board[y][x] === v) return; board[y][x] = v; K.tone(v === 1 ? 600 : v === 2 ? 300 : 200, .03, 'square', .03); check(); }
+  K.onDown = (p, e) => {
+    if (K.state !== 'play') return; const { S, ox, oy } = geo();
+    const x = Math.floor((p.x - ox) / S), y = Math.floor((p.y - oy) / S);
+    if (x >= 0 && y >= 0 && x < N && y < N) { const want = e.button === 2 || markMode ? 2 : 1; const v = board[y][x] === want ? 0 : want; paint = v; cur = { x, y }; set(x, y, v); return; }
+    const by = oy + N * S + 20; if (p.y > by && p.y < by + 50) { if (p.x < K.W / 2) markMode = !markMode; else { board = board.map((r) => r.map(() => 0)); } K.sfx.blip(); }
+  };
+  K.onMove = (p) => { if (paint == null || !K.pointerHeld) return; const { S, ox, oy } = geo(); const x = Math.floor((p.x - ox) / S), y = Math.floor((p.y - oy) / S); if (x >= 0 && y >= 0 && x < N && y < N) set(x, y, paint); };
+  K.onUp = () => { paint = null; };
+  function update() {
+    const dx = K.pressed('right') - K.pressed('left'), dy = K.pressed('down') - K.pressed('up');
+    if (dx || dy) { cur.x = (cur.x + dx + N) % N; cur.y = (cur.y + dy + N) % N; cur.kb = true; if (K.held('a')) set(cur.x, cur.y, 1); }
+    if (K.pressed('a')) set(cur.x, cur.y, board[cur.y][cur.x] === 1 ? 0 : 1);
+    if (K.pressed('b')) set(cur.x, cur.y, board[cur.y][cur.x] === 2 ? 0 : 2);
+  }
+  function draw() {
+    K.begin('#f4efe6');
+    const { S, ox, oy } = geo(), t = ((solved ? doneT : performance.now()) - startT) / 1000;
+    K.text(`Pixel Logic  ${N}×${N}`, 16, 32, { size: 22, weight: 900, color: '#2d2a4a' });
+    K.text(`⏱ ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`, 16, 60, { size: 15, color: '#6b6688' });
+    // clues
+    rowC.forEach((cl, y) => { const ok = lineOK(board[y], cl); cl.slice().reverse().forEach((n, i) => K.text(String(n), ox - 10 - i * 15, oy + y * S + S / 2, { size: Math.min(15, S * .5), weight: 800, color: ok ? '#b8b2cc' : '#2d2a4a', align: 'center' })); });
+    colC.forEach((cl, x) => { const ok = lineOK(board.map((r) => r[x]), cl); cl.slice().reverse().forEach((n, i) => K.text(String(n), ox + x * S + S / 2, oy - 12 - i * 17, { size: Math.min(15, S * .5), weight: 800, color: ok ? '#b8b2cc' : '#2d2a4a', align: 'center' })); });
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const v = board[y][x], px = ox + x * S, py = oy + y * S;
+      c.fillStyle = v === 1 ? (solved ? `hsl(${(hue + (x + y) * 6) % 360} 65% 55%)` : '#2d2a4a') : (y === cur.y || x === cur.x) && cur.kb ? '#ebe5f7' : '#fffdf8'; c.fillRect(px, py, S, S);
+      if (v === 2) { c.strokeStyle = '#c45'; c.lineWidth = 2; c.beginPath(); c.moveTo(px + S * .3, py + S * .3); c.lineTo(px + S * .7, py + S * .7); c.moveTo(px + S * .7, py + S * .3); c.lineTo(px + S * .3, py + S * .7); c.stroke(); }
+    }
+    c.strokeStyle = '#cfc8e0'; c.lineWidth = 1;
+    for (let i = 0; i <= N; i++) { c.lineWidth = i % 5 === 0 ? 2.5 : 1; c.strokeStyle = i % 5 === 0 ? '#6b6688' : '#cfc8e0'; c.beginPath(); c.moveTo(ox + i * S, oy); c.lineTo(ox + i * S, oy + N * S); c.moveTo(ox, oy + i * S); c.lineTo(ox + N * S, oy + i * S); c.stroke(); }
+    if (cur.kb) { c.strokeStyle = '#5b5bd6'; c.lineWidth = 3; c.strokeRect(ox + cur.x * S + 1, oy + cur.y * S + 1, S - 2, S - 2); }
+    const by = oy + N * S + 20;
+    c.fillStyle = markMode ? '#c45' : '#2d2a4a'; K.rr(16, by, K.W / 2 - 24, 46, 12); c.fill();
+    K.text(markMode ? '✕  Marking (tap to fill)' : '■  Filling (tap to mark ✕)', K.W / 4 + 4, by + 23, { size: 14, align: 'center', weight: 800 });
+    c.fillStyle = '#d9d2e9'; K.rr(K.W / 2 + 8, by, K.W / 2 - 24, 46, 12); c.fill();
+    K.text('Clear board', K.W * .75 - 4, by + 23, { size: 14, align: 'center', weight: 800, color: '#2d2a4a' });
+    if (!K.isTouch) K.text('Click fills · right-click marks ✕ · drag to paint · arrows + Space / X', K.W / 2, by + 74, { size: 12, color: '#6b6688', align: 'center' });
+    K.end();
+  }
+  K.fmtBest = (n) => `${n} solved`;
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Pixel Logic', text: 'Picture logic puzzles. The numbers say how many filled squares run together in each row and column, in order. Fill the grid so every clue fits.', best: true,
+      lines: ['Mark squares you know are empty with ✕', 'Clues fade when their line is right', 'Every grid is new'],
+      buttons: [{ label: '5×5', act: () => { newPuzzle(5); K.play(); } }, { label: '8×8', act: () => { newPuzzle(8); K.play(); } }, { label: '10×10', act: () => { newPuzzle(10); K.play(); } }, { label: '15×15', alt: true, act: () => { newPuzzle(15); K.play(); } }] });
+  }
+  K.onQuit = menu;
+  newPuzzle(5); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

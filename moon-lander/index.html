@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Moon Lander</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'moon-lander', W: 800, H: 500, bg: '#05060f', accent: '#9be564', fit: 'grow' });
+  const c = K.ctx;
+  let ship, ground, pads, level, score, fuel, stars, landed, wind;
+  function terrain() {
+    const pts = [], n = 32, step = K.W / n, base = K.H - 70;
+    let y = base - K.rand(0, 80);
+    for (let i = 0; i <= n; i++) { y = K.clamp(y + K.rand(-38, 38) * (1 + level * .08), K.H * .45, K.H - 20); pts.push([i * step, y]); }
+    pads = [];
+    const count = Math.max(1, 3 - Math.floor(level / 3)), used = new Set();
+    for (let p = 0; p < count; p++) {
+      let i; do { i = K.randi(2, n - 6); } while ([...used].some((u) => Math.abs(u - i) < 6));
+      used.add(i);
+      const w = Math.max(2, 4 - Math.floor(level / 4) - (p === count - 1 && count > 1 ? 1 : 0)), py = pts[i][1];
+      for (let j = i; j <= i + w; j++) pts[j][1] = py;
+      pads.push({ x1: pts[i][0], x2: pts[i + w][0], y: py, mult: w <= 2 ? 3 : w === 3 ? 2 : 1 });
+    }
+    return pts;
+  }
+  function newLevel(lv) {
+    level = lv; ground = terrain(); wind = level > 2 ? K.rand(-.006, .006) * Math.min(level, 8) / 4 : 0;
+    ship = { x: K.rand(80, K.W - 80), y: 50, vx: K.rand(-1, 1), vy: 0, a: 0, thrust: false };
+    if (lv === 1) { fuel = 1000; score = 0; }
+    fuel = Math.min(1000, fuel + 300 * (lv > 1));
+    landed = 0; K.clearParts();
+  }
+  const groundY = (x) => { for (let i = 0; i < ground.length - 1; i++) { const [x1, y1] = ground[i], [x2, y2] = ground[i + 1]; if (x >= x1 && x <= x2) return y1 + (y2 - y1) * (x - x1) / (x2 - x1); } return K.H; };
+  function update() {
+    if (landed) { if (--landed === 0) newLevel(level + 1); return; }
+    const ax = K.axis();
+    ship.a = K.clamp(ship.a + ax.x * .045, -Math.PI / 2, Math.PI / 2);
+    ship.thrust = (K.held('a') || K.held('up') || K.pointerHeld && !K.isTouch) && fuel > 0;
+    if (ship.thrust) { ship.vx += Math.sin(ship.a) * .085; ship.vy -= Math.cos(ship.a) * .085; fuel -= 1.6; if (K.t % 3 === 0) K.burst(ship.x - Math.sin(ship.a) * 14, ship.y + Math.cos(ship.a) * 14, '#ffb347', 2, 2, 20, 3); if (K.t % 6 === 0) K.noise(.08, .03); }
+    ship.vy += .03; ship.vx += wind;
+    ship.x += ship.vx; ship.y += ship.vy;
+    if (ship.x < 0) ship.x += K.W; if (ship.x > K.W) ship.x -= K.W;
+    // touchdown?
+    const feet = [ship.x - 11, ship.x + 11].map((fx) => ({ fx, gy: groundY(fx) }));
+    if (feet.some((f) => ship.y + 13 >= f.gy)) {
+      const pad = pads.find((p) => ship.x - 11 >= p.x1 - 2 && ship.x + 11 <= p.x2 + 2);
+      const soft = ship.vy < 1.4 && Math.abs(ship.vx) < .9 && Math.abs(ship.a) < .3;
+      if (pad && soft) {
+        const pts = Math.round((50 + fuel / 10 + (1.4 - ship.vy) * 40) * pad.mult);
+        score += pts; ship.y = pad.y - 13; ship.vx = ship.vy = 0; landed = 120; K.sfx.win();
+        K.float(ship.x, ship.y - 30, `Landed! +${pts}`, '#9be564');
+      } else {
+        K.sfx.boom(); K.shake(14); K.burst(ship.x, ship.y, '#ffb347', 40, 6); K.burst(ship.x, ship.y, '#ccc', 20, 4);
+        const why = !pad ? 'You missed the landing pad.' : ship.vy >= 1.4 ? 'Too fast!' : Math.abs(ship.vx) >= .9 ? 'Sliding sideways!' : 'Not level!';
+        K.over({ score, text: `${why} You made it through ${level - 1} landing${level === 2 ? '' : 's'}.`, again: start });
+      }
+    }
+  }
+  function draw() {
+    K.begin();
+    if (!stars) stars = Array.from({ length: 120 }, () => [K.rand(0, 2000), K.rand(0, 1200), K.rand(.5, 1.8)]);
+    c.fillStyle = '#fff'; for (const [x, y, s] of stars) c.fillRect(x % K.W, y % K.H, s, s);
+    K.circle(K.W - 110, 90, 40, '#2c6ad6'); K.circle(K.W - 122, 80, 14, '#3fbf6a'); K.circle(K.W - 95, 104, 10, '#3fbf6a');
+    c.fillStyle = '#8d8fa0'; c.beginPath(); c.moveTo(0, K.H); for (const [x, y] of ground) c.lineTo(x, y); c.lineTo(K.W, K.H); c.fill();
+    c.strokeStyle = '#c9cbd8'; c.lineWidth = 2; c.beginPath(); ground.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke();
+    for (const p of pads) { c.fillStyle = '#9be564'; c.fillRect(p.x1, p.y - 3, p.x2 - p.x1, 5); K.text(`×${p.mult}`, (p.x1 + p.x2) / 2, p.y + 16, { size: 14, weight: 900, align: 'center', color: '#9be564' }); }
+    // ship
+    c.save(); c.translate(ship.x, ship.y); c.rotate(ship.a);
+    if (ship.thrust) { c.fillStyle = '#ffb347'; c.beginPath(); c.moveTo(-6, 9); c.lineTo(6, 9); c.lineTo(0, 22 + Math.random() * 10); c.fill(); }
+    c.strokeStyle = '#ddd'; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, 6); c.lineTo(-12, 13); c.moveTo(8, 6); c.lineTo(12, 13); c.stroke();
+    c.fillStyle = '#e8e8f0'; K.rr(-10, -2, 20, 10, 3); c.fill(); K.circle(0, -6, 9, '#e8e8f0'); K.circle(0, -7, 5, '#4cc9f0');
+    c.restore();
+    K.drawParts();
+    // HUD
+    const bad = (v, lim) => (v >= lim ? '#ff6b6b' : '#9be564');
+    K.text(`Score ${score}`, 16, 24, { size: 18, weight: 900 });
+    K.text(`Level ${level}${wind ? `  ·  wind ${wind > 0 ? '→' : '←'}` : ''}`, 16, 48, { size: 14, color: '#aab' });
+    c.fillStyle = '#222638'; c.fillRect(16, 62, 160, 10); c.fillStyle = fuel > 250 ? '#ffd166' : '#ff6b6b'; c.fillRect(16, 62, 160 * Math.max(0, fuel) / 1000, 10);
+    K.text('fuel', 182, 67, { size: 12, color: '#aab' });
+    K.text(`↓ ${ship.vy.toFixed(1)}`, 16, 92, { size: 14, color: bad(ship.vy, 1.4), weight: 800 });
+    K.text(`↔ ${Math.abs(ship.vx).toFixed(1)}`, 80, 92, { size: 14, color: bad(Math.abs(ship.vx), .9), weight: 800 });
+    K.text(`∠ ${Math.round(ship.a * 57)}°`, 146, 92, { size: 14, color: bad(Math.abs(ship.a), .3), weight: 800 });
+    K.end();
+  }
+  function start() { newLevel(1); K.play(); }
+  newLevel(1);
+  K.touch({ stick: true, a: 'Thrust' });
+  K.screen({ title: 'Moon Lander', text: 'Touch down softly on a green pad. Smaller pads score more. Each landing refuels you a little, but the ground gets rougher and the wind picks up.', best: true,
+    lines: ['Thrust: Space, W, Up or hold the mouse', 'Tilt: ← → or A D', 'Land slow (↓ under 1.4), straight and level'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

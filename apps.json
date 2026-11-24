@@ -876,6 +876,206 @@
       "status": "live",
       "embed": true,
       "added": "2026-11-24"
+    },
+    {
+      "id": "ski-slope",
+      "name": "Ski Slope",
+      "description": "Race down the mountain: ski through gates for combos, hit ramps for big air, and dodge the trees and rocks.",
+      "url": "ski-slope/",
+      "icon": "icons/ski-slope.svg",
+      "color": "#2f80ed",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "ski",
+        "winter",
+        "sports",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "sky-stack",
+      "name": "Sky Stack",
+      "description": "Drop sliding floors to build the tallest tower you can. Overhangs get chopped; three perfect drops in a row widen it again.",
+      "url": "sky-stack/",
+      "icon": "icons/sky-stack.svg",
+      "color": "#ffb86b",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "stacking",
+        "one button",
+        "tower",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "road-hop",
+      "name": "Road Hop",
+      "description": "Help Pip the bunny hop across busy roads, ride logs over rivers and dodge trains. Don't dawdle, the screen keeps moving.",
+      "url": "road-hop/",
+      "icon": "icons/road-hop.svg",
+      "color": "#ffcf4d",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "crossing",
+        "endless",
+        "hop",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "moon-lander",
+      "name": "Moon Lander",
+      "description": "Steer and thrust a lander onto small pads without crashing. Each landing refuels you a bit, but the ground gets rougher and the wind picks up.",
+      "url": "moon-lander/",
+      "icon": "icons/moon-lander.svg",
+      "color": "#9be564",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "space",
+        "lander",
+        "physics",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "light-trails",
+      "name": "Light Trails",
+      "description": "Ride a light bike that leaves a wall behind it and box your rival in. Two players on one screen, or take on a CPU that learns to cut you off.",
+      "url": "light-trails/",
+      "icon": "icons/light-trails.svg",
+      "color": "#ff3df2",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "2 player",
+        "versus",
+        "party",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "laser-maze",
+      "name": "Laser Maze",
+      "description": "Place and flip mirrors to bounce a laser through every crystal. You only get so many mirrors, and each level is new.",
+      "url": "laser-maze/",
+      "icon": "icons/laser-maze.svg",
+      "color": "#ff4f6d",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "laser",
+        "mirrors",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "jam-escape",
+      "name": "Jam Escape",
+      "description": "A parking-lot puzzle: slide the other cars out of the way so the red car can drive out. Every level is generated and checked for the fewest moves.",
+      "url": "jam-escape/",
+      "icon": "icons/jam-escape.svg",
+      "color": "#ffcc33",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "sliding",
+        "logic",
+        "cars",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pixel-logic",
+      "name": "Pixel Logic",
+      "description": "Picture logic puzzles: use the row and column numbers to work out which squares are filled. Four sizes, every grid new.",
+      "url": "pixel-logic/",
+      "icon": "icons/pixel-logic.svg",
+      "color": "#5b5bd6",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "nonogram",
+        "picture",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "crate-push",
+      "name": "Crate Push",
+      "description": "Push every crate onto a red spot in a warehouse. You can push but never pull. Levels are generated backwards so they are always solvable.",
+      "url": "crate-push/",
+      "icon": "icons/crate-push.svg",
+      "color": "#f2b84b",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "sokoban style",
+        "boxes",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "gem-swap",
+      "name": "Gem Swap",
+      "description": "Swap neighbouring gems to match three or more. Match four for line gems that blast whole rows, and hit the goal before your moves run out.",
+      "url": "gem-swap/",
+      "icon": "icons/gem-swap.svg",
+      "color": "#ff6bd6",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "match 3",
+        "gems",
+        "puzzle",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
     }
   ]
 }
