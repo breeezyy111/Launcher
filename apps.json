@@ -1,6 +1,27 @@
 {
   "apps": [
     {
+      "id": "brinkline",
+      "name": "Brinkline",
+      "description": "Motorbike racer through five deadly domains: lava, black ice, laser-gated neon streets, acid swamp and a lightning storm. Drift and draft for boost, beat 7 rivals, win the Grand Prix and upgrade your bikes.",
+      "url": "brinkline/",
+      "icon": "icons/brinkline.svg",
+      "color": "#ff3b5c",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "racing",
+        "motorbike",
+        "game",
+        "3d",
+        "grand prix"
+      ],
+      "status": "live",
+      "embed": true,
+      "featured": true,
+      "added": "2026-11-24"
+    },
+    {
       "id": "superink",
       "name": "Project SuperInk",
       "description": "4v4 ink-shooter in the browser: battles, story mode and online rooms.",

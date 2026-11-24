@@ -644,12 +644,14 @@
     const l = local.launches;
     const recent = [...apps].sort((a, b) => (l[b.id]?.last || 0) - (l[a.id]?.last || 0))[0];
     const used = recent && l[recent.id];
-    const app = used ? recent
-      : apps.find((a) => local.pinned[0] === a.id) || apps.find((a) => a.status === 'live') || apps[0];
+    // A headline game ("featured": true in apps.json) takes the banner until you've played it once.
+    const featured = apps.find((a) => a.featured && !l[a.id] && a.status !== 'archived');
+    const app = featured || (used ? recent
+      : apps.find((a) => local.pinned[0] === a.id) || apps.find((a) => a.status === 'live') || apps[0]);
     hero.hidden = !app || !!query || view !== 'Home';
     if (hero.hidden) return;
     hero.style.setProperty('--tile-color', app.color || '');
-    $('#heroEyebrow').textContent = used ? 'Jump back in' : 'Featured';
+    $('#heroEyebrow').textContent = featured ? (isNew(featured) ? 'New game' : 'Featured') : used ? 'Jump back in' : 'Featured';
     $('#heroName').textContent = app.name;
     $('#heroDesc').textContent = app.description || '';
     setIcon($('#heroIcon'), app);

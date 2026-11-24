@@ -30,6 +30,7 @@ Edit **`apps.json`**:
       "category": "Tools",                // section: Games, Create, Tools or Learn & Explore
       "genre": "Puzzle",                  // optional type inside a section (Games use Action, Arcade, Puzzle, Casual, Board & Party)
       "added": "2026-11-15",              // optional: shows a New badge and the New row for 3 weeks
+      "featured": true,                   // optional: headline game, gets the Home banner until it has been played once
       "status": "live",                   // live | beta | dev | archived
       "tags": ["web"],
       "embed": true,                      // play it inside the launcher instead of leaving
@@ -57,6 +58,7 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 - **Project SuperInk** is still its own game with its own site and repo. The launcher just plays that site in the player.
 - **Stellar Forge** is built in too: the space sandbox lives in `stellar-forge/` (one self-contained `index.html`). It started as a copy of [breeezyy111/space](https://github.com/breeezyy111/space) and has since grown here (777K object cap, new events, gravity brushes, achievements), so edit this copy rather than copying that repo over it.
 - **Neon Drift**, **Fusion**, **Jot** and **Focus** are small built-in apps, each one self-contained `index.html` in its own folder (`neon-drift/`, `fusion/`, `jot/`, `focus/`). Scores, notes and timer counts are saved in the browser.
+- **Brinkline** is the headline game: a motorbike racer in `brinkline/` (one self-contained `index.html`, no libraries). Five deadly domains (Magma Rift, Frostbite Pass, Neon Sprawl, Toxic Marsh, Storm Spire) with geysers, black ice, laser gates, spore pods and lightning; 7 CPU rivals; drifting and slipstreaming fill the boost meter. Modes: Grand Prix (all five, points and trophies per difficulty), Quick Race and Time Trial (your best lap races you as a ghost). Coins from races buy and upgrade five bikes in the Garage. Keyboard, gamepad and touch. Debug URL params: `?race&go&domain=1-5` jumps into a race, `&bot` drives itself, `&laps=1`, `?coins=5000`.
 - **Krazy Kombat** is a built-in one-on-one fighting game in `krazy-kombat/` (one self-contained `index.html`): six original fighters, vs CPU or 2 players on one keyboard, gamepads and touch controls. Add `?demo` to the URL to watch CPU vs CPU.
 - **Snake** (`snake/`) and **Stackfall** (`stackfall/`, a falling-block puzzler) are built-in single-file games. Snake lets you pick map size, speed and apple count; Stackfall has pixel/smooth styles and sound toggles.
 - **Tiny Roads** (`tiny-roads/`) is a built-in single-file road-building puzzler: connect houses to matching-colored stations before they jam. It has a menu with save/load, theme and game speed, all kept in the browser.
@@ -70,7 +72,7 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 
 ## Features
 
-- A featured banner up top for the app you used last (or your first pin, or the first live app), with Play and New tab buttons
+- A featured banner up top for a headline game you have not played yet (`"featured": true`), otherwise the app you used last (or your first pin, or the first live app), with Play and New tab buttons
 - Instant search with typo tolerance and match highlighting. Press `/` or Ctrl/⌘+K, use the arrow keys to move, and press `Enter` to launch.
 - Category filters with counts, plus status badges (live, beta, dev, archived)
 - Pin favorites to the top of Home and arrange them; unpinning has Undo. Recently launched apps move to the front.
