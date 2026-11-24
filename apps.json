@@ -361,25 +361,6 @@
       "embed": true
     },
     {
-      "id": "minecraft",
-      "name": "Minecraft Classic",
-      "description": "Official free browser version of Minecraft by Mojang, based on the 2009 original. Build with 32 kinds of blocks, alone or with friends by sharing a link. Opens in a new tab; best with a keyboard and mouse.",
-      "url": "https://classic.minecraft.net/",
-      "icon": "icons/minecraft.svg",
-      "color": "#5cb85c",
-      "category": "Games",
-      "genre": "Sandbox",
-      "tags": [
-        "minecraft",
-        "sandbox",
-        "building",
-        "multiplayer",
-        "official"
-      ],
-      "status": "live",
-      "added": "2026-11-23"
-    },
-    {
       "id": "soundbloom",
       "name": "Soundbloom",
       "description": "Music playground: make full songs on a grid, loop polyrhythm drums, jam on keys, draw your own waveforms. Share songs as links and export WAV or MIDI.",
