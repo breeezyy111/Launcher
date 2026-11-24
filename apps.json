@@ -680,6 +680,202 @@
       "status": "live",
       "embed": true,
       "added": "2026-11-15"
+    },
+    {
+      "id": "skyhook-heist",
+      "name": "Skyhook Heist",
+      "description": "Grapple-swing between rooftops at night, grab loot bags, and stay out of the drone spotlights.",
+      "url": "skyhook-heist/",
+      "icon": "icons/skyhook-heist.svg",
+      "color": "#ffb347",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "grapple",
+        "runner",
+        "heist",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "tower-rush",
+      "name": "Tower Rush",
+      "description": "Tower defense where you build the maze: place towers to stretch the monsters' path, then upgrade them for bigger waves.",
+      "url": "tower-rush/",
+      "icon": "icons/tower-rush.svg",
+      "color": "#6be38f",
+      "category": "Games",
+      "genre": "Strategy",
+      "tags": [
+        "tower defense",
+        "strategy",
+        "maze",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pixel-dungeon-run",
+      "name": "Pixel Dungeon Run",
+      "description": "Turn-based roguelike: every run is a new dungeon with monsters, loot, potions and a boss every fifth floor.",
+      "url": "pixel-dungeon-run/",
+      "icon": "icons/pixel-dungeon-run.svg",
+      "color": "#e8a85c",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "roguelike",
+        "dungeon",
+        "rpg",
+        "turn based",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "battle-arena-2p",
+      "name": "Battle Arena 2P",
+      "description": "Sumo for blobs: shove the other player out of a shrinking ring. Two players on one screen, or play the CPU.",
+      "url": "battle-arena-2p/",
+      "icon": "icons/battle-arena-2p.svg",
+      "color": "#ff7a59",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "2 player",
+        "party",
+        "versus",
+        "sumo",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "tycoon-island",
+      "name": "Tycoon Island",
+      "description": "Build a tiny sandbar into a famous resort: beds bring guests, fun things draw crowds, and it keeps earning while you are away.",
+      "url": "tycoon-island/",
+      "icon": "icons/tycoon-island.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Strategy",
+      "tags": [
+        "tycoon",
+        "idle",
+        "builder",
+        "strategy",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "orbit-dash",
+      "name": "Orbit Dash",
+      "description": "Circle a planet, hop between three orbits to grab stars and dodge rocks. Every lap gets faster.",
+      "url": "orbit-dash/",
+      "icon": "icons/orbit-dash.svg",
+      "color": "#7cf0ff",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "space",
+        "one button",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "lava-climb",
+      "name": "Lava Climb",
+      "description": "The lava is rising: jump up a cave of crumbling, sliding and bouncy rocks with a double jump. How high can you get?",
+      "url": "lava-climb/",
+      "icon": "icons/lava-climb.svg",
+      "color": "#ff7b2e",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "platformer",
+        "climb",
+        "jump",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "bubble-burst",
+      "name": "Bubble Burst",
+      "description": "Aim and bounce bubbles to make groups of three. Drop whole clusters for big points before the ceiling comes down.",
+      "url": "bubble-burst/",
+      "icon": "icons/bubble-burst.svg",
+      "color": "#ff7ad9",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "bubbles",
+        "match 3",
+        "aim",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pipe-flow",
+      "name": "Pipe Flow",
+      "description": "Turn the pipes until water from the tap reaches every tile. Boards grow as you go, and your level is saved.",
+      "url": "pipe-flow/",
+      "icon": "icons/pipe-flow.svg",
+      "color": "#38d0ff",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "pipes",
+        "logic",
+        "rotate",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "puck-clash",
+      "name": "Puck Clash",
+      "description": "Table hockey against a CPU that gets tougher every time you beat it, or two players on one screen. First to 7.",
+      "url": "puck-clash/",
+      "icon": "icons/puck-clash.svg",
+      "color": "#ff4d8d",
+      "category": "Games",
+      "genre": "Sports",
+      "tags": [
+        "hockey",
+        "sports",
+        "2 player",
+        "versus",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
     }
   ]
 }

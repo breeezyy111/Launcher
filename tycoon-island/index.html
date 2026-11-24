@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tycoon Island</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'tycoon-island', W: 480, H: 840, bg: '#0b4f7a', accent: '#ffd166' });
+  const c = K.ctx, N = 6, S = 66, BX = (480 - N * S) / 2, BY = 120, SAVE = 'tycoon-island:save';
+  const B = {
+    tent: { n: 'Tent', e: '⛺', cost: 40, cap: 4, ap: 0 },
+    cabin: { n: 'Beach Cabin', e: '🛖', cost: 350, cap: 14, ap: 1 },
+    hotel: { n: 'Hotel', e: '🏨', cost: 3000, cap: 50, ap: 3 },
+    tower: { n: 'Sky Resort', e: '🏢', cost: 30000, cap: 180, ap: 8 },
+    bar: { n: 'Juice Bar', e: '🍹', cost: 90, cap: 0, ap: 3 },
+    pool: { n: 'Pool', e: '🏊', cost: 800, cap: 0, ap: 9 },
+    dive: { n: 'Dive Shop', e: '🤿', cost: 5000, cap: 0, ap: 26 },
+    park: { n: 'Fun Park', e: '🎡', cost: 40000, cap: 0, ap: 80 },
+    volcano: { n: 'Volcano Tour', e: '🌋', cost: 250000, cap: 0, ap: 260 },
+  };
+  const ORDER = ['tent', 'bar', 'cabin', 'pool', 'hotel', 'dive', 'tower', 'park', 'volcano'];
+  let s, sel = null, scroll = 0, guests = [], cruise = 0, eventT = 0, saveT = 0;
+
+  function fresh() { return { money: 60, earned: 0, lots: Array(N * N).fill(null), open: 9, t: Date.now() }; }
+  // Island grows outward from the middle as you expand it.
+  const ringOrder = (() => { const m = (N - 1) / 2, a = [...Array(N * N).keys()]; return a.sort((p, q) => Math.hypot(p % N - m, Math.floor(p / N) - m) - Math.hypot(q % N - m, Math.floor(q / N) - m)); })();
+  const isOpen = (i) => ringOrder.indexOf(i) < s.open;
+  const expandCost = () => Math.floor(150 * Math.pow(1.9, s.open - 9));
+  const stat = (lot) => { const b = B[lot.k], m = Math.pow(1.7, lot.lv - 1); return { cap: Math.floor(b.cap * m), ap: b.ap * m }; };
+  const upCost = (lot) => Math.floor(B[lot.k].cost * Math.pow(1.9, lot.lv));
+  function totals() {
+    let cap = 0, ap = 0; for (const l of s.lots) if (l) { const t = stat(l); cap += t.cap; ap += t.ap; }
+    const want = Math.floor(4 + ap * 4), g = Math.min(cap, want);
+    const perGuest = 0.5 * (1 + ap / 30);
+    return { cap, ap, g, want, rate: g * perGuest * (cruise > 0 ? 2 : 1), stars: Math.min(5, Math.floor(Math.log10(Math.max(1, s.earned)) - 1)) };
+  }
+  function load() {
+    s = K.store.get(SAVE, null) || fresh();
+    const away = Math.min(2 * 3600, (Date.now() - (s.t || Date.now())) / 1000);
+    if (away > 60) { const r = totals().rate * away * .5; s.money += r; s.earned += r; return Math.floor(r); }
+    return 0;
+  }
+  const save = () => { s.t = Date.now(); K.store.set(SAVE, s); K.submit(Math.floor(s.earned)); };
+  const fmt = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'K' : Math.floor(n).toLocaleString();
+  K.fmtBest = (n) => '$' + fmt(n) + ' earned';
+
+  function update(dt) {
+    const T = totals();
+    s.money += T.rate * dt; s.earned += T.rate * dt;
+    cruise = Math.max(0, cruise - dt);
+    if ((eventT += dt) > 70 && T.g > 10) { eventT = 0; cruise = 25; K.sfx.win(); K.float(K.W / 2, BY - 20, '🚢 Cruise ship! Double income', '#fff'); }
+    if ((saveT += dt) > 5) { saveT = 0; save(); }
+    // walking guests (just for show, tap them for tips)
+    while (guests.length < Math.min(24, Math.ceil(T.g / 4))) guests.push(newGuest());
+    if (guests.length > Math.ceil(T.g / 4) + 1) guests.pop();
+    for (const g of guests) { g.x += g.vx; g.y += g.vy; if (Math.random() < .01 || !onSand(g.x, g.y)) { const n = newGuest(g); g.vx = n.vx; g.vy = n.vy; if (!onSand(g.x, g.y)) { g.x = n.x; g.y = n.y; } } }
+    // keyboard: move selection
+    const dx = K.pressed('right') - K.pressed('left'), dy = K.pressed('down') - K.pressed('up');
+    if (dx || dy) { const cur = sel ?? 14; const x = K.clamp(cur % N + dx, 0, N - 1), y = K.clamp(Math.floor(cur / N) + dy, 0, N - 1); sel = y * N + x; scroll = 0; }
+    if (K.pressed('a') && sel != null) { const opts = menuItems(); if (opts[0]) opts[0].act(); }
+  }
+  function onSand(x, y) { const i = Math.floor((y - BY) / S) * N + Math.floor((x - BX) / S); return x > BX && y > BY && x < BX + N * S && y < BY + N * S && isOpen(i); }
+  function newGuest(from) {
+    const i = K.pick([...Array(N * N).keys()].filter(isOpen));
+    const a = K.rand(0, 6.28);
+    return { x: BX + (i % N + K.rand(.1, .9)) * S, y: BY + (Math.floor(i / N) + K.rand(.1, .9)) * S, vx: Math.cos(a) * .3, vy: Math.sin(a) * .3, col: K.pick(['#ff6b6b', '#ffd166', '#4cc9f0', '#b388ff', '#7bd88f', '#ff9ff3']) };
+  }
+
+  // ---- panel ----
+  function menuItems() {
+    if (sel == null) return [];
+    if (!isOpen(sel)) return [{ label: `Expand the island`, sub: `$${fmt(expandCost())}`, ok: s.money >= expandCost(), act: () => { const cst = expandCost(); if (s.money < cst) return K.sfx.bad(); s.money -= cst; s.open++; K.sfx.good(); sel = null; save(); } }];
+    const lot = s.lots[sel];
+    if (!lot) return ORDER.filter((k, i) => i < 3 || s.earned >= B[ORDER[i - 2]].cost * .5).map((k) => ({ label: `${B[k].e} ${B[k].n}`, sub: `$${fmt(B[k].cost)}`, info: B[k].cap ? `${B[k].cap} beds` : `+${B[k].ap} fun`, ok: s.money >= B[k].cost,
+      act: () => { if (s.money < B[k].cost) return K.sfx.bad(); s.money -= B[k].cost; s.lots[sel] = { k, lv: 1 }; K.sfx.coin(); K.burst(BX + (sel % N + .5) * S, BY + (Math.floor(sel / N) + .5) * S, '#ffd166', 18, 3); save(); } }));
+    const cst = upCost(lot), t = stat(lot);
+    return [
+      { label: `Upgrade to level ${lot.lv + 1}`, sub: `$${fmt(cst)}`, info: B[lot.k].cap ? `${t.cap} → ${Math.floor(t.cap * 1.7)} beds` : `${t.ap.toFixed(0)} → ${(t.ap * 1.7).toFixed(0)} fun`, ok: s.money >= cst, act: () => { if (s.money < cst) return K.sfx.bad(); s.money -= cst; lot.lv++; K.sfx.good(); K.burst(BX + (sel % N + .5) * S, BY + (Math.floor(sel / N) + .5) * S, '#7bd88f', 18, 3); save(); } },
+      { label: 'Sell', sub: `+$${fmt(B[lot.k].cost * lot.lv * .4)}`, ok: true, act: () => { s.money += B[lot.k].cost * lot.lv * .4; s.lots[sel] = null; K.sfx.blip(); save(); } },
+    ];
+  }
+  const PY = BY + N * S + 24;
+  function itemRects() { const items = menuItems(); return items.map((it, i) => ({ ...it, x: 10 + (i % 3) * 156, y: PY + 34 + Math.floor(i / 3) * 62 - scroll, w: 148, h: 56 })); }
+  K.onDown = (p) => {
+    if (K.state !== 'play') return;
+    for (const g of guests) if (K.dist(p.x, p.y, g.x, g.y) < 16) { const tip = Math.max(1, totals().rate * 2); s.money += tip; s.earned += tip; K.float(g.x, g.y - 10, `+$${fmt(tip)}`, '#ffd166'); K.sfx.coin(); g.x = -999; return; }
+    const gx = Math.floor((p.x - BX) / S), gy = Math.floor((p.y - BY) / S);
+    if (gx >= 0 && gy >= 0 && gx < N && gy < N) { const i = gy * N + gx; sel = sel === i ? null : i; scroll = 0; K.sfx.blip(); return; }
+    for (const r of itemRects()) if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h && r.y > PY) { r.act(); return; }
+  };
+  addEventListener('wheel', (e) => { scroll = K.clamp(scroll + e.deltaY * .5, 0, 200); }, { passive: true });
+
+  function draw() {
+    K.begin();
+    const T = totals();
+    // ocean
+    const og = c.createLinearGradient(0, 0, 0, K.H); og.addColorStop(0, '#0f6fa3'); og.addColorStop(1, '#0a3c5e'); c.fillStyle = og; c.fillRect(0, 0, K.W, K.H);
+    c.strokeStyle = '#ffffff22'; c.lineWidth = 2;
+    for (let i = 0; i < 14; i++) { const y = (i * 67 + performance.now() / 60) % K.H, x = (i * 131) % K.W; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 15, y - 6, x + 30, y); c.stroke(); }
+    // header
+    K.text(`$${fmt(s.money)}`, 16, 30, { size: 30, weight: 900, color: '#ffd166' });
+    K.text(`+$${fmt(T.rate)}/s${cruise > 0 ? '  🚢×2' : ''}`, 16, 60, { size: 15, color: '#d6f5ff' });
+    K.text('★'.repeat(Math.max(0, T.stars)) + '☆'.repeat(5 - Math.max(0, T.stars)), K.W - 60, 30, { size: 22, color: '#ffd166', align: 'right' });
+    K.text(`👥 ${T.g}/${T.cap} guests  ·  ✨ ${T.ap.toFixed(0)} fun`, K.W - 16, 60, { size: 14, color: '#d6f5ff', align: 'right' });
+    K.text(T.cap < T.want ? 'More guests want to come: build beds!' : 'Beds are empty: build fun things to draw guests', K.W / 2, 92, { size: 13, color: '#bfe9ff', align: 'center' });
+    // island tiles
+    for (let i = 0; i < N * N; i++) {
+      const x = BX + (i % N) * S, y = BY + Math.floor(i / N) * S;
+      if (isOpen(i)) { c.fillStyle = '#f3d9a4'; K.rr(x - 4, y - 4, S + 8, S + 8, 18); c.fill(); }
+    }
+    for (let i = 0; i < N * N; i++) {
+      const x = BX + (i % N) * S, y = BY + Math.floor(i / N) * S;
+      if (isOpen(i)) { c.fillStyle = (i + Math.floor(i / N)) % 2 ? '#ecd096' : '#f0d59e'; K.rr(x + 3, y + 3, S - 6, S - 6, 10); c.fill(); }
+      else if (ringOrder.indexOf(i) === s.open) { c.strokeStyle = '#ffffff55'; c.setLineDash([6, 6]); K.rr(x + 6, y + 6, S - 12, S - 12, 10); c.stroke(); c.setLineDash([]); K.text('+', x + S / 2, y + S / 2, { size: 26, color: '#ffffffaa', align: 'center' }); }
+      const lot = s.lots[i];
+      if (lot) { c.font = `${34 + Math.min(lot.lv, 5) * 2}px serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(B[lot.k].e, x + S / 2, y + S / 2 + 2); if (lot.lv > 1) K.text('★' + lot.lv, x + S - 8, y + 12, { size: 11, color: '#7a4b00', align: 'right', weight: 900 }); }
+      if (sel === i) { c.strokeStyle = '#fff'; c.lineWidth = 3; K.rr(x + 2, y + 2, S - 4, S - 4, 12); c.stroke(); }
+    }
+    for (const g of guests) { K.circle(g.x, g.y, 5, g.col); K.circle(g.x, g.y - 6, 3.5, '#ffe0bd'); }
+    K.drawParts();
+    // panel
+    c.fillStyle = '#062b44ee'; K.rr(0, PY, K.W, K.H - PY + 20, 20); c.fill();
+    if (sel == null) { K.text('Tap a sandy lot to build, or the + to grow the island', K.W / 2, PY + 30, { size: 15, align: 'center', color: '#d6f5ff' }); K.text('Tap guests for tips · your island earns while you are away', K.W / 2, PY + 56, { size: 13, align: 'center', color: '#8fc3dd' }); }
+    else { const lot = s.lots[sel]; K.text(!isOpen(sel) ? 'New land' : lot ? `${B[lot.k].e} ${B[lot.k].n}  ·  level ${lot.lv}` : 'Build something', 16, PY + 18, { size: 16, weight: 800 }); }
+    c.save(); c.beginPath(); c.rect(0, PY + 30, K.W, K.H - PY - 30); c.clip();
+    for (const r of itemRects()) {
+      c.fillStyle = r.ok ? '#0f5b85' : '#0a3a57'; K.rr(r.x, r.y, r.w, r.h, 12); c.fill();
+      K.text(r.label, r.x + 10, r.y + 19, { size: 14, weight: 800, color: r.ok ? '#fff' : '#9bb' });
+      K.text(r.sub, r.x + 10, r.y + 40, { size: 13, color: r.ok ? '#ffd166' : '#a88' });
+      if (r.info) K.text(r.info, r.x + r.w - 10, r.y + 40, { size: 11, color: '#9fd3ec', align: 'right' });
+    }
+    c.restore();
+    K.end();
+  }
+  const back = load();
+  K.alwaysUpdate = false;
+  K.screen({ title: 'Tycoon Island', text: 'Turn a tiny sandbar into a famous resort. Beds bring guests, fun things make them want to come, and every guest pays.', best: true,
+    lines: [back ? `While you were away you earned $${fmt(back)}` : 'Your island keeps earning when you leave (up to 2 hours)', 'Tap lots to build and upgrade · tap guests for tips', 'Arrows + Space work too'],
+    buttons: [{ label: s.earned > 0 ? 'Continue' : 'Play', act: () => K.play() }, ...(s.earned > 0 ? [{ label: 'Start over', alt: true, act: () => { s = fresh(); save(); K.play(); } }] : [])] });
+  addEventListener('pagehide', save);
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

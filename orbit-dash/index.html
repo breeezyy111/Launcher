@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orbit Dash</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'orbit-dash', W: 600, H: 600, bg: '#060816', accent: '#7cf0ff' });
+  const c = K.ctx, CX = 300, CY = 310, RINGS = [110, 170, 230];
+  let ship, rocks, gems, score, speed, laps, lastA, stars, combo, comboT = 0;
+  function reset() {
+    ship = { ring: 1, r: RINGS[1], a: -Math.PI / 2, trail: [] }; rocks = []; gems = []; score = 0; speed = .018; laps = 0; lastA = ship.a; combo = 0;
+    stars = Array.from({ length: 90 }, () => ({ x: K.rand(0, 600), y: K.rand(0, 600), s: K.rand(.5, 2), t: K.rand(0, 6) }));
+    for (let i = 0; i < 3; i++) spawnRock(true); for (let i = 0; i < 4; i++) spawnGem();
+    K.clearParts();
+  }
+  const angDiff = (a, b) => { let d = (a - b) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+  function freeSpot(minGap) {
+    for (let t = 0; t < 30; t++) {
+      const ring = K.randi(0, 2), a = K.rand(0, Math.PI * 2);
+      // never right in front of the ship
+      if (Math.abs(angDiff(a, ship.a)) < 1.1) continue;
+      if ([...rocks, ...gems].some((o) => o.ring === ring && Math.abs(angDiff(o.a, a)) < minGap)) continue;
+      return { ring, a };
+    }
+    return null;
+  }
+  function spawnRock(init) { const p = freeSpot(.5); if (p) rocks.push({ ...p, spin: K.rand(-.003, .003) * (laps > 2 ? 1 : 0), size: K.rand(13, 19), rot: 0, born: init ? 60 : 0 }); }
+  function spawnGem() { const p = freeSpot(.35); if (p) gems.push({ ...p, t: 0 }); }
+  function hop() { if (K.state !== 'play') return; ship.ring = (ship.ring + 1) % 3; K.tone(400 + ship.ring * 200, .07, 'sine', .08); }
+  function hopIn() { if (K.state !== 'play') return; ship.ring = (ship.ring + 2) % 3; K.tone(400 + ship.ring * 200, .07, 'sine', .08); }
+  K.onDown = (p) => { if (K.state === 'play') hop(); };
+  function update() {
+    if (K.pressed('a') || K.pressed('up')) hop();
+    if (K.pressed('b') || K.pressed('down')) hopIn();
+    ship.r += (RINGS[ship.ring] - ship.r) * .25;
+    ship.a += speed * (170 / ship.r);
+    if (Math.floor((ship.a + Math.PI / 2) / (Math.PI * 2)) > laps) { laps++; speed = Math.min(.045, speed + .0017); score += 5; spawnRock(); K.float(CX, CY, `Lap ${laps}`, '#7cf0ff'); K.tone(880, .1, 'triangle', .06); }
+    const sx = CX + Math.cos(ship.a) * ship.r, sy = CY + Math.sin(ship.a) * ship.r;
+    ship.trail.push([sx, sy]); if (ship.trail.length > 18) ship.trail.shift();
+    for (const r of rocks) {
+      r.a += r.spin; r.rot += .02; r.born++;
+      const rx = CX + Math.cos(r.a) * RINGS[r.ring], ry = CY + Math.sin(r.a) * RINGS[r.ring];
+      if (r.born > 40 && K.dist(sx, sy, rx, ry) < r.size + 8) {
+        K.sfx.boom(); K.shake(12); K.burst(sx, sy, '#7cf0ff', 30, 6);
+        return K.over({ score, text: `${laps} laps, ${Math.floor(score / 10)} gems worth.`, again: start });
+      }
+    }
+    for (const g of gems) {
+      g.t++;
+      const gx = CX + Math.cos(g.a) * RINGS[g.ring], gy = CY + Math.sin(g.a) * RINGS[g.ring];
+      if (K.dist(sx, sy, gx, gy) < 20) { g.got = true; combo++; comboT = 0; const pts = 10 * Math.min(5, combo); score += pts; K.sfx.coin(); K.burst(gx, gy, '#ffd166', 12, 3); K.float(gx, gy - 12, '+' + pts, '#ffd166'); }
+    }
+    if (++comboT > 240) combo = 0; // combo breaks after 4 seconds without a star
+    gems = gems.filter((g) => !g.got);
+    while (gems.length < 4) spawnGem();
+    for (const s of stars) s.t += .03;
+  }
+  function draw() {
+    K.begin();
+    for (const s of stars) { c.globalAlpha = .4 + Math.sin(s.t) * .3; c.fillStyle = '#fff'; c.fillRect(s.x, s.y, s.s, s.s); }
+    c.globalAlpha = 1;
+    const pg = c.createRadialGradient(CX - 15, CY - 15, 5, CX, CY, 60); pg.addColorStop(0, '#ffb86b'); pg.addColorStop(1, '#c2410c');
+    K.circle(CX, CY, 58, pg); c.fillStyle = '#ffffff18'; c.beginPath(); c.ellipse(CX, CY, 80, 14, -.3, 0, 7); c.fill();
+    RINGS.forEach((r, i) => { c.strokeStyle = i === ship.ring ? '#7cf0ff55' : '#ffffff18'; c.lineWidth = 2; c.setLineDash([4, 8]); c.beginPath(); c.arc(CX, CY, r, 0, 7); c.stroke(); });
+    c.setLineDash([]);
+    for (const g of gems) { const gx = CX + Math.cos(g.a) * RINGS[g.ring], gy = CY + Math.sin(g.a) * RINGS[g.ring]; c.save(); c.translate(gx, gy); c.rotate(g.t * .05); c.fillStyle = '#ffd166'; c.beginPath(); for (let i = 0; i < 10; i++) { const rr = i % 2 ? 4 : 10, aa = i * Math.PI / 5; c.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr); } c.fill(); c.restore(); }
+    for (const r of rocks) {
+      const rx = CX + Math.cos(r.a) * RINGS[r.ring], ry = CY + Math.sin(r.a) * RINGS[r.ring];
+      c.save(); c.translate(rx, ry); c.rotate(r.rot); c.globalAlpha = Math.min(1, r.born / 40);
+      c.fillStyle = '#8b8fa8'; c.beginPath(); for (let i = 0; i < 8; i++) { const aa = i * Math.PI / 4, rr = r.size * (i % 2 ? .8 : 1); c.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr); } c.fill();
+      K.circle(-4, -3, 3, '#6a6e88'); c.restore(); c.globalAlpha = 1;
+    }
+    ship.trail.forEach(([x, y], i) => { c.globalAlpha = i / 18 * .6; K.circle(x, y, 2 + i / 6, '#7cf0ff'); });
+    c.globalAlpha = 1;
+    const sx = CX + Math.cos(ship.a) * ship.r, sy = CY + Math.sin(ship.a) * ship.r;
+    c.save(); c.translate(sx, sy); c.rotate(ship.a + Math.PI); c.fillStyle = '#e6fbff'; c.beginPath(); c.moveTo(0, -12); c.lineTo(8, 9); c.lineTo(-8, 9); c.closePath(); c.fill(); K.circle(0, 0, 3, '#7cf0ff'); c.restore();
+    K.drawParts();
+    K.text(score.toLocaleString(), 20, 30, { size: 28, weight: 900 });
+    K.text(`Lap ${laps}`, 20, 58, { size: 15, color: '#7cf0ff' });
+    if (K.state === 'play' && laps === 0) K.text('Tap / Space: hop out a ring · X / ↓: hop in', CX, 580, { size: 15, align: 'center', color: '#ffffff99' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.screen({ title: 'Orbit Dash', text: 'Circle the planet, hop between three orbits, grab the stars and dodge the rocks. Every lap gets faster.', best: true,
+    lines: ['Tap, click or Space: hop outward (wraps to the inside)', 'X or Down: hop inward', 'Grab stars quickly to build a combo'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

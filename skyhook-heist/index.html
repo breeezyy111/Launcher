@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skyhook Heist</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'skyhook-heist', W: 800, H: 450, bg: '#0a0b1f', accent: '#ffb347', fit: 'grow' });
+  const c = K.ctx, G = 0.42, RUN = 4.6;
+  let p, roofs, hooks, loot, drones, camX, score, bag, holding, rope, farX, stars, dist;
+
+  function reset() {
+    const gy = K.H - 120;
+    p = { x: 120, y: gy - 30, vx: RUN, vy: 0, ground: true, r: 12, run: 0 };
+    roofs = [{ x: -200, w: 620, y: gy }]; hooks = []; loot = []; drones = [];
+    farX = 420; camX = 0; score = 0; bag = 0; dist = 0; rope = null; holding = false;
+    stars = Array.from({ length: 70 }, () => ({ x: K.rand(0, 1600), y: K.rand(0, K.H - 200), s: K.rand(.5, 2) }));
+    K.clearParts(); build(1400);
+  }
+  // Rooftops with gaps, grapple hooks above each gap, loot and drones as you go further.
+  function build(until) {
+    while (farX < until) {
+      const last = roofs[roofs.length - 1], hard = Math.min(1, dist / 9000 + farX / 30000);
+      const gap = K.rand(140, 220 + hard * 160), w = K.rand(160, 420 - hard * 120);
+      const y = K.clamp(last.y + K.rand(-70, 70), K.H - 220, K.H - 70);
+      const x = last.x + last.w + gap;
+      const hx = last.x + last.w + gap / 2 + K.rand(-30, 30), hy = Math.max(70, Math.min(y, last.y) - K.rand(170, 240));
+      hooks.push({ x: hx, y: hy });
+      if (gap > 260) hooks.push({ x: hx + K.rand(110, 150), y: hy + K.rand(-30, 30) });
+      roofs.push({ x, w, y, sky: K.randi(0, 2) });
+      for (let i = 0; i < 3; i++) if (Math.random() < .55) loot.push({ x: hx + K.rand(-120, 120), y: hy + K.rand(60, 160), t: K.rand(0, 6), got: false, big: Math.random() < .12 });
+      if (farX > 1200 && Math.random() < .35 + hard * .45) drones.push({ x: x + K.rand(0, w), y: K.rand(110, y - 70), bx: x + w / 2, r: K.rand(40, 120), sp: K.rand(.015, .03) * (1 + hard), t: K.rand(0, 6), y0: 0 });
+      farX = x + w;
+    }
+  }
+  function nearestHook() {
+    let bestH = null, bd = 1e9;
+    for (const h of hooks) {
+      if (h.x < p.x - 40 || h.y > p.y - 30) continue;
+      const d = K.dist(p.x, p.y, h.x, h.y); if (d < 330 && d < bd) { bd = d; bestH = h; }
+    }
+    return bestH;
+  }
+  function press() {
+    if (K.state !== 'play') return; holding = true;
+    if (p.ground) { p.vy = -9.5; p.ground = false; K.sfx.jump(); }
+    else grab();
+  }
+  function grab() { const h = nearestHook(); if (h && !rope) { rope = { h, L: K.dist(p.x, p.y, h.x, h.y) }; K.tone(900, .05, 'square', .04, 1400); } }
+  function release() { holding = false; if (rope) { rope = null; p.vx *= 1.06; p.vy -= 1.2; } }
+  function caught(why) {
+    K.sfx.boom(); K.shake(10); K.burst(p.x, p.y, '#ffb347', 30, 6);
+    K.over({ score, again: start, text: `${why} You got ${bag} loot bag${bag === 1 ? '' : 's'} and ran ${Math.floor(dist / 10)} m.` });
+  }
+  function update() {
+    const want = K.held('a') || K.held('up') || K.pointerHeld;
+    if (want && !holding) press(); else if (!want && holding) release();
+    if (holding && !rope && !p.ground) grab();
+    p.vy += G;
+    if (rope) {
+      // Swing: move freely, then pull back onto the rope length and drop the outward speed.
+      p.x += p.vx; p.y += p.vy;
+      const dx = p.x - rope.h.x, dy = p.y - rope.h.y, d = Math.hypot(dx, dy);
+      if (d > rope.L) {
+        const nx = dx / d, ny = dy / d; p.x = rope.h.x + nx * rope.L; p.y = rope.h.y + ny * rope.L;
+        const vr = p.vx * nx + p.vy * ny; p.vx -= vr * nx; p.vy -= vr * ny;
+      }
+      p.vx *= .998; p.vy *= .998; rope.L = Math.max(60, rope.L - .4);
+    } else {
+      if (p.ground) p.vx += (RUN - p.vx) * .1; else p.vx += (RUN - p.vx) * .004;
+      p.x += p.vx; p.y += p.vy;
+    }
+    p.ground = false;
+    for (const r of roofs) {
+      if (p.x > r.x - 4 && p.x < r.x + r.w + 4) {
+        if (p.y + p.r > r.y && p.y + p.r - p.vy <= r.y + 6 && p.vy >= 0) { p.y = r.y - p.r; p.vy = 0; p.ground = true; if (rope) rope = null; }
+        else if (p.y + p.r > r.y + 8 && p.x < r.x + 10 && p.vx > 0) { p.x = r.x - 6; p.vx = -1; }
+      }
+    }
+    p.run += p.ground ? p.vx * .08 : 0;
+    dist = Math.max(dist, p.x - 120);
+    score = Math.floor(dist / 10) + bag * 50;
+    for (const l of loot) {
+      if (!l.got && K.dist(p.x, p.y, l.x, l.y + Math.sin(l.t) * 6) < 24) { l.got = true; bag += l.big ? 5 : 1; K.sfx.coin(); K.float(l.x, l.y - 10, l.big ? '+250' : '+50', '#ffd166'); K.burst(l.x, l.y, '#ffd166', 10, 3); }
+      l.t += .06;
+    }
+    for (const d of drones) {
+      d.t += d.sp; const dx = d.bx + Math.sin(d.t) * d.r;
+      d.x = dx; d.yy = d.y + Math.sin(d.t * 2.3) * 14;
+      if (K.dist(p.x, p.y, d.x, d.yy) < 26) return caught('A drone caught you!');
+      // spotlight below the drone
+      if (Math.abs(p.x - d.x) < 14 + (p.y - d.yy) * .18 && p.y > d.yy && p.y - d.yy < 120) return caught('Spotted by a drone!');
+    }
+    if (p.y > K.H + 60) return caught('You fell off the rooftops!');
+    camX += (p.x - 220 - camX) * .12;
+    build(camX + K.W + 600);
+    roofs = roofs.filter((r) => r.x + r.w > camX - 300); hooks = hooks.filter((h) => h.x > camX - 300);
+    loot = loot.filter((l) => l.x > camX - 300 && !l.got); drones = drones.filter((d) => d.bx + d.r > camX - 300);
+  }
+  function draw() {
+    K.begin();
+    const g = c.createLinearGradient(0, 0, 0, K.H); g.addColorStop(0, '#0a0b1f'); g.addColorStop(1, '#2a1640'); c.fillStyle = g; c.fillRect(0, 0, K.W, K.H);
+    for (const s of stars) { c.fillStyle = '#ffffff' + (s.s > 1.4 ? 'cc' : '66'); c.fillRect((s.x - camX * .05 + 1600) % 1600 * (K.W / 1600) * 2 % K.W, s.y, s.s, s.s); }
+    K.circle(K.W - 120, 80, 34, '#ffe9b0'); K.circle(K.W - 108, 72, 30, '#16112e');
+    // far skyline
+    c.fillStyle = '#1a1838';
+    for (let i = -1; i < 14; i++) { const bx = i * 90 - (camX * .3) % 90, h = 80 + ((i + Math.floor(camX * .3 / 90)) * 53 % 120); c.fillRect(bx, K.H - 60 - h, 70, h + 60); }
+    c.save(); c.translate(-camX, 0);
+    for (const r of roofs) {
+      c.fillStyle = '#272550'; c.fillRect(r.x, r.y, r.w, K.H - r.y + 20);
+      c.fillStyle = '#3a3870'; c.fillRect(r.x - 4, r.y - 4, r.w + 8, 8);
+      c.fillStyle = '#ffd36a33';
+      for (let wy = r.y + 24; wy < K.H; wy += 34) for (let wx = r.x + 16; wx < r.x + r.w - 20; wx += 30) if ((wx * 7 + wy * 3) % 5 < 2) c.fillRect(wx, wy, 12, 16);
+    }
+    const nh = !rope && !p.ground ? nearestHook() : null;
+    for (const h of hooks) {
+      c.strokeStyle = '#6b6aa8'; c.lineWidth = 2; c.beginPath(); c.moveTo(h.x, 0); c.lineTo(h.x, h.y); c.stroke();
+      K.circle(h.x, h.y, h === nh ? 9 : 7, h === nh ? '#ffb347' : '#9b9ad6');
+    }
+    for (const l of loot) {
+      const y = l.y + Math.sin(l.t) * 6; c.fillStyle = l.big ? '#7ef7c1' : '#ffd166';
+      K.rr(l.x - (l.big ? 11 : 8), y - 8, l.big ? 22 : 16, l.big ? 18 : 15, 5); c.fill();
+      K.text('$', l.x, y + 1, { size: 11, weight: 900, color: '#3a2500', align: 'center' });
+    }
+    for (const d of drones) {
+      const y = d.yy ?? d.y;
+      const lg = c.createLinearGradient(0, y, 0, y + 120); lg.addColorStop(0, '#ff4d6d55'); lg.addColorStop(1, '#ff4d6d00');
+      c.fillStyle = lg; c.beginPath(); c.moveTo(d.x - 6, y); c.lineTo(d.x + 6, y); c.lineTo(d.x + 36, y + 120); c.lineTo(d.x - 36, y + 120); c.fill();
+      c.fillStyle = '#c9cbe8'; K.rr(d.x - 16, y - 7, 32, 12, 5); c.fill();
+      c.fillStyle = '#9aa0c8'; c.fillRect(d.x - 22, y - 11, 12, 3); c.fillRect(d.x + 10, y - 11, 12, 3);
+      K.circle(d.x, y + 2, 4, K.t % 30 < 15 ? '#ff4d6d' : '#ff99aa');
+    }
+    if (rope) { c.strokeStyle = '#ffe0a8'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(rope.h.x, rope.h.y); c.lineTo(p.x, p.y); c.stroke(); }
+    // thief
+    c.save(); c.translate(p.x, p.y);
+    c.fillStyle = '#1b1b2f'; K.circle(0, 0, p.r, '#232342');
+    c.fillStyle = '#ffb347'; c.fillRect(-p.r, -4, p.r * 2, 5);
+    K.circle(4, -2, 2, '#fff');
+    c.strokeStyle = '#232342'; c.lineWidth = 4; c.lineCap = 'round';
+    const lg2 = p.ground ? Math.sin(p.run) * 7 : 5;
+    c.beginPath(); c.moveTo(-3, 9); c.lineTo(-3 - lg2, 19); c.moveTo(3, 9); c.lineTo(3 + lg2, 19); c.stroke();
+    c.fillStyle = '#7a5c2e'; K.circle(-12, -4, 7, '#8b6a35');
+    c.restore();
+    c.restore();
+    K.drawParts();
+    K.text(`${score.toLocaleString()}`, 16, 24, { size: 22, weight: 900 });
+    K.text(`💰 ${bag}   ${Math.floor(dist / 10)} m`, 16, 50, { size: 15, color: '#ffd166' });
+    if (K.state === 'play' && dist < 400) K.text('Hold to jump, keep holding in the air to grapple', K.W / 2, K.H - 30, { size: 16, align: 'center', color: '#ffffffaa' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.screen({ title: 'Skyhook Heist', text: 'Swing between rooftops on your grapple line and grab the loot. Stay out of the drone spotlights.', best: true,
+    lines: ['Hold Space, mouse or touch to jump', 'Keep holding in the air to hook the nearest anchor', 'Let go to fling yourself forward', 'P pauses · M mutes'],
+    buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

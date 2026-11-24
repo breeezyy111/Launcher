@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pipe Flow</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'pipe-flow', W: 480, H: 720, bg: '#0c1720', accent: '#38d0ff' });
+  const c = K.ctx, DIRS = [[0, -1, 1, 4], [1, 0, 2, 8], [0, 1, 4, 1], [-1, 0, 8, 2]];
+  let N, tiles, src, wet, level, moves, cur, solved, anim, startT, finishT;
+  const rot = (m) => ((m << 1) | (m >> 3)) & 15;
+  function build(lv) {
+    level = lv; N = Math.min(9, 3 + Math.ceil(lv / 2)); moves = 0; solved = false; anim = []; startT = performance.now();
+    const m = Array.from({ length: N }, () => Array(N).fill(0));
+    src = { x: Math.floor(N / 2), y: Math.floor(N / 2) };
+    // random spanning tree (no 4-way crosses, so every tile reads clearly)
+    const seen = new Set([src.x + ',' + src.y]), front = [[src.x, src.y]];
+    while (front.length) {
+      const i = Math.random() < .6 ? front.length - 1 : K.randi(0, front.length - 1); const [x, y] = front[i];
+      const opts = DIRS.filter(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < N && ny < N && !seen.has(nx + ',' + ny); }).filter(() => true);
+      const deg = [1, 2, 4, 8].filter((b) => m[y][x] & b).length;
+      if (!opts.length || deg >= 3) { front.splice(i, 1); continue; }
+      const [dx, dy, b, ob] = K.pick(opts), nx = x + dx, ny = y + dy;
+      m[y][x] |= b; m[ny][nx] |= ob; seen.add(nx + ',' + ny); front.push([nx, ny]);
+    }
+    // rare leftovers: join them to any wet neighbour so every level is solvable
+    for (let changed = true; changed;) { changed = false; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!seen.has(x + ',' + y)) for (const [dx, dy, b, ob] of DIRS) { const nx = x + dx, ny = y + dy; if (seen.has(nx + ',' + ny) && !seen.has(x + ',' + y)) { m[y][x] |= b; m[ny][nx] |= ob; seen.add(x + ',' + y); changed = true; } } }
+    tiles = m.map((row) => row.map((v) => { let t = v; for (let k = K.randi(1, 3); k > 0; k--) t = rot(t); return { m: t, a: 0 }; }));
+    cur = { x: src.x, y: src.y }; flow();
+  }
+  const geo = () => { const S = Math.floor(Math.min(K.W - 24, 560) / N); return { S, ox: (K.W - S * N) / 2, oy: 130 }; };
+  function flow() {
+    wet = new Set([src.x + ',' + src.y]); const q = [[src.x, src.y]];
+    while (q.length) { const [x, y] = q.shift(); for (const [dx, dy, b, ob] of DIRS) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue; if (tiles[y][x].m & b && tiles[ny][nx].m & ob && !wet.has(nx + ',' + ny)) { wet.add(nx + ',' + ny); q.push([nx, ny]); } } }
+    if (wet.size === N * N && !solved) { solved = true; finishT = performance.now(); K.sfx.win(); K.submit(level); setTimeout(() => { if (K.state === 'play') K.screen({ title: 'Flowing!', big: `Level ${level}`, text: `${moves} turns · ${((finishT - startT) / 1000).toFixed(1)} s`, buttons: [{ label: 'Next level', act: () => { build(level + 1); K.store.set('pipe-flow:level', level); K.play(); } }] }); }, 700); }
+  }
+  function turn(x, y, dir = 1) {
+    if (solved || K.state !== 'play') return; const t = tiles[y][x];
+    for (let i = 0; i < (dir > 0 ? 1 : 3); i++) t.m = rot(t.m); t.a = dir > 0 ? -Math.PI / 2 : Math.PI / 2; moves++; K.tone(300 + (wet.has(x + ',' + y) ? 200 : 0), .04, 'triangle', .06); flow();
+  }
+  K.onDown = (p, e) => { const { S, ox, oy } = geo(), x = Math.floor((p.x - ox) / S), y = Math.floor((p.y - oy) / S); if (x >= 0 && y >= 0 && x < N && y < N) { cur = { x, y }; turn(x, y, e.button === 2 ? -1 : 1); } };
+  function update() {
+    const dx = K.pressed('right') - K.pressed('left'), dy = K.pressed('down') - K.pressed('up');
+    if (dx || dy) { cur.x = K.clamp(cur.x + dx, 0, N - 1); cur.y = K.clamp(cur.y + dy, 0, N - 1); cur.kb = true; }
+    if (K.pressed('a')) turn(cur.x, cur.y, 1); if (K.pressed('b')) turn(cur.x, cur.y, -1);
+    for (const row of tiles) for (const t of row) t.a *= .7;
+  }
+  function draw() {
+    K.begin('#0c1720');
+    const { S, ox, oy } = geo();
+    K.text(`Level ${level}`, 18, 34, { size: 26, weight: 900, color: '#38d0ff' });
+    K.text(`${N}×${N}  ·  ${moves} turns`, 18, 62, { size: 15, color: '#8fb3c7' });
+    K.text(`${wet.size}/${N * N} filled`, K.W - 18, 62, { size: 15, color: '#8fb3c7', align: 'right' });
+    c.fillStyle = '#0f2230'; K.rr(ox - 6, oy - 6, S * N + 12, S * N + 12, 14); c.fill();
+    const w = Math.max(6, S * .24);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const t = tiles[y][x], cx = ox + x * S + S / 2, cy = oy + y * S + S / 2, on = wet.has(x + ',' + y);
+      c.fillStyle = (x + y) % 2 ? '#132a3a' : '#152f41'; c.fillRect(ox + x * S + 1, oy + y * S + 1, S - 2, S - 2);
+      c.save(); c.translate(cx, cy); c.rotate(t.a);
+      c.lineCap = 'butt';
+      for (const pass of [0, 1]) {
+        const col = pass ? (on ? '#38d0ff' : '#5b7080') : '#0a1620', lw = pass ? w : w + 6;
+        c.strokeStyle = col; c.lineWidth = lw;
+        c.beginPath();
+        for (const [dx, dy, b] of DIRS) if (t.m & b) { c.moveTo(0, 0); c.lineTo(dx * (S / 2 - (pass ? 0 : 0)), dy * S / 2); }
+        c.stroke(); K.circle(0, 0, lw / 2, col);
+      }
+      const deg = [1, 2, 4, 8].filter((b) => t.m & b).length;
+      if (deg === 1 && !(x === src.x && y === src.y)) K.circle(0, 0, w * .9, on ? '#7be3ff' : '#5b7080');
+      c.restore();
+      if (x === src.x && y === src.y) { K.circle(cx, cy, S * .26, '#ffd166'); K.text('💧', cx, cy + 1, { size: S * .26, align: 'center' }); }
+    }
+    if (cur.kb) { c.strokeStyle = '#fff'; c.lineWidth = 3; c.strokeRect(ox + cur.x * S + 2, oy + cur.y * S + 2, S - 4, S - 4); }
+    K.text(K.isTouch ? 'Tap a pipe to turn it. Fill every pipe with water.' : 'Click to turn (right-click turns back) · arrows + Space / X', K.W / 2, oy + S * N + 34, { size: 14, color: '#8fb3c7', align: 'center' });
+    K.end();
+  }
+  K.fmtBest = (n) => 'Level ' + n;
+  const saved = K.store.get('pipe-flow:level', 1);
+  build(saved);
+  K.screen({ title: 'Pipe Flow', text: 'Turn the pipes so water from the tap reaches every single tile. Boards get bigger as you go.', best: true,
+    lines: ['Tap or click a tile to turn it', 'Right-click or X turns it back', 'Your level is saved'], buttons: [{ label: saved > 1 ? `Continue level ${saved}` : 'Play', act: () => K.play() }, ...(saved > 1 ? [{ label: 'Restart from 1', alt: true, act: () => { build(1); K.store.set('pipe-flow:level', 1); K.play(); } }] : [])] });
+  K.noPause = false;
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

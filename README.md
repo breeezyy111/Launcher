@@ -28,7 +28,7 @@ Edit **`apps.json`**:
       "icon": "🚀",                        // an emoji, or an image URL/path such as icons/my-app.png
       "color": "#6366f1",
       "category": "Tools",                // section: Games, Create, Tools or Learn & Explore
-      "genre": "Puzzle",                  // optional type inside a section (Games use Action, Arcade, Puzzle, Casual, Board & Party)
+      "genre": "Puzzle",                  // optional type inside a section (Games use Action, Arcade, Puzzle, Strategy, Sports, Casual, Board & Party)
       "added": "2026-11-15",              // optional: shows a New badge and the New row for 3 weeks
       "featured": true,                   // optional: headline game, gets the Home banner until it has been played once
       "status": "live",                   // live | beta | dev | archived

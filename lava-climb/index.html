@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lava Climb</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'lava-climb', W: 420, H: 720, bg: '#1a0b0b', accent: '#ff7b2e' });
+  const c = K.ctx, G = .5;
+  let p, plats, coins, lava, camY, topY, height, coinN, jumpBuf, coyote, lavaSp;
+  function reset() {
+    p = { x: K.W / 2, y: 600, vx: 0, vy: 0, w: 26, h: 30, ground: null, face: 1, dj: true };
+    plats = [{ x: 0, y: 640, w: K.W, kind: 'floor' }]; coins = []; lava = 760; camY = 0; topY = 640; height = 0; coinN = 0; jumpBuf = 0; coyote = 0; lavaSp = .45;
+    gen(-1000); K.clearParts();
+  }
+  function gen(until) {
+    while (topY > until) {
+      const lvl = Math.max(0, -topY / 3000);
+      topY -= K.rand(70, 105 + Math.min(25, lvl * 8));
+      const w = K.rand(Math.max(56, 120 - lvl * 14), 140 - lvl * 8), x = K.rand(8, K.W - w - 8);
+      const r = Math.random(), kind = lvl > .4 && r < .18 ? 'crumble' : lvl > .2 && r < .36 ? 'move' : lvl > .7 && r < .46 ? 'spring' : 'rock';
+      plats.push({ x, y: topY, w, kind, ox: x, t: K.rand(0, 6), fall: 0, crack: 0 });
+      if (Math.random() < .4) coins.push({ x: x + w / 2, y: topY - 28, t: K.rand(0, 6) });
+    }
+  }
+  const jumpKey = () => K.held('a') || K.held('up');
+  function update() {
+    const ax = K.axis().x;
+    p.vx = K.lerp(p.vx, ax * 5.2, p.ground ? .3 : .15); if (ax) p.face = Math.sign(ax);
+    if (K.pressed('a') || K.pressed('up')) jumpBuf = 8; else jumpBuf--;
+    if (p.ground) coyote = 6; else coyote--;
+    if (jumpBuf > 0 && coyote > 0) { p.vy = -11.2; p.ground = null; coyote = 0; jumpBuf = 0; p.dj = true; K.sfx.jump(); K.burst(p.x, p.y + p.h / 2, '#c9a', 6, 2); }
+    else if (jumpBuf > 0 && p.dj && !p.ground && coyote <= 0) { p.vy = -9.5; p.dj = false; jumpBuf = 0; K.tone(520, .1, 'square', .05, 900); K.burst(p.x, p.y + p.h / 2, '#ffd166', 8, 3); }
+    if (!jumpKey() && p.vy < -4) p.vy *= .85; // short hop if you let go
+    p.vy = Math.min(14, p.vy + G);
+    p.x += p.vx; if (p.x < -p.w / 2) p.x += K.W; if (p.x > K.W + p.w / 2) p.x -= K.W;
+    const oldBottom = p.y + p.h / 2; p.y += p.vy; p.ground = null;
+    for (const pl of plats) {
+      if (pl.kind === 'move') { const nx = pl.ox + Math.sin(pl.t += .02) * 60; pl.dx = nx - pl.x; pl.x = nx; }
+      if (pl.fall) { pl.y += pl.fall; pl.fall += .4; continue; }
+      if (p.vy >= 0 && oldBottom <= pl.y + 2 && p.y + p.h / 2 >= pl.y && p.x + p.w / 2 > pl.x && p.x - p.w / 2 < pl.x + pl.w) {
+        p.y = pl.y - p.h / 2; p.vy = 0; p.ground = pl; p.dj = true;
+        if (pl.kind === 'spring') { p.vy = -17; p.ground = null; K.tone(300, .25, 'sine', .08, 1200); }
+        if (pl.kind === 'crumble') { pl.crack++; if (pl.crack > 25) { pl.fall = 1; K.noise(.15, .06); } }
+        if (pl.kind === 'move') p.x += pl.dx || 0;
+      }
+    }
+    height = Math.max(height, Math.floor((600 - p.y) / 10));
+    for (const co of coins) { co.t += .08; if (!co.got && K.dist(p.x, p.y, co.x, co.y) < 24) { co.got = true; coinN++; K.sfx.coin(); K.float(co.x, co.y, '+25', '#ffd166'); } }
+    // lava speeds up the higher you get, and catches up if you're far ahead
+    lavaSp = .45 + height / 1500;
+    const gap = lava - p.y; lava -= lavaSp + (gap > 700 ? (gap - 700) * .02 : 0);
+    if (p.y + p.h / 2 > lava + 6) { K.sfx.boom(); K.burst(p.x, lava, '#ff7b2e', 40, 7); K.shake(10); return K.over({ score: height + coinN * 25, text: `You climbed ${height} m and grabbed ${coinN} gems.`, again: start }); }
+    camY = Math.min(camY, K.lerp(camY, p.y - K.H * .55, .08));
+    gen(camY - 200);
+    plats = plats.filter((pl) => pl.y < lava + 60 && pl.y < camY + K.H + 200); coins = coins.filter((co) => !co.got && co.y < lava + 40);
+  }
+  function draw() {
+    K.begin();
+    const sky = c.createLinearGradient(0, 0, 0, K.H); sky.addColorStop(0, '#120814'); sky.addColorStop(1, '#3a1410'); c.fillStyle = sky; c.fillRect(0, 0, K.W, K.H);
+    c.save(); c.translate(0, -camY);
+    // cave walls
+    c.fillStyle = '#2a1416'; for (let y = Math.floor(camY / 80) * 80; y < camY + K.H + 80; y += 80) { const w = 10 + (Math.abs(y * 7) % 13); c.fillRect(0, y, w, 80); c.fillRect(K.W - w, y + 40, w, 80); }
+    for (const pl of plats) {
+      const col = pl.kind === 'crumble' ? '#8a6a5a' : pl.kind === 'move' ? '#5c7c9c' : pl.kind === 'spring' ? '#4d9a6a' : pl.kind === 'floor' ? '#3b2523' : '#6b4b3f';
+      c.fillStyle = col; K.rr(pl.x, pl.y, pl.w, pl.kind === 'floor' ? 200 : 16, 6); c.fill();
+      c.fillStyle = '#ffffff22'; c.fillRect(pl.x + 4, pl.y + 2, pl.w - 8, 3);
+      if (pl.kind === 'crumble' && pl.crack) { c.strokeStyle = '#2a1416'; c.lineWidth = 2; c.beginPath(); c.moveTo(pl.x + pl.w * .3, pl.y); c.lineTo(pl.x + pl.w * .4, pl.y + 16); c.moveTo(pl.x + pl.w * .7, pl.y); c.lineTo(pl.x + pl.w * .6, pl.y + 16); c.stroke(); }
+      if (pl.kind === 'spring') { c.fillStyle = '#9ff0b8'; c.fillRect(pl.x + pl.w / 2 - 12, pl.y - 6, 24, 6); }
+    }
+    for (const co of coins) { c.save(); c.translate(co.x, co.y + Math.sin(co.t) * 3); c.scale(Math.abs(Math.cos(co.t * .6)) * .6 + .4, 1); c.fillStyle = '#ffd166'; c.beginPath(); c.moveTo(0, -9); c.lineTo(7, 0); c.lineTo(0, 9); c.lineTo(-7, 0); c.fill(); c.restore(); }
+    // hero
+    c.save(); c.translate(p.x, p.y); c.scale(p.face, 1);
+    c.fillStyle = '#4fc3f7'; K.rr(-p.w / 2, -p.h / 2, p.w, p.h, 8); c.fill();
+    c.fillStyle = '#fff'; c.fillRect(2, -8, 8, 8); c.fillStyle = '#111'; c.fillRect(6, -6, 3, 4);
+    c.fillStyle = '#ff7b2e'; c.fillRect(-p.w / 2, -p.h / 2 + 4, p.w, 4);
+    c.restore();
+    // lava
+    const lg = c.createLinearGradient(0, lava, 0, lava + 120); lg.addColorStop(0, '#ffb02e'); lg.addColorStop(.2, '#ff5a1f'); lg.addColorStop(1, '#8a1406');
+    c.fillStyle = lg; c.beginPath(); c.moveTo(0, lava + 400);
+    for (let x = 0; x <= K.W; x += 20) c.lineTo(x, lava + Math.sin(x * .05 + performance.now() / 300) * 5);
+    c.lineTo(K.W, lava + 400); c.fill();
+    if (Math.random() < .3) K.burst(K.rand(0, K.W), lava, '#ffb02e', 1, 1.5, 40, 4);
+    K.drawParts();
+    c.restore();
+    const warn = Math.max(0, 1 - (lava - p.y) / 500);
+    if (warn > 0) { c.fillStyle = `rgba(255,80,20,${warn * .25})`; c.fillRect(0, 0, K.W, K.H); }
+    K.text(`${height} m`, 16, 28, { size: 26, weight: 900 });
+    K.text(`◆ ${coinN}`, 16, 56, { size: 16, color: '#ffd166' });
+    if (K.state === 'play' && height < 5) K.text('Jump twice for a double jump', K.W / 2, K.H - 30, { size: 14, color: '#ffffffaa', align: 'center' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.touch({ stick: true, a: 'Jump' });
+  K.screen({ title: 'Lava Climb', text: 'The lava is rising. Jump up the cave as high as you can. Crumbly rocks break, blue ones slide, green ones bounce.', best: true,
+    lines: ['Move: arrows / A D · Jump: Space, W or Up', 'Jump again in the air for a double jump', 'Walk off one side to come out the other'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>
