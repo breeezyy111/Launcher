@@ -18,11 +18,20 @@
   <header class="top">
     <div class="top-inner">
       <a class="brand" href="./" aria-label="Launcher home"><img src="icons/icon.svg" alt="" width="32" height="32" /><span>Launcher</span></a>
-      <label class="search-wrap">
+      <div class="search-wrap" id="searchWrap">
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="search" type="search" placeholder="Search apps" autocomplete="off" aria-label="Search apps" />
-        <kbd aria-hidden="true">/</kbd>
-      </label>
+        <input id="search" type="search" placeholder="Search apps" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"
+          aria-label="Search apps" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="spotList" />
+        <kbd aria-hidden="true" id="searchKey">/</kbd>
+        <button id="searchClose" class="search-close" type="button" aria-label="Close search" hidden>Cancel</button>
+        <!-- Instant search: opens under the box as soon as it's focused -->
+        <div id="spot" class="spot" hidden>
+          <div id="spotList" class="spot-list" role="listbox" aria-label="Search results"></div>
+          <div class="spot-foot" aria-hidden="true">
+            <span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd id="modKey">Ctrl</kbd><kbd>Enter</kbd> new tab</span><span><kbd>Esc</kbd> close</span>
+          </div>
+        </div>
+      </div>
       <div class="actions">
         <span id="offline" class="offline-pill" role="status" hidden>
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 5-3M22 8.5a15 15 0 0 0-11.4-4.4M5 12a10 10 0 0 1 3.5-2.2M19 12a10 10 0 0 0-3-1.9M8.5 15.5a5 5 0 0 1 7 0M12 19.5h.01M3 3l18 18"/></svg>Offline
@@ -45,6 +54,8 @@
       </div>
     </div>
   </header>
+
+  <div id="spotBackdrop" class="spot-backdrop" hidden></div>
 
   <main>
     <section class="intro" id="intro">
@@ -107,7 +118,7 @@
       </div>
     </section>
 
-    <p class="hint"><kbd>/</kbd> search · <kbd>H</kbd> home · <kbd>G</kbd> games · <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> open</p>
+    <p class="hint"><kbd>/</kbd> search · <kbd>H</kbd> home · <kbd>G</kbd> games · <kbd>F</kbd> favorite the app you're on · <kbd>Enter</kbd> open</p>
   </main>
 
   <dialog id="editor">
@@ -174,7 +185,7 @@
   </div>
 
   <input id="importFile" type="file" accept="application/json,.json" hidden />
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" type="button" hidden></button></div>
 
   <script src="app.js"></script>
 </body>

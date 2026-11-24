@@ -44,7 +44,7 @@ There is no add button in the UI: new apps go in `apps.json`. Edits made in the 
 
 ## Finding things
 
-The launcher opens on **Home**: the featured banner, then rows for **Recently played**, **Favorites** (tap the star on any app), **New**, one row per game type (Action, Arcade, Puzzle, Casual, Board & Party) and one per section (Create, Tools, Learn & Explore). Rows scroll sideways and each has **See all**. The chips switch to **All** or a single section; picking **Games** adds a second row of chips for the game types, and grid views can be sorted by recently played, A to Z, most played or newest. Search (`/` or Ctrl+K) looks through everything. Keys: `H` home, `G` games. Your last view and sort are remembered in the browser.
+The launcher opens on **Home**: the featured banner, then rows for **Favorites** (tap the star on any app; it stays pinned at the top, and **Arrange** reorders it with arrows or drag and drop), **Recently played**, **New**, one row per game type (Action, Arcade, Puzzle, Casual, Board & Party) and one per section (Create, Tools, Learn & Explore). Rows scroll sideways and each has **See all**. The chips switch to **All** or a single section; picking **Games** adds a second row of chips for the game types, and grid views can be sorted by recently played, A to Z, most played or newest. Search (`/` or Ctrl/⌘+K) is instant: results appear under the box as you type, ranked by name, initials (`sf` finds Stellar Forge), section, game type, tags and description, and it forgives typos (`stakfall`). With nothing typed it shows your favorites, recently played, recent searches and sections to browse. Each result has a star, `Enter` opens, Ctrl/⌘+Enter opens in a new tab, and **See all results** shows them as cards. Keys: `H` home, `G` games, `F` favorites the focused app. Your last view and sort are remembered in the browser.
 
 ## Offline
 
@@ -71,9 +71,9 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 ## Features
 
 - A featured banner up top for the app you used last (or your first pin, or the first live app), with Play and New tab buttons
-- Search across name, description, tags and URL. Press `/` to focus it, use the arrow keys to move, and press `Enter` to launch.
+- Instant search with typo tolerance and match highlighting. Press `/` or Ctrl/⌘+K, use the arrow keys to move, and press `Enter` to launch.
 - Category filters with counts, plus status badges (live, beta, dev, archived)
-- Pin favourites. Recently launched apps move to the front.
+- Pin favorites to the top of Home and arrange them; unpinning has Undo. Recently launched apps move to the front.
 - Edit and delete apps in the UI, with JSON import and export
 - Five styles you can switch in the **⋯** menu: Cards, Springboard (a phone home screen), Poster, Arcade (neon) and Terminal (a list). The choice is remembered, and `?skin=arcade` in the URL forces one.
 - Light and dark themes, works on phones, and keeps working offline once loaded
