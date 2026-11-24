@@ -26,7 +26,7 @@
 
   // Sections and game types show in this order; anything else in apps.json goes after, A to Z.
   const SECTION_ORDER = ['Games', 'Create', 'Tools', 'Learn & Explore'];
-  const GENRE_ORDER = ['Action', 'Arcade', 'Puzzle', 'Casual', 'Board & Party', 'Sandbox'];
+  const GENRE_ORDER = ['Action', 'Arcade', 'Puzzle', 'Casual', 'Board & Party'];
   const NEW_DAYS = 21;
 
   function loadView() {
@@ -142,7 +142,7 @@
   }
 
   const STATUS = { live: 'Live', beta: 'Beta', dev: 'In dev', archived: 'Archived' };
-  const ctaLabel = (app) => (/game/i.test(app.category || '') ? 'Play' : app.embed ? 'Open' : 'Visit');
+  const ctaLabel = (app) => (app.embed ? (/game/i.test(app.category || '') ? 'Play' : 'Open') : 'Visit');
 
   function launch(app, el, e) {
     if (isOffline() && needsNet(app)) {
