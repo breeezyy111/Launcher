@@ -150,7 +150,7 @@
     {
       "id": "gravity-golf",
       "name": "Gravity Golf",
-      "description": "Nine holes of mini golf in space, where every planet bends your shot.",
+      "description": "36 holes of mini golf in space over four courses. Bend shots around planets, dodge suns and black holes, warp through wormholes.",
       "url": "gravity-golf/",
       "icon": "icons/gravity-golf.svg",
       "color": "#a3e635",
@@ -159,11 +159,14 @@
         "golf",
         "game",
         "physics",
-        "canvas"
+        "canvas",
+        "space",
+        "minigolf"
       ],
       "status": "live",
       "embed": true,
-      "genre": "Arcade"
+      "genre": "Arcade",
+      "added": "2026-11-24"
     },
     {
       "id": "zombie-holdout",

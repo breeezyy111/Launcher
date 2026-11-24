@@ -6,314 +6,573 @@
 <meta name="theme-color" content="#050816">
 <title>Gravity Golf</title>
 <style>
-  :root { --bg:#050816; --fg:#f5f8ff; --muted:#9aa6cf; --g:#a3e635; --c:#38bdf8; --p:#c084fc; }
+  :root { --bg:#050816; --fg:#f5f8ff; --muted:#9aa6cf; --g:#a3e635; --c:#38bdf8; --p:#c084fc; --y:#fbbf24; }
   * { box-sizing:border-box; margin:0; }
   html, body { height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+  [hidden] { display:none !important; }
   canvas { display:block; width:100%; height:100%; }
-  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 30%, #1e2a6bcc, #050816f2 70%); padding:16px; overflow:auto; z-index:5; }
-  .screen[hidden] { display:none; }
-  .panel { text-align:center; max-width:480px; width:100%; margin:auto; }
+  .screen { position:fixed; inset:0; display:flex; align-items:flex-start; justify-content:center; background:radial-gradient(circle at 50% 30%, #1e2a6bcc, #050816f2 70%); padding:max(16px, env(safe-area-inset-top)) 16px 16px; overflow:auto; z-index:5; touch-action:pan-y; }
+  .panel { text-align:center; max-width:520px; width:100%; margin:auto; }
+  .panel.wide { max-width:860px; }
   h1 { font-size:clamp(46px,12vw,84px); line-height:.88; font-weight:900; letter-spacing:-.02em; color:#fff; text-shadow:0 0 30px #38bdf888; }
   h1 span { display:block; color:var(--g); text-shadow:0 0 30px #a3e63588; }
-  p { color:var(--muted); margin:16px 0; line-height:1.5; font-size:15px; }
-  .btn { font:inherit; font-weight:900; font-size:17px; letter-spacing:.05em; text-transform:uppercase; color:#0b1a02; background:linear-gradient(180deg,#d9f99d,#84cc16); border:0; border-radius:999px; padding:14px 34px; cursor:pointer; box-shadow:0 0 30px #a3e63555; }
+  h2 { font-size:clamp(26px,6vw,36px); font-weight:900; letter-spacing:-.01em; }
+  p { color:var(--muted); line-height:1.5; margin:14px auto 0; max-width:420px; }
+  .btn { font:inherit; font-weight:800; font-size:17px; border:0; border-radius:14px; padding:13px 26px; color:#08120a; background:var(--g); cursor:pointer; box-shadow:0 6px 24px #a3e63540; min-height:48px; }
   .btn.alt { color:var(--fg); background:#ffffff14; box-shadow:inset 0 0 0 1.5px #ffffff2a; }
-  .btn:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+  .btn.sm { font-size:14px; padding:9px 16px; min-height:40px; border-radius:11px; }
+  .btn:focus-visible, .hole:focus-visible, .course:focus-visible { outline:3px solid #fff; outline-offset:3px; }
   .btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
   .howto { text-align:left; background:#ffffff0a; border-radius:14px; padding:12px 16px; margin-top:18px; font-size:13px; line-height:1.65; color:#d8def5; }
   .howto b { color:var(--g); }
   kbd { font:inherit; font-size:12px; font-weight:700; border:1px solid #ffffff40; border-bottom-width:2px; border-radius:6px; padding:0 5px; background:#ffffff0d; }
+  .tally { display:inline-flex; gap:14px; margin-top:12px; font-size:14px; font-weight:700; color:#d8def5; font-variant-numeric:tabular-nums; }
+  .tally b { color:var(--y); }
+  .courses { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-top:18px; text-align:left; }
+  .course { position:relative; border:0; font:inherit; color:var(--fg); text-align:left; border-radius:18px; padding:14px 14px 12px; background:#ffffff0c; box-shadow:inset 0 0 0 1.5px #ffffff1c; overflow:hidden; }
+  .course::before { content:""; position:absolute; inset:0; background:var(--tint); opacity:.22; pointer-events:none; }
+  .course > * { position:relative; }
+  .course .n { font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+  .course .t { font-size:20px; font-weight:900; margin-top:2px; }
+  .course .d { font-size:13px; color:#c7cfec; margin-top:4px; line-height:1.4; min-height:36px; }
+  .course .meta { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:10px; font-variant-numeric:tabular-nums; }
+  .course .meta b { color:var(--y); }
+  .course.locked { opacity:.55; }
+  .course.locked .play { display:none; }
+  .course .lock { display:none; font-size:12px; font-weight:700; color:#fca5a5; margin-top:10px; }
+  .course.locked .lock { display:block; }
+  .holes { display:grid; grid-template-columns:repeat(9, 1fr); gap:4px; margin-top:10px; }
+  .hole { font:inherit; font-size:11px; font-weight:800; border:0; border-radius:8px; padding:5px 0 3px; background:#ffffff12; color:#e2e8f0; cursor:pointer; line-height:1.1; min-height:34px; }
+  .hole i { display:block; font-style:normal; font-size:9px; color:var(--y); letter-spacing:-.5px; min-height:10px; }
+  .hole:disabled { cursor:default; opacity:.5; }
+  .course .play { width:100%; margin-top:10px; }
   table { width:100%; border-collapse:collapse; margin-top:16px; font-variant-numeric:tabular-nums; font-size:14px; }
-  th, td { padding:6px 4px; border-bottom:1px solid #ffffff14; } th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+  th, td { padding:6px 2px; border-bottom:1px solid #ffffff14; } th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
   td.u { color:var(--g); font-weight:800; } td.o { color:#f87171; font-weight:800; }
   .big { font-size:clamp(34px,9vw,56px); font-weight:900; }
-  #pauseBtn { position:fixed; top:max(10px, env(safe-area-inset-top)); right:max(10px, env(safe-area-inset-right)); width:40px; height:40px; border-radius:12px; border:0; background:#ffffff1a; color:#fff; font-weight:900; z-index:4; cursor:pointer; }
-  #pauseBtn[hidden] { display:none; }
+  .stars { font-size:34px; letter-spacing:6px; margin-top:6px; color:#ffffff26; }
+  .stars b { color:var(--y); text-shadow:0 0 18px #fbbf2488; font-weight:400; }
+  .why { font-size:12px; color:var(--muted); margin-top:2px; }
+  .hud-btn { position:fixed; top:max(10px, env(safe-area-inset-top)); width:44px; height:44px; border-radius:12px; border:0; background:#ffffff1a; color:#fff; font:900 16px system-ui; z-index:4; cursor:pointer; }
+  #pauseBtn { right:max(10px, env(safe-area-inset-right)); }
+  #resetBtn { right:calc(max(10px, env(safe-area-inset-right)) + 52px); font-size:20px; }
+  .back { position:absolute; left:0; top:0; }
+  .head { position:relative; padding-top:4px; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<button id="pauseBtn" aria-label="Menu" hidden>II</button>
+<button class="hud-btn" id="pauseBtn" aria-label="Pause" hidden>II</button>
+<button class="hud-btn" id="resetBtn" aria-label="Reset ball (+1 stroke)" title="Reset ball (+1)" hidden>↺</button>
+
 <div class="screen" id="menu">
   <div class="panel">
     <h1>Gravity<span>Golf</span></h1>
-    <p>Nine holes across the stars. Planets pull your ball, so curve your shots around them and land in the cup. Watch out for black holes.</p>
-    <div class="btns"><button class="btn" id="go">Tee off</button></div>
-    <p id="bestLine" style="font-size:13px;margin:12px 0 0"></p>
+    <p>Mini golf across the stars. Planets pull your ball, so curve your shots around them and land in the cup. 36 holes over four courses, from gentle orbits to black holes.</p>
+    <div class="tally" id="tally"></div>
+    <div class="btns"><button class="btn" id="go">Play</button></div>
     <div class="howto">
-      <b>Mouse or touch:</b> drag back from anywhere and let go, like a slingshot<br>
-      <b>Keyboard:</b> <kbd>←</kbd> <kbd>→</kbd> aim, <kbd>↑</kbd> <kbd>↓</kbd> power, <kbd>Space</kbd> shoot, <kbd>R</kbd> retry from last spot (+1)<br>
-      <b>Gamepad:</b> stick aims, d-pad ↑ ↓ or triggers set power, <kbd>A</kbd> shoots<br>
-      Lost in space? The ball comes back after a few seconds with a one-stroke penalty.
+      <b>Mouse or touch:</b> drag back from anywhere and let go, like a slingshot. The dots show where the shot starts to go.<br>
+      <b>Keyboard:</b> <kbd>←</kbd> <kbd>→</kbd> aim (<kbd>Shift</kbd> for fine), <kbd>↑</kbd> <kbd>↓</kbd> power, <kbd>Space</kbd> shoot, <kbd>R</kbd> reset ball (+1)<br>
+      <b>Gamepad:</b> stick aims, triggers or d-pad ↑ ↓ set power, <kbd>A</kbd> shoots, <kbd>Y</kbd> resets<br>
+      <b>Stars:</b> one for sinking it, one for par or better, one for grabbing every stardust ✦ on the hole.
     </div>
   </div>
 </div>
-<div class="screen" id="card" hidden>
-  <div class="panel"><div class="big" id="cardTitle">Birdie!</div><p id="cardSub" style="margin:6px 0 0"></p><table id="cardTable"></table><div class="btns" id="cardBtns"></div></div>
+
+<div class="screen" id="select" hidden>
+  <div class="panel wide">
+    <div class="head"><button class="btn alt sm back" id="selBack">‹ Back</button><h2>Pick a course</h2></div>
+    <div class="tally" id="tally2"></div>
+    <div class="courses" id="courses"></div>
+    <p style="font-size:13px">Play all nine holes for a score, or tap a single hole to practise it. Finish a course to open the next one.</p>
+  </div>
 </div>
+
+<div class="screen" id="card" hidden>
+  <div class="panel"><div class="big" id="cardTitle">Birdie!</div><div class="stars" id="cardStars"></div><div class="why" id="cardWhy"></div><p id="cardSub" style="margin:6px auto 0"></p><table id="cardTable"></table><div class="btns" id="cardBtns"></div></div>
+</div>
+
 <script>
+/*CORE*/
+// ---------- physics core (also used by the hole checker in tests) ----------
+const GK = 260, BR = 7, DT = 1 / 240, FIELD_W = 1000, FIELD_H = 640;
+const KINDS = {
+  earth: { e: .42, f: .25 }, moss: { e: .42, f: .25 }, rust: { e: .42, f: .25 }, rock: { e: .42, f: .25 }, giant: { e: .42, f: .25 },
+  ice: { e: .5, f: .8 }, sand: { e: .1, f: .0005 }, bumper: { e: 1.15, f: 1 }, rep: { e: .55, f: .25 }, sun: { burn: 1 }, bh: { swallow: 1 },
+};
+const DEF_DENS = { bumper: .6, rep: -1, bh: 40, rock: .6 };
+const rad = (d) => d * Math.PI / 180;
+// spec body: [x, y, r, kind, dens?, extras?]  extras: { orbit, speed, ph } (x,y = centre) or { sx, sy, speed, ph } (sweep)
+function buildHole(spec, portrait) {
+  const tx = (x, y) => (portrait ? [y, x] : [x, y]), ta = (a) => (portrait ? Math.PI / 2 - a : a);
+  const bodies = spec.b.map(([x, y, r, k, dens, ex = {}]) => {
+    const [px, py] = tx(x, y);
+    const b = { x: px, y: py, cx: px, cy: py, r, k, dens: dens ?? DEF_DENS[k] ?? 1, vx: 0, vy: 0, seed: Math.round(x * 7 + y * 13 + r) };
+    if (ex.orbit) { b.orbit = ex.orbit; b.speed = portrait ? -ex.speed : ex.speed; b.ph = ta(rad(ex.ph || 0)); }
+    if (ex.sx || ex.sy) { const [sx, sy] = tx(ex.sx || 0, ex.sy || 0); b.sx = sx; b.sy = sy; b.sspeed = ex.speed; b.ph = ex.ph || 0; }
+    return b;
+  });
+  const worms = (spec.w || []).map(([x1, y1, x2, y2]) => { const [a, b] = tx(x1, y1), [c, d] = tx(x2, y2); return { x: a, y: b, x2: c, y2: d }; });
+  const dust = (spec.d || []).map(([x, y]) => { const [a, b] = tx(x, y); return { x: a, y: b }; });
+  const H = { name: spec.name, par: spec.par, bodies, worms, dust, cupP: spec.cup[0], cupA: ta(rad(spec.cup[1])), teeP: spec.tee[0], teeA: ta(rad(spec.tee[1])), t: 0, FW: portrait ? FIELD_H : FIELD_W, FH: portrait ? FIELD_W : FIELD_H };
+  setTime(H, 0);
+  return H;
+}
+function setTime(H, t) {
+  H.t = t;
+  for (const p of H.bodies) {
+    if (p.orbit) { const a = p.ph + t * p.speed; p.x = p.cx + Math.cos(a) * p.orbit; p.y = p.cy + Math.sin(a) * p.orbit; p.vx = -Math.sin(a) * p.orbit * p.speed; p.vy = Math.cos(a) * p.orbit * p.speed; }
+    else if (p.sx !== undefined) { const s = Math.sin(p.ph + t * p.sspeed), c = Math.cos(p.ph + t * p.sspeed) * p.sspeed; p.x = p.cx + p.sx * s; p.y = p.cy + p.sy * s; p.vx = p.sx * c; p.vy = p.sy * c; }
+  }
+}
+function restOn(H, pi, a) { const p = H.bodies[pi]; return { x: p.x + Math.cos(a) * (p.r + BR), y: p.y + Math.sin(a) * (p.r + BR), vx: 0, vy: 0, rest: { p: pi, a }, fly: 0, restT: 0, touch: -1, wcd: 0, got: [] }; }
+function placeRest(H, b) { const p = H.bodies[b.rest.p]; b.x = p.x + Math.cos(b.rest.a) * (p.r + BR); b.y = p.y + Math.sin(b.rest.a) * (p.r + BR); }
+const shotSpeed = (pw) => 90 + pw * 530;
+function launch(H, b, ang, pw) {
+  const p = H.bodies[b.rest.p], sp = shotSpeed(pw);
+  b.vx = Math.cos(ang) * sp + p.vx; b.vy = Math.sin(ang) * sp + p.vy;
+  const nx = Math.cos(b.rest.a), ny = Math.sin(b.rest.a), vn = (b.vx - p.vx) * nx + (b.vy - p.vy) * ny;
+  if (vn < 0) { b.vx -= vn * nx * 1.2; b.vy -= vn * ny * 1.2; } // aiming into the ground: skim along it
+  b.x += nx * 2; b.y += ny * 2; b.rest = null; b.fly = 0; b.restT = 0; b.wcd = 0;
+}
+// one fixed step. returns 'cup' | 'bh' | 'burn' | 'lost' | null. fx(event, data) for effects.
+function stepBall(b, H, dt, fx) {
+  const B = H.bodies; let ax = 0, ay = 0;
+  for (const p of B) { const dx = p.x - b.x, dy = p.y - b.y, d2 = dx * dx + dy * dy, d = Math.sqrt(d2) || 1; const a = GK * p.dens * p.r * p.r / Math.max(d2, p.r * p.r); ax += dx / d * a; ay += dy / d * a; }
+  b.vx += ax * dt; b.vy += ay * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.fly += dt;
+  if (b.wcd > 0) b.wcd -= dt;
+  let touch = -1;
+  for (let i = 0; i < B.length; i++) {
+    const p = B[i], K = KINDS[p.k], dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy) || 1;
+    if (K.swallow) { if (d < p.r + 3) return 'bh'; continue; }
+    if (d >= p.r + BR) continue;
+    if (K.burn) return 'burn';
+    const nx = dx / d, ny = dy / d; b.x = p.x + nx * (p.r + BR); b.y = p.y + ny * (p.r + BR);
+    const rvx = b.vx - p.vx, rvy = b.vy - p.vy, vn = rvx * nx + rvy * ny;
+    if (vn < 0) { b.vx -= (1 + K.e) * vn * nx; b.vy -= (1 + K.e) * vn * ny; if (fx && -vn > 40) fx('bounce', { p, v: -vn }); }
+    if (K.f < 1) { const rx = b.vx - p.vx, ry = b.vy - p.vy, rn = rx * nx + ry * ny, tvx = rx - rn * nx, tvy = ry - rn * ny, f = 1 - Math.pow(K.f, dt); b.vx -= tvx * f; b.vy -= tvy * f; }
+    touch = i;
+    if (i === H.cupP) { const a = Math.atan2(dy, dx), da = Math.abs(Math.atan2(Math.sin(a - H.cupA), Math.cos(a - H.cupA))); if (da * p.r < 13 && Math.hypot(b.vx - p.vx, b.vy - p.vy) < 330) return 'cup'; }
+  }
+  b.touch = touch;
+  if (b.wcd <= 0) for (const w of H.worms) {
+    for (const [ix, iy, ox, oy] of [[w.x, w.y, w.x2, w.y2], [w.x2, w.y2, w.x, w.y]]) {
+      if (Math.hypot(b.x - ix, b.y - iy) < 17) { const sp = Math.hypot(b.vx, b.vy) || 1; if (fx) fx('warp', { x: ix, y: iy, x2: ox, y2: oy }); b.x = ox + b.vx / sp * 22; b.y = oy + b.vy / sp * 22; b.wcd = .5; break; }
+    }
+    if (b.wcd > 0) break;
+  }
+  for (let i = 0; i < H.dust.length; i++) if (!b.got[i] && Math.hypot(b.x - H.dust[i].x, b.y - H.dust[i].y) < 15) { b.got[i] = 1; if (fx) fx('dust', H.dust[i]); }
+  if (b.x < -260 || b.y < -260 || b.x > H.FW + 260 || b.y > H.FH + 260 || b.fly > 14) return 'lost';
+  return null;
+}
+// after a step: has the ball come to rest on something?
+function settle(b, H, dt) {
+  if (b.touch < 0) { b.restT = 0; return false; }
+  const p = H.bodies[b.touch];
+  if (p.k === 'bumper' || Math.hypot(b.vx - p.vx, b.vy - p.vy) > 26) { b.restT = 0; return false; }
+  b.restT += dt;
+  if (b.restT < .3) return false;
+  b.rest = { p: b.touch, a: Math.atan2(b.y - p.y, b.x - p.x) }; b.vx = b.vy = 0; return true;
+}
+
+// ---------- the 36 holes, designed on a 1000 x 640 field (angles in degrees, 0 = right, 90 = down) ----------
+const COURSES = [
+  { name: 'Inner Orbit', blurb: 'Gentle planets and a first taste of moons and black holes.', accent: '#a3e635', tint: 'linear-gradient(135deg,#a3e635,#38bdf8)', neb: ['#312e81', '#831843'], holes: [
+    { name: 'First Orbit', par: 2, tee: [0, 0], cup: [1, 180], b: [[220, 330, 70, 'earth'], [790, 300, 95, 'moss']], d: [[500, 250]] },
+    { name: 'Up and Over', par: 3, tee: [0, -20], cup: [2, 15], b: [[150, 420, 60, 'earth'], [500, 360, 130, 'rust', 1.4], [850, 260, 60, 'moss']], d: [[480, 150], [700, 170]] },
+    { name: 'Moon Run', par: 3, tee: [0, 0], cup: [1, 160], b: [[170, 320, 65, 'earth'], [760, 320, 90, 'ice'], [760, 320, 26, 'rock', .8, { orbit: 175, speed: .55, ph: 120 }]], d: [[460, 260], [560, 420]] },
+    { name: 'Twin Stars', par: 3, tee: [0, -25], cup: [3, -90], b: [[140, 470, 55, 'earth'], [470, 250, 70, 'rust', 1.3], [560, 430, 70, 'giant', 1.3], [870, 200, 45, 'moss']], d: [[330, 110], [700, 330]] },
+    { name: 'Event Horizon', par: 3, tee: [0, 0], cup: [1, 180], b: [[150, 320, 60, 'earth'], [860, 320, 70, 'ice'], [500, 320, 16, 'bh', 45]], d: [[500, 140], [500, 500]] },
+    { name: 'Asteroid Alley', par: 3, tee: [0, -10], cup: [7, 155], b: [[130, 380, 60, 'earth'], [400, 150, 24, 'rock'], [430, 300, 22, 'rock'], [400, 460, 26, 'rock'], [600, 200, 22, 'rock'], [620, 380, 24, 'rock'], [580, 540, 20, 'rock'], [860, 330, 70, 'moss']], d: [[510, 300], [520, 120]] },
+    { name: 'Gas Giant', par: 3, tee: [0, 0], cup: [2, 90], b: [[110, 120, 50, 'earth'], [520, 400, 170, 'giant', 1.6], [880, 120, 35, 'moss']], d: [[520, 160], [330, 170]] },
+    { name: 'Pinball Nebula', par: 3, tee: [0, 0], cup: [6, 180], b: [[110, 320, 55, 'earth'], [330, 170, 30, 'bumper'], [330, 470, 30, 'bumper'], [520, 320, 34, 'bumper'], [700, 160, 30, 'bumper'], [700, 480, 30, 'bumper'], [890, 320, 60, 'moss']], d: [[430, 250], [610, 400], [790, 320]] },
+    { name: 'Grand Tour', par: 4, tee: [0, 0], cup: [4, 0], b: [[100, 540, 50, 'earth'], [500, 320, 90, 'giant', 1.5], [500, 320, 30, 'ice', .8, { orbit: 210, speed: .4, ph: 0 }], [500, 320, 22, 'rock', .8, { orbit: 300, speed: -.3, ph: 143 }], [900, 90, 45, 'moss'], [800, 520, 14, 'bh', 30]], d: [[300, 330], [700, 140], [500, 560]] },
+  ] },
+  { name: 'Frost Belt', blurb: 'Slippery ice, sticky sand and a belt of tumbling rocks.', accent: '#7dd3fc', tint: 'linear-gradient(135deg,#7dd3fc,#e0f2fe)', neb: ['#0c4a6e', '#1e3a8a'], holes: [
+    { name: 'Slippery Start', par: 2, tee: [0, -10], cup: [1, 200], b: [[150, 400, 60, 'earth'], [790, 300, 85, 'ice']], d: [[460, 260]] },
+    { name: 'Sand Trap', par: 3, tee: [0, -20], cup: [2, 180], b: [[120, 320, 55, 'earth'], [500, 320, 95, 'sand', 1.1], [880, 320, 60, 'moss']], d: [[500, 120], [500, 520]] },
+    { name: 'Ice Rink', par: 3, tee: [0, 30], cup: [2, 200], b: [[150, 160, 55, 'ice'], [500, 330, 70, 'rock', 1], [850, 480, 75, 'ice']], d: [[330, 420], [650, 200]] },
+    { name: 'Comet Field', par: 3, tee: [0, -45], cup: [8, 140], b: [[110, 520, 55, 'earth'], [300, 380, 22, 'rock'], [360, 250, 18, 'rock'], [470, 420, 26, 'rock'], [520, 220, 20, 'rock'], [620, 330, 24, 'rock'], [700, 180, 18, 'rock'], [720, 450, 22, 'rock'], [880, 120, 55, 'ice']], d: [[420, 320], [600, 240], [780, 300]] },
+    { name: 'Bumper Garden', par: 3, tee: [0, 0], cup: [7, 180], b: [[110, 320, 50, 'earth'], [320, 200, 26, 'bumper'], [320, 440, 26, 'bumper'], [480, 320, 26, 'bumper'], [640, 200, 26, 'bumper'], [640, 440, 26, 'bumper'], [480, 90, 22, 'bumper'], [880, 320, 60, 'sand']], d: [[400, 320], [560, 320], [740, 260]] },
+    { name: 'Frozen Moons', par: 3, tee: [0, 30], cup: [4, 225], b: [[100, 100, 45, 'earth'], [500, 320, 105, 'ice', 1.3], [500, 320, 26, 'rock', .7, { orbit: 190, speed: .5, ph: 0 }], [500, 320, 20, 'rock', .7, { orbit: 270, speed: -.35, ph: 200 }], [900, 540, 45, 'moss']], d: [[320, 520], [700, 120]] },
+    { name: 'Belt Crossing', par: 3, tee: [0, 0], cup: [9, 180], b: [[130, 320, 60, 'earth'], [500, 40, 30, 'rock'], [505, 110, 28, 'rock'], [495, 180, 30, 'rock'], [500, 245, 26, 'rock'], [500, 400, 26, 'rock'], [495, 465, 30, 'rock'], [505, 535, 28, 'rock'], [500, 605, 30, 'rock'], [870, 320, 60, 'ice']], d: [[500, 322], [300, 200], [700, 440]] },
+    { name: 'Glacier Loop', par: 3, tee: [0, 0], cup: [1, 0], b: [[150, 320, 55, 'earth'], [650, 320, 100, 'ice', 1.2], [880, 120, 22, 'rock'], [880, 520, 22, 'rock']], d: [[650, 150], [650, 490], [850, 320]] },
+    { name: 'Whiteout', par: 4, tee: [0, -30], cup: [5, 200], b: [[100, 540, 50, 'earth'], [330, 250, 70, 'sand'], [600, 420, 80, 'ice', 1.2], [600, 420, 22, 'rock', .7, { orbit: 160, speed: .6, ph: 270 }], [760, 140, 26, 'bumper'], [900, 330, 50, 'ice']], d: [[200, 120], [470, 140], [800, 560], [840, 250]] },
+  ] },
+  { name: 'Solar Flare', blurb: 'Suns burn your ball, repulsors push it away and wormholes warp it.', accent: '#fb923c', tint: 'linear-gradient(135deg,#f97316,#facc15)', neb: ['#7c2d12', '#713f12'], holes: [
+    { name: 'First Light', par: 2, tee: [0, 0], cup: [2, 180], b: [[120, 320, 55, 'earth'], [500, 320, 60, 'sun', 1.1], [880, 320, 60, 'moss']], d: [[500, 160], [500, 480]] },
+    { name: 'Push Back', par: 2, tee: [0, 0], cup: [2, 180], b: [[120, 340, 55, 'earth'], [480, 250, 55, 'rep', -.8], [860, 340, 65, 'moss', 1.2]], d: [[480, 420], [480, 90]] },
+    { name: 'Warp Gate', par: 2, tee: [0, -10], cup: [2, 200], b: [[120, 320, 55, 'earth'], [560, 320, 95, 'sun', 1.1], [880, 520, 60, 'moss']], w: [[290, 140, 780, 290]], d: [[400, 140], [700, 120]] },
+    { name: 'Binary Burn', par: 3, tee: [0, 0], cup: [3, 180], b: [[100, 320, 50, 'earth'], [500, 320, 34, 'sun', 1, { orbit: 105, speed: .5, ph: 0 }], [500, 320, 34, 'sun', 1, { orbit: 105, speed: .5, ph: 180 }], [900, 320, 50, 'moss']], d: [[500, 320], [500, 90], [500, 550]] },
+    { name: 'Repulsor Ring', par: 3, tee: [0, -45], cup: [1, -90], b: [[100, 560, 45, 'earth'], [500, 330, 55, 'moss'], [500, 150, 30, 'rep', -1], [680, 330, 30, 'rep', -1], [500, 510, 30, 'rep', -1], [320, 330, 30, 'rep', -1]], d: [[360, 190], [640, 190], [640, 470]] },
+    { name: 'Solar Wind', par: 3, tee: [0, -45], cup: [4, 135], b: [[120, 560, 50, 'earth'], [300, 320, 42, 'sun'], [500, 320, 42, 'sun'], [700, 320, 42, 'sun'], [880, 80, 50, 'moss']], d: [[400, 320], [600, 320], [790, 180]] },
+    { name: 'Wormhole Maze', par: 3, tee: [0, 0], cup: [4, 180], b: [[110, 320, 50, 'earth'], [420, 320, 70, 'sun', 1.1], [640, 140, 40, 'sun'], [640, 500, 40, 'sun'], [900, 320, 50, 'ice']], w: [[250, 130, 530, 560], [770, 560, 760, 200]], d: [[260, 520], [540, 320], [780, 330]] },
+    { name: 'Sunspot', par: 3, tee: [0, 0], cup: [2, 180], b: [[100, 320, 50, 'earth'], [520, 320, 85, 'sun', 1.2], [520, 320, 30, 'rock', .9, { orbit: 210, speed: .35, ph: 180 }]], d: [[520, 100], [520, 540], [800, 320]] },
+    { name: 'Corona', par: 4, tee: [0, -20], cup: [5, 180], b: [[100, 500, 50, 'earth'], [330, 230, 55, 'sun'], [560, 460, 60, 'rep', -1.2], [700, 200, 45, 'sun', 1, { sx: 0, sy: 90, speed: .7 }], [560, 460, 22, 'rock', .6, { orbit: 120, speed: .7, ph: 0 }], [900, 360, 50, 'moss']], w: [[200, 100, 820, 540]], d: [[450, 100], [430, 360], [800, 360], [900, 180]] },
+  ] },
+  { name: 'Event Horizon', blurb: 'Black holes that drift, pull hard and swallow everything.', accent: '#c084fc', tint: 'linear-gradient(135deg,#7c3aed,#ec4899)', neb: ['#4c1d95', '#701a75'], holes: [
+    { name: 'Edge of Night', par: 2, tee: [0, 0], cup: [1, 180], b: [[130, 320, 55, 'earth'], [870, 320, 60, 'moss'], [500, 320, 14, 'bh', 35]], d: [[500, 150], [500, 490]] },
+    { name: 'Drifting Dark', par: 2, tee: [0, 0], cup: [1, 180], b: [[130, 320, 55, 'earth'], [870, 320, 60, 'ice'], [500, 320, 14, 'bh', 30, { sx: 0, sy: 210, speed: .9 }]], d: [[500, 320], [300, 220]] },
+    { name: 'Slingshot', par: 3, tee: [0, -60], cup: [1, -90], b: [[150, 560, 50, 'earth'], [850, 560, 50, 'moss'], [500, 260, 14, 'bh', 40], [500, 600, 40, 'sun']], d: [[500, 90], [330, 300], [670, 300]] },
+    { name: 'Twin Abyss', par: 3, tee: [0, 0], cup: [1, 180], b: [[100, 320, 50, 'earth'], [900, 320, 50, 'moss'], [420, 190, 14, 'bh', 32], [580, 450, 14, 'bh', 32]], d: [[500, 320], [420, 470], [580, 170]] },
+    { name: 'Wormhole Escape', par: 3, tee: [0, -40], cup: [1, 180], b: [[150, 320, 60, 'earth'], [870, 320, 60, 'moss'], [500, 110, 12, 'bh', 34], [500, 320, 12, 'bh', 34], [500, 530, 12, 'bh', 34]], w: [[300, 80, 700, 560]], d: [[300, 560], [700, 80]] },
+    { name: 'Accretion', par: 3, tee: [0, 30], cup: [3, 225], b: [[100, 100, 45, 'earth'], [500, 320, 16, 'bh', 40], [500, 320, 24, 'rock', .6, { orbit: 150, speed: .6, ph: 0 }], [900, 540, 45, 'moss'], [500, 320, 20, 'rock', .6, { orbit: 240, speed: -.4, ph: 90 }]], d: [[260, 400], [740, 240], [500, 560]] },
+    { name: 'Gravity Well', par: 3, tee: [0, -30], cup: [1, 180], b: [[140, 320, 55, 'earth'], [860, 320, 55, 'moss'], [500, 320, 18, 'bh', 70]], d: [[500, 60], [500, 580], [700, 320]] },
+    { name: 'Pinball Abyss', par: 3, tee: [0, 0], cup: [6, 180], b: [[100, 320, 50, 'earth'], [300, 190, 26, 'bumper'], [300, 450, 26, 'bumper'], [700, 190, 26, 'bumper'], [700, 450, 26, 'bumper'], [500, 320, 13, 'bh', 34, { sx: 0, sy: 150, speed: 1.1 }], [900, 320, 50, 'sand']], d: [[500, 120], [500, 520], [800, 320]] },
+    { name: 'The Singularity', par: 4, tee: [0, -30], cup: [7, 180], b: [[90, 560, 45, 'earth'], [300, 200, 50, 'ice'], [520, 330, 16, 'bh', 50], [520, 330, 26, 'rock', .7, { orbit: 170, speed: .5, ph: 90 }], [720, 110, 40, 'sun'], [720, 540, 40, 'rep', -1.2], [880, 200, 22, 'bumper'], [910, 380, 48, 'moss']], w: [[150, 90, 830, 590]], d: [[300, 60], [520, 560], [760, 330], [900, 520]] },
+  ] },
+];
+/*END CORE*/
+
 (() => {
   const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = (id) => document.getElementById(id);
-  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+  const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+  const SAVE_KEY = 'gravity-golf-v2';
+  const save = Object.assign({ holes: {}, courses: {}, unlocked: 1 }, store.get(SAVE_KEY) || {});
+  const persist = () => store.set(SAVE_KEY, save);
+  const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
   const Snd = (() => {
     let ac;
     const ensure = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
-    const tone = (f, d = .1, type = 'sine', v = .06, slide = 0) => { const a = ensure(); if (!a) return; const t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02); };
-    return { ensure, hit: (p) => tone(300 + p * 300, .15, 'triangle', .08, 200), bounce: (k) => tone(180 + k * 200, .06, 'sine', Math.min(.06, .01 + k * .05)), cup: () => [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .06), i * 90)), lost: () => tone(500, .6, 'sine', .05, -400), suck: () => tone(900, .8, 'sawtooth', .04, -860) };
+    const tone = (f, d = .1, type = 'sine', v = .06, slide = 0, delay = 0) => { const a = ensure(); if (!a) return; const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02); };
+    return {
+      ensure,
+      hit: (p) => tone(300 + p * 300, .15, 'triangle', .08, 200),
+      bounce: (k, bumper) => bumper ? tone(620 + k * 300, .12, 'square', .035, 300) : tone(180 + k * 200, .06, 'sine', Math.min(.06, .01 + k * .05)),
+      cup: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, .25, 'triangle', .06, 0, i * .09)),
+      ace: () => [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => tone(f, .3, 'triangle', .06, 0, i * .07)),
+      lost: () => tone(500, .6, 'sine', .05, -400),
+      suck: () => tone(900, .8, 'sawtooth', .04, -860),
+      burn: () => { tone(220, .5, 'sawtooth', .05, -150); tone(90, .5, 'square', .03, -40); },
+      warp: () => tone(300, .35, 'sine', .06, 1200),
+      dust: () => { tone(1320, .09, 'triangle', .05); tone(1760, .12, 'triangle', .04, 0, .06); },
+    };
   })();
 
-  // ---------- holes (designed on a 1000 x 640 field) ----------
-  // planet: [x, y, r, density, color, extras]
-  const HOLES = [
-    { name: 'First Orbit', par: 2, tee: [0, 0], cup: [1, Math.PI], planets: [[220, 330, 70, 1, 'earth'], [790, 300, 95, 1, 'moss']] },
-    { name: 'Up and Over', par: 3, tee: [0, -.3], cup: [2, Math.PI * .1], planets: [[150, 420, 60, 1, 'earth'], [500, 360, 130, 1.4, 'rust'], [850, 260, 60, 1, 'moss']] },
-    { name: 'Moon Run', par: 3, tee: [0, 0], cup: [1, Math.PI * .9], planets: [[170, 320, 65, 1, 'earth'], [760, 320, 90, 1, 'ice'], [760, 320, 26, .8, 'rock', { orbit: 175, speed: .55, ph: 2 }]] },
-    { name: 'Twin Stars', par: 3, tee: [0, -.4], cup: [3, -Math.PI / 2], planets: [[140, 470, 55, 1, 'earth'], [470, 250, 70, 1.3, 'sun'], [560, 430, 70, 1.3, 'sun'], [870, 200, 45, 1, 'moss']] },
-    { name: 'Event Horizon', par: 4, tee: [0, 0], cup: [1, Math.PI], planets: [[150, 320, 60, 1, 'earth'], [860, 320, 70, 1, 'ice'], [500, 320, 16, 45, 'hole']] },
-    { name: 'Asteroid Alley', par: 3, tee: [0, -.2], cup: [7, Math.PI * .85], planets: [[130, 380, 60, 1, 'earth'], [400, 150, 24, .5, 'rock'], [430, 300, 22, .5, 'rock'], [400, 460, 26, .5, 'rock'], [600, 200, 22, .5, 'rock'], [620, 380, 24, .5, 'rock'], [580, 540, 20, .5, 'rock'], [860, 330, 70, 1, 'moss']] },
-    { name: 'Gas Giant', par: 4, tee: [0, 0], cup: [2, Math.PI / 2], planets: [[110, 120, 50, 1, 'earth'], [520, 400, 170, 1.6, 'giant'], [880, 120, 35, 1, 'moss']] },
-    { name: 'Pinball Nebula', par: 4, tee: [0, 0], cup: [6, Math.PI], planets: [[110, 320, 55, 1, 'earth'], [330, 170, 30, .6, 'bumper'], [330, 470, 30, .6, 'bumper'], [520, 320, 34, .6, 'bumper'], [700, 160, 30, .6, 'bumper'], [700, 480, 30, .6, 'bumper'], [890, 320, 60, 1, 'moss']] },
-    { name: 'Grand Tour', par: 5, tee: [0, 0], cup: [4, 0], planets: [[100, 540, 50, 1, 'earth'], [500, 320, 90, 1.5, 'sun'], [500, 320, 30, .8, 'ice', { orbit: 210, speed: .4, ph: 0 }], [500, 320, 22, .8, 'rock', { orbit: 300, speed: -.3, ph: 2.5 }], [900, 90, 45, 1, 'moss'], [800, 520, 14, 30, 'hole']] },
-  ];
   const STYLE = {
     earth: ['#60a5fa', '#1e3a8a', '#4ade80'], moss: ['#a3e635', '#365314', '#d9f99d'], rust: ['#fb923c', '#7c2d12', '#fdba74'], ice: ['#bae6fd', '#0369a1', '#f0f9ff'], rock: ['#a8a29e', '#44403c', '#d6d3d1'],
-    sun: ['#fde047', '#ea580c', '#fef9c3'], giant: ['#f0abfc', '#6b21a8', '#fbcfe8'], bumper: ['#22d3ee', '#155e75', '#cffafe'], hole: ['#000', '#000', '#000'],
+    giant: ['#f0abfc', '#6b21a8', '#fbcfe8'], bumper: ['#22d3ee', '#155e75', '#cffafe'], sand: ['#fcd34d', '#92400e', '#fef3c7'], sun: ['#fde047', '#ea580c', '#fffbeb'], rep: ['#a78bfa', '#3b0764', '#ede9fe'], bh: ['#000', '#000', '#000'],
   };
-  const GK = 260, BR = 7;
+  const PAR = (c) => COURSES[c].holes.reduce((a, h) => a + h.par, 0);
 
-  let W, H, dpr, S, OX, OY, FW = 1000, FH = 640, portrait = false;
-  function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; const p = H > W * 1.1; if (G.hole && p !== portrait) loadHole(G.holeI, true); portrait = p; fit(); }
-  function fit() { FW = portrait ? 640 : 1000; FH = portrait ? 1000 : 640; const top = 64; S = Math.min(W / (FW + 20), (H - top - 12) / (FH + 20)); OX = (W - FW * S) / 2; OY = top + (H - top - FH * S) / 2 - 4; }
-  const G = { mode: 'menu', holeI: 0, hole: null, strokes: [], ball: null, aimA: 0, power: .5, t: 0, drag: null, trail: [], msg: null };
-  addEventListener('resize', resize);
-
-  function loadHole(i, keepState) {
-    const h = HOLES[i]; portrait = H > W * 1.1; fit();
-    const tx = (x, y) => (portrait ? [y, x] : [x, y]), ta = (a) => (portrait ? Math.PI / 2 - a : a);
-    const planets = h.planets.map(([x, y, r, dens, kind, ex = {}]) => { const [px, py] = tx(x, y); return { x: px, y: py, cx: px, cy: py, r, dens, kind, orbit: ex.orbit, speed: ex.orbit ? (portrait ? -ex.speed : ex.speed) : 0, ph: ex.ph ? ta(ex.ph) : 0, vx: 0, vy: 0, seed: i * 31 + r }; });
-    const prevBall = G.ball;
-    G.hole = { ...h, planets, cupP: h.cup[0], cupA: ta(h.cup[1]), teeP: h.tee[0], teeA: ta(h.tee[1]) };
-    G.holeI = i; G.t = 0; updatePlanets(0);
-    if (!keepState || !prevBall) { G.ball = restOn(G.hole.teeP, G.hole.teeA); G.cur = 0; G.aimA = G.hole.teeA; G.power = .55; G.last = { p: G.hole.teeP, a: G.hole.teeA }; }
-    else { G.ball = restOn(G.last.p, G.last.a); }
-    G.trail = [];
+  let W, H, dpr, S, OX, OY, portrait = false;
+  const G = { mode: 'menu', course: 0, holeI: 0, practice: false, H: null, strokes: [], ball: null, aimA: 0, power: .55, drag: null, trail: [], msg: null, parts: [], shake: 0, acc: 0, rings: [], flyMax: 0, gotDust: [] };
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr;
+    const p = H > W * 1.1;
+    if (G.H && p !== portrait) { portrait = p; rebuild(); } else portrait = p;
+    fit();
   }
-  function restOn(pi, a) { const p = G.hole.planets[pi]; return { x: p.x + Math.cos(a) * (p.r + BR), y: p.y + Math.sin(a) * (p.r + BR), vx: 0, vy: 0, rest: { p: pi, a }, fly: 0, restT: 0 }; }
-  function updatePlanets(t) { for (const p of G.hole.planets) if (p.orbit) { const a = p.ph + t * p.speed, nx = p.cx + Math.cos(a) * p.orbit, ny = p.cy + Math.sin(a) * p.orbit; p.vx = -Math.sin(a) * p.orbit * p.speed; p.vy = Math.cos(a) * p.orbit * p.speed; p.x = nx; p.y = ny; } }
+  function fit() { if (!G.H) return; const top = 60; S = Math.min(W / (G.H.FW + 24), (H - top - 10) / (G.H.FH + 24)); OX = (W - G.H.FW * S) / 2; OY = top + (H - top - G.H.FH * S) / 2 - 4; }
+  addEventListener('resize', resize);
+  const spec = () => COURSES[G.course].holes[G.holeI];
 
-  // ---------- physics ----------
-  function accel(x, y, planets) { let ax = 0, ay = 0; for (const p of planets) { const dx = p.x - x, dy = p.y - y, d2 = dx * dx + dy * dy, d = Math.sqrt(d2); const m = GK * p.dens * p.r * p.r; const a = m / Math.max(d2, p.r * p.r); ax += dx / d * a; ay += dy / d * a; } return [ax, ay]; }
-  // returns event string or null
-  function stepBall(b, dt, planets, sim) {
-    const [ax, ay] = accel(b.x, b.y, planets);
-    b.vx += ax * dt; b.vy += ay * dt; b.x += b.vx * dt; b.y += b.vy * dt;
-    let touch = -1;
-    for (let i = 0; i < planets.length; i++) {
-      const p = planets[i], dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy);
-      if (p.kind === 'hole') { if (d < p.r + 3) return 'hole'; continue; }
-      if (d < p.r + BR) {
-        const nx = dx / d, ny = dy / d; b.x = p.x + nx * (p.r + BR); b.y = p.y + ny * (p.r + BR);
-        const rvx = b.vx - p.vx, rvy = b.vy - p.vy, vn = rvx * nx + rvy * ny;
-        const e = p.kind === 'bumper' ? 1.15 : .42;
-        if (vn < 0) { b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny; if (!sim && -vn > 40) Snd.bounce(Math.min(1, -vn / 500)); if (!sim && p.kind === 'bumper') p.flash = .3; }
-        if (p.kind !== 'bumper') { const tvx = (b.vx - p.vx) - ((b.vx - p.vx) * nx + (b.vy - p.vy) * ny) * nx, tvy = (b.vy - p.vy) - ((b.vx - p.vx) * nx + (b.vy - p.vy) * ny) * ny, f = Math.pow(.25, dt); b.vx -= tvx * (1 - f); b.vy -= tvy * (1 - f); }
-        touch = i;
-        if (i === G.hole.cupP) { const a = Math.atan2(dy, dx), da = Math.abs(Math.atan2(Math.sin(a - G.hole.cupA), Math.cos(a - G.hole.cupA))); if (da * p.r < 13 && Math.hypot(b.vx - p.vx, b.vy - p.vy) < 330) return 'cup'; }
-      }
-    }
-    b.touch = touch;
-    if (b.x < -240 || b.y < -240 || b.x > FW + 240 || b.y > FH + 240) return 'lost';
-    return null;
+  // rotate the screen mid-hole: rebuild the hole and keep the ball where it rests
+  function rebuild() {
+    const t = G.H.t, was = G.ball; G.H = buildHole(spec(), portrait); setTime(G.H, t);
+    const ra = (a) => Math.PI / 2 - a; // the mirror swap is its own inverse
+    G.last = { p: G.last.p, a: ra(G.last.a) }; G.aimA = ra(G.aimA);
+    G.ball = was && was.rest ? restOn(G.H, was.rest.p, ra(was.rest.a)) : restOn(G.H, G.last.p, G.last.a);
+    G.ball.got = G.gotDust; G.trail = []; G.parts = [];
+  }
+  function loadHole(ci, hi) {
+    G.course = ci; G.holeI = hi; portrait = H > W * 1.1;
+    G.H = buildHole(spec(), portrait); fit();
+    G.ball = restOn(G.H, G.H.teeP, G.H.teeA); G.gotDust = G.ball.got; G.cur = 0; G.aimA = G.H.teeA; G.power = .55; G.last = { p: G.H.teeP, a: G.H.teeA };
+    G.trail = []; G.parts = []; G.acc = 0; G.msg = { text: `Hole ${hi + 1} · ${G.H.name}`, sub: `Par ${G.H.par}`, t: 2 };
+  }
+
+  // ---------- effects ----------
+  function burst(x, y, n, col, sp = 160, life = .7, size = 2.5) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = sp * (.3 + Math.random()); G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: life * (.5 + Math.random() * .5), max: life, col, size: size * (.6 + Math.random() * .8) }); } }
+  function fx(ev, d) {
+    if (ev === 'bounce') { Snd.bounce(Math.min(1, d.v / 500), d.p.k === 'bumper'); if (d.p.k === 'bumper') { d.p.flash = .3; buzz(15); } burst(G.ball.x, G.ball.y, Math.min(14, d.v / 30 | 0), STYLE[d.p.k][2], 90, .4, 2); }
+    else if (ev === 'warp') { Snd.warp(); burst(d.x, d.y, 20, '#67e8f9', 140, .5); burst(d.x2, d.y2, 20, '#fdba74', 140, .5); G.trail = []; }
+    else if (ev === 'dust') { Snd.dust(); burst(d.x, d.y, 16, '#fbbf24', 120, .6, 2.5); G.rings.push({ x: d.x, y: d.y, t: 0 }); }
   }
 
   // ---------- input ----------
   const keys = {};
   addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (G.mode !== 'play') return;
+    if (G.mode !== 'play') { if (e.code === 'Escape' && !$('select').hidden) openMenu(); return; }
     if (/Arrow|Space/.test(e.code)) e.preventDefault();
     if (e.code === 'Space' || e.code === 'Enter') shoot();
-    if (e.code === 'KeyR' && !G.ball.rest) lose('Reset');
-    if (e.code === 'Escape' || e.code === 'KeyP') openMenu();
+    if (e.code === 'KeyR' && !G.ball.rest) lose('reset');
+    if (e.code === 'Escape' || e.code === 'KeyP') pause();
   });
   addEventListener('keyup', (e) => { keys[e.code] = false; });
-  const toWorld = (cx, cy) => [(cx - OX) / S, (cy - OY) / S];
-  cv.addEventListener('pointerdown', (e) => { if (G.mode !== 'play' || !G.ball.rest) return; Snd.ensure(); G.drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch {} });
-  cv.addEventListener('pointermove', (e) => { if (!G.drag || G.drag.id !== e.pointerId) return; G.drag.x = e.clientX; G.drag.y = e.clientY; const dx = G.drag.sx - G.drag.x, dy = G.drag.sy - G.drag.y, m = Math.hypot(dx, dy); if (m > 6) { G.aimA = Math.atan2(dy, dx); G.power = Math.min(1, m / (Math.min(W, H) * .32)); } });
-  cv.addEventListener('pointerup', (e) => { if (!G.drag || G.drag.id !== e.pointerId) return; const dx = G.drag.sx - G.drag.x, dy = G.drag.sy - G.drag.y; G.drag = null; if (Math.hypot(dx, dy) > 14) shoot(); });
+  cv.addEventListener('pointerdown', (e) => { if (G.mode !== 'play' || !G.ball.rest) return; Snd.ensure(); G.drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch {} });
+  cv.addEventListener('pointermove', (e) => {
+    if (!G.drag || G.drag.id !== e.pointerId) return; G.drag.x = e.clientX; G.drag.y = e.clientY;
+    const dx = G.drag.sx - G.drag.x, dy = G.drag.sy - G.drag.y, m = Math.hypot(dx, dy);
+    if (m > 8) { G.drag.moved = true; G.aimA = Math.atan2(dy, dx); G.power = Math.max(.03, Math.min(1, (m - 8) / (Math.min(W, H) * .34))); }
+  });
+  cv.addEventListener('pointerup', (e) => { if (!G.drag || G.drag.id !== e.pointerId) return; const m = Math.hypot(G.drag.sx - G.drag.x, G.drag.sy - G.drag.y); G.drag = null; if (m > 16) shoot(); });
   cv.addEventListener('pointercancel', () => { G.drag = null; });
   let pm = {};
   function pollPads(dt) {
     const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
-    const n = { a: false, st: false, up: false, down: false, y: false };
+    const n = { a: false, b: false, st: false, up: false, down: false, left: false, right: false, y: false };
     for (const p of pads) {
       const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
       if (G.mode === 'play' && G.ball?.rest && Math.hypot(ax, ay) > .5) G.aimA = Math.atan2(ay, ax);
-      if (G.mode === 'play') { if (p.buttons[12]?.pressed || p.buttons[7]?.pressed) G.power = Math.min(1, G.power + dt * .6); if (p.buttons[13]?.pressed || p.buttons[6]?.pressed) G.power = Math.max(.05, G.power - dt * .6); if (p.buttons[14]?.pressed) G.aimA -= dt * 1.2; if (p.buttons[15]?.pressed) G.aimA += dt * 1.2; }
-      n.a ||= p.buttons[0]?.pressed; n.st ||= p.buttons[9]?.pressed; n.y ||= p.buttons[3]?.pressed; n.up ||= p.buttons[12]?.pressed || ay < -.6; n.down ||= p.buttons[13]?.pressed || ay > .6;
+      if (G.mode === 'play') { if (p.buttons[12]?.pressed || p.buttons[7]?.pressed) G.power = Math.min(1, G.power + dt * .6); if (p.buttons[13]?.pressed || p.buttons[6]?.pressed) G.power = Math.max(.03, G.power - dt * .6); if (p.buttons[14]?.pressed) G.aimA -= dt * 1.2; if (p.buttons[15]?.pressed) G.aimA += dt * 1.2; }
+      n.a ||= p.buttons[0]?.pressed; n.b ||= p.buttons[1]?.pressed; n.st ||= p.buttons[9]?.pressed; n.y ||= p.buttons[3]?.pressed;
+      n.up ||= p.buttons[12]?.pressed || ay < -.6; n.down ||= p.buttons[13]?.pressed || ay > .6; n.left ||= p.buttons[14]?.pressed || ax < -.6; n.right ||= p.buttons[15]?.pressed || ax > .6;
     }
-    if (G.mode === 'play') { if (n.a && !pm.a) shoot(); if (n.st && !pm.st) openMenu(); if (n.y && !pm.y && !G.ball.rest) lose('Reset'); }
-    else { const scr = [...document.querySelectorAll('.screen')].find((s) => !s.hidden); if (scr) { const bs = [...scr.querySelectorAll('button')].filter((b) => b.offsetParent); const i = bs.indexOf(document.activeElement); if (n.down && !pm.down) bs[(i + 1) % bs.length]?.focus(); if (n.up && !pm.up) bs[(i - 1 + bs.length) % bs.length]?.focus(); if (n.a && !pm.a) (i >= 0 ? bs[i] : bs[0])?.click(); } }
+    if (G.mode === 'play') { if (n.a && !pm.a) shoot(); if (n.st && !pm.st) pause(); if (n.y && !pm.y && !G.ball.rest) lose('reset'); }
+    else {
+      const scr = [...document.querySelectorAll('.screen')].find((s) => !s.hidden);
+      if (scr) {
+        const bs = [...scr.querySelectorAll('button')].filter((b) => b.offsetParent && !b.disabled); const i = bs.indexOf(document.activeElement);
+        const mv = (d) => bs[((i < 0 ? 0 : i + d) % bs.length + bs.length) % bs.length]?.focus();
+        if (n.down && !pm.down) mv(1); if (n.right && !pm.right) mv(1); if (n.up && !pm.up) mv(-1); if (n.left && !pm.left) mv(-1);
+        if (n.a && !pm.a) (i >= 0 ? bs[i] : bs[0])?.click();
+        if (n.b && !pm.b) scr.querySelector('.back')?.click();
+      }
+    }
     pm = n;
   }
   function shoot() {
-    const b = G.ball; if (!b.rest || G.mode !== 'play') return;
-    const p = G.hole.planets[b.rest.p], sp = 90 + G.power * 520;
-    b.vx = Math.cos(G.aimA) * sp + p.vx; b.vy = Math.sin(G.aimA) * sp + p.vy;
-    const nx = Math.cos(b.rest.a), ny = Math.sin(b.rest.a); if (b.vx * nx + b.vy * ny < 0) { /* aiming into the ground: slide along */ const vn = b.vx * nx + b.vy * ny; b.vx -= vn * nx * 1.2; b.vy -= vn * ny * 1.2; }
-    b.x += nx * 2; b.y += ny * 2;
-    G.last = { ...b.rest }; b.rest = null; b.fly = 0; b.restT = 0; G.cur++; G.trail = []; Snd.hit(G.power);
+    const b = G.ball; if (!b || !b.rest || G.mode !== 'play') return;
+    G.last = { ...b.rest }; launch(G.H, b, G.aimA, G.power); G.cur++; G.trail = []; Snd.hit(G.power); burst(b.x, b.y, 10, '#ffffff', 80, .4, 2);
   }
-  function lose(why) { G.cur++; G.msg = { text: why === 'hole' ? 'Swallowed! +1' : why === 'Reset' ? 'Reset +1' : 'Lost in space! +1', t: 1.6 }; if (why === 'hole') Snd.suck(); else Snd.lost(); G.ball = restOn(G.last.p, G.last.a); }
+  function lose(why) {
+    G.cur++; const b = G.ball;
+    if (why === 'bh') { G.msg = { text: 'Swallowed!', sub: '+1 stroke', t: 1.6 }; Snd.suck(); G.shake = .5; buzz([30, 40, 60]); }
+    else if (why === 'burn') { G.msg = { text: 'Burned up!', sub: '+1 stroke', t: 1.6 }; Snd.burn(); burst(b.x, b.y, 40, '#fb923c', 220, .8, 3); G.shake = .35; buzz(60); }
+    else if (why === 'reset') { G.msg = { text: 'Reset', sub: '+1 stroke', t: 1.2 }; Snd.lost(); }
+    else { G.msg = { text: 'Lost in space!', sub: '+1 stroke', t: 1.6 }; Snd.lost(); }
+    G.ball = restOn(G.H, G.last.p, G.last.a); G.ball.got = G.gotDust; G.aimA = G.last.a; G.trail = [];
+  }
 
-  // ---------- flow ----------
-  function startRound() { Snd.ensure(); G.strokes = []; G.mode = 'play'; loadHole(0); show(null); }
-  function show(id) { for (const s of ['menu', 'card']) $(s).hidden = s !== id; $('pauseBtn').hidden = id !== null; }
-  const NAMES = { '-3': 'Albatross!', '-2': 'Eagle!', '-1': 'Birdie!', '0': 'Par', '1': 'Bogey', '2': 'Double bogey' };
+  // ---------- screens & flow ----------
+  function show(id) { for (const s of ['menu', 'select', 'card']) $(s).hidden = s !== id; $('pauseBtn').hidden = id !== null; if (id !== null) $('resetBtn').hidden = true; }
+  const holeKey = (c, h) => `${c}-${h}`;
+  function starCount() { let n = 0; for (const k in save.holes) n += save.holes[k].stars || 0; return n; }
+  function renderTally() {
+    const done = Object.keys(save.holes).length, aces = Object.values(save.holes).filter((h) => h.best === 1).length;
+    const html = `<span><b>${starCount()}</b>/108 ★</span><span>${done}/36 holes</span>${aces ? `<span>${aces} hole${aces > 1 ? 's' : ''} in one</span>` : ''}`;
+    $('tally').innerHTML = html; $('tally2').innerHTML = html;
+  }
+  function renderSelect() {
+    renderTally();
+    const wrap = $('courses'); wrap.innerHTML = '';
+    COURSES.forEach((c, ci) => {
+      const locked = ci >= save.unlocked, best = save.courses[ci], stars = c.holes.reduce((a, _, hi) => a + (save.holes[holeKey(ci, hi)]?.stars || 0), 0);
+      const el = document.createElement('div'); el.className = 'course' + (locked ? ' locked' : ''); el.style.setProperty('--tint', c.tint); el.style.setProperty('--accent', c.accent);
+      el.innerHTML = `<div class="n">Course ${ci + 1}</div><div class="t">${c.name}</div><div class="d">${c.blurb}</div>
+        <div class="holes">${c.holes.map((h, hi) => { const s = save.holes[holeKey(ci, hi)]; return `<button class="hole" data-h="${hi}" ${locked ? 'disabled' : ''} title="${h.name} · par ${h.par}">${hi + 1}<i>${s ? '★'.repeat(s.stars) : ''}</i></button>`; }).join('')}</div>
+        <div class="meta"><span>Par ${PAR(ci)}${best ? ` · Best ${best}` : ''}</span><span><b>${stars}</b>/27 ★</span></div>
+        <button class="btn sm play">Play 9 holes</button><div class="lock">Finish ${COURSES[ci - 1]?.name} to unlock</div>`;
+      el.querySelector('.play').onclick = () => startRound(ci, false, 0);
+      el.querySelectorAll('.hole').forEach((b) => (b.onclick = () => startRound(ci, true, +b.dataset.h)));
+      wrap.appendChild(el);
+    });
+  }
+  function openMenu() { G.mode = 'menu'; G.H = null; renderTally(); show('menu'); $('go').focus(); }
+  function openSelect() { G.mode = 'menu'; G.H = null; renderSelect(); show('select'); (document.querySelector('.course:not(.locked) .play') || $('selBack')).focus(); }
+  function startRound(ci, practice, hi) { Snd.ensure(); G.practice = practice; G.strokes = []; G.mode = 'play'; loadHole(ci, hi); show(null); }
+  const NAMES = { '-3': 'Albatross!', '-2': 'Eagle!', '-1': 'Birdie!', '0': 'Par', '1': 'Bogey', '2': 'Double bogey', '3': 'Triple bogey' };
   function sunk() {
-    Snd.cup(); G.strokes[G.holeI] = G.cur; G.mode = 'sunk';
-    const d = G.cur - G.hole.par;
+    G.strokes[G.holeI] = G.cur; G.mode = 'sunk';
+    const d = G.cur - G.H.par, allDust = G.H.dust.every((_, i) => G.gotDust[i]);
+    const stars = 1 + (d <= 0 ? 1 : 0) + (allDust ? 1 : 0);
+    const k = holeKey(G.course, G.holeI), prev = save.holes[k] || {};
+    save.holes[k] = { best: Math.min(prev.best || 99, G.cur), stars: Math.max(prev.stars || 0, stars) }; persist();
+    if (G.cur === 1) { Snd.ace(); buzz([40, 60, 40, 60, 80]); } else { Snd.cup(); buzz(40); }
+    const cp = G.H.bodies[G.H.cupP]; for (let i = 0; i < 4; i++) setTimeout(() => G.H && burst(cp.x + Math.cos(G.H.cupA) * cp.r, cp.y + Math.sin(G.H.cupA) * cp.r, 26, ['#a3e635', '#fbbf24', '#38bdf8', '#f472b6'][i], 240, 1.1, 3), i * 120);
     setTimeout(() => {
       $('cardTitle').textContent = G.cur === 1 ? 'Hole in one!' : NAMES[d] || `+${d}`;
       $('cardTitle').style.color = d < 0 || G.cur === 1 ? '#a3e635' : d === 0 ? '#fff' : '#f87171';
-      $('cardSub').textContent = `${G.hole.name} · ${G.cur} stroke${G.cur > 1 ? 's' : ''} · par ${G.hole.par}`;
-      renderCard(); const last = G.holeI === HOLES.length - 1, btns = $('cardBtns'); btns.innerHTML = '';
-      const b = document.createElement('button'); b.className = 'btn'; b.textContent = last ? 'Finish' : 'Next hole'; b.onclick = () => (last ? finishRound() : (G.mode = 'play', loadHole(G.holeI + 1), show(null))); btns.appendChild(b);
-      show('card'); b.focus();
-    }, 900);
+      $('cardStars').innerHTML = [0, 1, 2].map((i) => (i < stars ? '<b>★</b>' : '★')).join('');
+      $('cardWhy').textContent = [d <= 0 ? 'par or better ✓' : `par ${G.H.par} for a star`, allDust ? 'all stardust ✓' : `stardust ${G.gotDust.filter(Boolean).length}/${G.H.dust.length}`].join(' · ');
+      $('cardSub').textContent = `${G.H.name} · ${G.cur} stroke${G.cur > 1 ? 's' : ''} · par ${G.H.par}`;
+      const btns = $('cardBtns'); btns.innerHTML = '';
+      if (G.practice) { $('cardTable').innerHTML = ''; addBtn('Again', () => startRound(G.course, true, G.holeI)); if (G.holeI < 8) addBtn('Next hole', () => startRound(G.course, true, G.holeI + 1), true); addBtn('Courses', openSelect, true); }
+      else { renderCard(); const lastH = G.holeI === 8; addBtn(lastH ? 'Finish' : 'Next hole', () => (lastH ? finishRound() : (G.mode = 'play', loadHole(G.course, G.holeI + 1), show(null)))); }
+      show('card'); btns.firstChild.focus();
+    }, 1100);
   }
+  function addBtn(t, f, alt) { const b = document.createElement('button'); b.className = alt ? 'btn alt' : 'btn'; b.textContent = t; b.onclick = f; $('cardBtns').appendChild(b); return b; }
   function renderCard() {
-    const tot = G.strokes.reduce((a, b) => a + (b || 0), 0), par = HOLES.slice(0, G.strokes.length).reduce((a, h) => a + h.par, 0);
-    let html = '<tr><th>Hole</th>' + HOLES.map((_, i) => `<th>${i + 1}</th>`).join('') + '<th>Tot</th></tr><tr><th>Par</th>' + HOLES.map((h) => `<td>${h.par}</td>`).join('') + `<td>${HOLES.reduce((a, h) => a + h.par, 0)}</td></tr><tr><th>You</th>`;
-    html += HOLES.map((h, i) => { const s = G.strokes[i]; return s == null ? '<td>·</td>' : `<td class="${s < h.par ? 'u' : s > h.par ? 'o' : ''}">${s}</td>`; }).join('') + `<td>${tot}</td></tr>`;
-    $('cardTable').innerHTML = html; return { tot, par };
+    const holes = COURSES[G.course].holes, tot = G.strokes.reduce((a, b) => a + (b || 0), 0);
+    let html = '<tr><th>Hole</th>' + holes.map((_, i) => `<th>${i + 1}</th>`).join('') + '<th>Tot</th></tr><tr><th>Par</th>' + holes.map((h) => `<td>${h.par}</td>`).join('') + `<td>${PAR(G.course)}</td></tr><tr><th>You</th>`;
+    html += holes.map((h, i) => { const s = G.strokes[i]; return s == null ? '<td>·</td>' : `<td class="${s < h.par ? 'u' : s > h.par ? 'o' : ''}">${s}</td>`; }).join('') + `<td>${tot}</td></tr>`;
+    $('cardTable').innerHTML = html; return tot;
   }
   function finishRound() {
-    const { tot } = renderCard(), par = HOLES.reduce((a, h) => a + h.par, 0), d = tot - par;
-    const best = +store.get('gravity-golf-best') || 0; const nb = !best || tot < best; if (nb) store.set('gravity-golf-best', tot);
-    $('cardTitle').textContent = `${tot} strokes`; $('cardTitle').style.color = d <= 0 ? '#a3e635' : '#fff';
-    $('cardSub').textContent = `${d === 0 ? 'Even par' : d < 0 ? `${-d} under par` : `${d} over par`}${nb ? ' · New best!' : ` · Best ${best}`}`;
-    const btns = $('cardBtns'); btns.innerHTML = '';
-    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Play again'; b.onclick = startRound; btns.appendChild(b);
-    const m = document.createElement('button'); m.className = 'btn alt'; m.textContent = 'Menu'; m.onclick = () => { G.mode = 'menu'; bestLine(); show('menu'); }; btns.appendChild(m);
-    G.mode = 'done'; show('card'); b.focus();
+    const tot = renderCard(), d = tot - PAR(G.course), best = save.courses[G.course], nb = !best || tot < best;
+    if (nb) save.courses[G.course] = tot;
+    const unlockedNow = G.course + 1 < COURSES.length && save.unlocked <= G.course + 1; if (unlockedNow) save.unlocked = G.course + 2; persist();
+    $('cardTitle').textContent = `${tot} strokes`; $('cardTitle').style.color = d <= 0 ? '#a3e635' : '#fff'; $('cardStars').innerHTML = ''; $('cardWhy').textContent = '';
+    $('cardSub').textContent = `${COURSES[G.course].name} · ${d === 0 ? 'even par' : d < 0 ? `${-d} under par` : `${d} over par`}${nb ? ' · New best!' : ` · Best ${best}`}${unlockedNow ? ` · ${COURSES[G.course + 1].name} unlocked!` : ''}`;
+    $('cardBtns').innerHTML = '';
+    if (G.course + 1 < COURSES.length) addBtn(`Play ${COURSES[G.course + 1].name}`, () => startRound(G.course + 1, false, 0));
+    addBtn('Play again', () => startRound(G.course, false, 0), G.course + 1 < COURSES.length); addBtn('Courses', openSelect, true);
+    G.mode = 'done'; show('card'); $('cardBtns').firstChild.focus();
   }
-  function openMenu() {
-    G.mode = 'paused'; renderCard();
-    $('cardTitle').textContent = 'Paused'; $('cardTitle').style.color = '#fff'; $('cardSub').textContent = `Hole ${G.holeI + 1}: ${G.hole.name}`;
-    const btns = $('cardBtns'); btns.innerHTML = '';
-    [['Resume', () => { G.mode = 'play'; show(null); }], ['Restart round', startRound], ['Menu', () => { G.mode = 'menu'; bestLine(); show('menu'); }]].forEach(([t, f], i) => { const b = document.createElement('button'); b.className = i ? 'btn alt' : 'btn'; b.textContent = t; b.onclick = f; btns.appendChild(b); });
-    show('card'); btns.firstChild.focus();
+  function pause() {
+    if (G.mode !== 'play') return; G.mode = 'paused'; G.drag = null;
+    $('cardTitle').textContent = 'Paused'; $('cardTitle').style.color = '#fff'; $('cardStars').innerHTML = ''; $('cardWhy').textContent = '';
+    $('cardSub').textContent = `${COURSES[G.course].name} · Hole ${G.holeI + 1}: ${G.H.name}`;
+    if (G.practice) $('cardTable').innerHTML = ''; else renderCard();
+    $('cardBtns').innerHTML = '';
+    addBtn('Resume', () => { G.mode = 'play'; show(null); });
+    addBtn('Restart hole', () => { G.mode = 'play'; G.strokes.length = G.holeI; loadHole(G.course, G.holeI); show(null); }, true);
+    addBtn('Courses', openSelect, true);
+    show('card'); $('cardBtns').firstChild.focus();
   }
-  function bestLine() { const b = store.get('gravity-golf-best'); $('bestLine').textContent = b ? `Best round: ${b} strokes (par ${HOLES.reduce((a, h) => a + h.par, 0)})` : ''; }
-  bestLine();
-  $('go').onclick = startRound; $('pauseBtn').onclick = () => { if (G.mode === 'play') openMenu(); };
+  $('go').onclick = () => { Snd.ensure(); openSelect(); };
+  $('selBack').onclick = openMenu;
+  $('pauseBtn').onclick = pause;
+  $('resetBtn').onclick = () => { if (G.mode === 'play' && !G.ball.rest) lose('reset'); };
 
-  // ---------- update ----------
+  // ---------- update (fixed-step physics so the aim dots match the real shot) ----------
   function update(dt) {
-    if (!G.hole) return;
-    G.t += dt; updatePlanets(G.t);
+    if (!G.H) return;
     if (G.msg) { G.msg.t -= dt; if (G.msg.t <= 0) G.msg = null; }
-    for (const p of G.hole.planets) if (p.flash) p.flash = Math.max(0, p.flash - dt);
-    if (G.mode !== 'play') return;
+    for (const p of G.H.bodies) if (p.flash) p.flash = Math.max(0, p.flash - dt);
+    for (const q of G.parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= .96; q.vy *= .96; q.life -= dt; }
+    G.parts = G.parts.filter((q) => q.life > 0);
+    for (const r of G.rings) r.t += dt; G.rings = G.rings.filter((r) => r.t < .6);
+    if (G.shake > 0) G.shake = Math.max(0, G.shake - dt);
+    if (G.mode !== 'play' && G.mode !== 'sunk') { return; }
     const b = G.ball;
-    if (b.rest) {
-      const p = G.hole.planets[b.rest.p]; b.x = p.x + Math.cos(b.rest.a) * (p.r + BR); b.y = p.y + Math.sin(b.rest.a) * (p.r + BR);
-      if (keys.ArrowLeft) G.aimA -= dt * 1.4; if (keys.ArrowRight) G.aimA += dt * 1.4;
-      if (keys.ArrowUp) G.power = Math.min(1, G.power + dt * .6); if (keys.ArrowDown) G.power = Math.max(.05, G.power - dt * .6);
-      return;
+    if (b.rest && G.mode === 'play') {
+      const f = keys.ShiftLeft || keys.ShiftRight ? .25 : 1;
+      if (keys.ArrowLeft) G.aimA -= dt * 1.4 * f; if (keys.ArrowRight) G.aimA += dt * 1.4 * f;
+      if (keys.ArrowUp) G.power = Math.min(1, G.power + dt * .6 * f); if (keys.ArrowDown) G.power = Math.max(.03, G.power - dt * .6 * f);
     }
-    b.fly += dt;
-    const N = 8;
-    for (let k = 0; k < N; k++) {
-      const ev = stepBall(b, dt / N, G.hole.planets, false);
-      if (ev === 'cup') { b.vx = b.vy = 0; b.inCup = true; sunk(); return; }
-      if (ev === 'hole') { lose('hole'); return; }
-      if (ev === 'lost') { lose('lost'); return; }
+    G.acc += dt;
+    while (G.acc >= DT) {
+      G.acc -= DT; setTime(G.H, G.H.t + DT);
+      if (b.inCup) continue;
+      if (b.rest) { placeRest(G.H, b); continue; }
+      const ev = stepBall(b, G.H, DT, fx);
+      if (ev === 'cup') { b.inCup = true; b.vx = b.vy = 0; sunk(); break; }
+      if (ev) { lose(ev); break; }
+      if (settle(b, G.H, DT)) { G.aimA = b.rest.a; G.trail = []; break; }
     }
-    if (b.fly > 10) { lose('lost'); return; }
-    G.trail.push([b.x, b.y]); if (G.trail.length > 90) G.trail.shift();
-    if (b.touch >= 0) {
-      const p = G.hole.planets[b.touch];
-      if (Math.hypot(b.vx - p.vx, b.vy - p.vy) < 26 && p.kind !== 'bumper') { b.restT += dt; if (b.restT > .3) { const a = Math.atan2(b.y - p.y, b.x - p.x); b.rest = { p: b.touch, a }; b.vx = b.vy = 0; G.aimA = a; } }
-      else b.restT = 0;
-    } else b.restT = 0;
+    if (G.ball === b && !b.rest && !b.inCup) { G.trail.push([b.x, b.y]); if (G.trail.length > 120) G.trail.shift(); }
+    $('resetBtn').hidden = !(G.mode === 'play' && !G.ball.rest && G.ball.fly > 1.5);
   }
 
   // ---------- draw ----------
-  const stars = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.6 + .3, tw: Math.random() * 6 }));
-  function srand(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+  const stars = Array.from({ length: 240 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.6 + .3, tw: Math.random() * 6 }));
+  function srand(seed) { seed = Math.abs(seed) % 2147483646 + 1; return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+  let clock = 0;
   function drawPlanet(p) {
-    const st = STYLE[p.kind];
-    if (p.kind === 'hole') {
-      const g = ctx.createRadialGradient(p.x, p.y, p.r * .6, p.x, p.y, p.r * 5); g.addColorStop(0, '#000'); g.addColorStop(.25, '#7c3aed55'); g.addColorStop(1, '#7c3aed00'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 5, 0, 7); ctx.fill();
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(G.t * 1.5); ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(0, 0, p.r * (1.6 + i * .7), p.r * (.6 + i * .25), i, 0, 7); ctx.stroke(); } ctx.restore(); ctx.globalAlpha = 1;
+    const st = STYLE[p.k], t = clock;
+    if (p.k === 'bh') {
+      const g = ctx.createRadialGradient(p.x, p.y, p.r * .6, p.x, p.y, p.r * 6); g.addColorStop(0, '#000'); g.addColorStop(.22, '#7c3aed66'); g.addColorStop(1, '#7c3aed00'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 6, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(t * 1.5); ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(0, 0, p.r * (1.6 + i * .7), p.r * (.6 + i * .25), i, 0, 7); ctx.stroke(); } ctx.restore(); ctx.globalAlpha = 1;
       ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); ctx.strokeStyle = '#f0abfc'; ctx.lineWidth = 1.5; ctx.stroke(); return;
     }
-    // gravity field hint
-    const glow = ctx.createRadialGradient(p.x, p.y, p.r, p.x, p.y, p.r * 1.5); glow.addColorStop(0, st[0] + '44'); glow.addColorStop(1, st[0] + '00'); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 1.5, 0, 7); ctx.fill();
+    if (p.k === 'sun') {
+      const pulse = 1 + Math.sin(t * 3 + p.seed) * .05;
+      const g0 = ctx.createRadialGradient(p.x, p.y, p.r * .8, p.x, p.y, p.r * 2.2 * pulse); g0.addColorStop(0, '#f9731688'); g0.addColorStop(.5, '#f9731622'); g0.addColorStop(1, '#f9731600'); ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.2 * pulse, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(p.x, p.y); ctx.fillStyle = '#fb923c66';
+      for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + t * .3, l = p.r * (1.18 + Math.sin(t * 4 + i * 1.7) * .1); ctx.beginPath(); ctx.moveTo(Math.cos(a - .15) * p.r, Math.sin(a - .15) * p.r); ctx.lineTo(Math.cos(a) * l, Math.sin(a) * l); ctx.lineTo(Math.cos(a + .15) * p.r, Math.sin(a + .15) * p.r); ctx.fill(); }
+      ctx.restore();
+    } else if (p.k === 'rep') {
+      ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1.5;
+      for (let i = 0; i < 3; i++) { const f = (t * .6 + i / 3) % 1; ctx.globalAlpha = (1 - f) * .5; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1.05 + f * 1.3), 0, 7); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    } else {
+      const glow = ctx.createRadialGradient(p.x, p.y, p.r, p.x, p.y, p.r * 1.5); glow.addColorStop(0, st[0] + '44'); glow.addColorStop(1, st[0] + '00'); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 1.5, 0, 7); ctx.fill();
+    }
     const g = ctx.createRadialGradient(p.x - p.r * .35, p.y - p.r * .35, p.r * .1, p.x, p.y, p.r); g.addColorStop(0, st[2]); g.addColorStop(.45, st[0]); g.addColorStop(1, st[1]);
     ctx.fillStyle = p.flash ? '#fff' : g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.clip();
     const R = srand(p.seed * 999 + 7);
-    if (p.kind === 'giant' || p.kind === 'sun') { ctx.globalAlpha = .25; for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? st[1] : st[2]; ctx.fillRect(p.x - p.r, p.y - p.r + (i + R()) * p.r * .33, p.r * 2, p.r * .12); } }
-    else if (p.kind === 'earth' || p.kind === 'moss') { ctx.globalAlpha = .55; ctx.fillStyle = p.kind === 'earth' ? '#22c55e' : '#4d7c0f'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(p.x + (R() - .5) * p.r * 1.4, p.y + (R() - .5) * p.r * 1.4, p.r * (.2 + R() * .3), p.r * (.12 + R() * .2), R() * 3, 0, 7); ctx.fill(); } }
-    else { ctx.globalAlpha = .3; ctx.fillStyle = st[1]; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(p.x + (R() - .5) * p.r * 1.4, p.y + (R() - .5) * p.r * 1.4, p.r * (.08 + R() * .14), 0, 7); ctx.fill(); } }
+    if (p.k === 'giant') { ctx.globalAlpha = .25; for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? st[1] : st[2]; ctx.fillRect(p.x - p.r, p.y - p.r + (i + R()) * p.r * .33, p.r * 2, p.r * .12); } }
+    else if (p.k === 'sun') { ctx.globalAlpha = .35; for (let i = 0; i < 7; i++) { const a = R() * 7 + t * .2, d = R() * p.r * .7; ctx.fillStyle = i % 2 ? '#fef08a' : '#ea580c'; ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, p.r * (.1 + R() * .15) * (1 + Math.sin(t * 2 + i) * .2), 0, 7); ctx.fill(); } }
+    else if (p.k === 'earth' || p.k === 'moss') { ctx.globalAlpha = .55; ctx.fillStyle = p.k === 'earth' ? '#22c55e' : '#4d7c0f'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(p.x + (R() - .5) * p.r * 1.4, p.y + (R() - .5) * p.r * 1.4, p.r * (.2 + R() * .3), p.r * (.12 + R() * .2), R() * 3, 0, 7); ctx.fill(); } }
+    else if (p.k === 'ice') { ctx.globalAlpha = .5; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; for (let i = 0; i < 5; i++) { let x = p.x + (R() - .5) * p.r, y = p.y + (R() - .5) * p.r; ctx.beginPath(); ctx.moveTo(x, y); for (let j = 0; j < 3; j++) { x += (R() - .5) * p.r * .6; y += (R() - .5) * p.r * .6; ctx.lineTo(x, y); } ctx.stroke(); } ctx.globalAlpha = .35; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(p.x - p.r * .35, p.y - p.r * .45, p.r * .35, p.r * .14, -.6, 0, 7); ctx.fill(); }
+    else if (p.k === 'sand') { ctx.globalAlpha = .3; ctx.strokeStyle = st[1]; ctx.lineWidth = 2; for (let i = -3; i <= 3; i++) { ctx.beginPath(); for (let x = -p.r; x <= p.r; x += 6) { const y = p.y + i * p.r * .28 + Math.sin((x + p.seed) * .08) * 4; x === -p.r ? ctx.moveTo(p.x + x, y) : ctx.lineTo(p.x + x, y); } ctx.stroke(); } }
+    else if (p.k === 'rep') { ctx.globalAlpha = .45; ctx.strokeStyle = '#ede9fe'; ctx.lineWidth = 2; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 - t; ctx.beginPath(); ctx.moveTo(p.x + Math.cos(a) * p.r * .25, p.y + Math.sin(a) * p.r * .25); ctx.lineTo(p.x + Math.cos(a) * p.r * .75, p.y + Math.sin(a) * p.r * .75); ctx.stroke(); } }
+    else if (p.k !== 'bumper') { ctx.globalAlpha = .3; ctx.fillStyle = st[1]; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(p.x + (R() - .5) * p.r * 1.4, p.y + (R() - .5) * p.r * 1.4, p.r * (.08 + R() * .14), 0, 7); ctx.fill(); } }
     ctx.globalAlpha = 1; ctx.restore();
-    if (p.kind === 'bumper') { ctx.strokeStyle = '#cffafe'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 4, 0, 7); ctx.stroke(); }
+    if (p.k === 'bumper') { ctx.strokeStyle = '#cffafe'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 4, 0, 7); ctx.stroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * .45, 0, 7); ctx.stroke(); }
   }
+  function drawWorm(x, y, col, dir) {
+    const t = clock;
+    const g = ctx.createRadialGradient(x, y, 2, x, y, 30); g.addColorStop(0, '#000'); g.addColorStop(.5, col + '88'); g.addColorStop(1, col + '00'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 30, 0, 7); ctx.fill();
+    ctx.save(); ctx.translate(x, y); ctx.strokeStyle = col; ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); for (let k = 0; k <= 16; k++) { const f = k / 16, a = f * 2.6 + t * 3 * dir, r = 4 + f * 15; k ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawStar(x, y, r, rot) { ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = rot + i * Math.PI / 4, rr = i % 2 ? r * .4 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); }
   function draw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#050816'; ctx.fillRect(0, 0, W, H);
-    const neb = ctx.createRadialGradient(W * .7, H * .3, 0, W * .7, H * .3, Math.max(W, H) * .7); neb.addColorStop(0, '#312e8155'); neb.addColorStop(1, '#05081600'); ctx.fillStyle = neb; ctx.fillRect(0, 0, W, H);
-    const neb2 = ctx.createRadialGradient(W * .2, H * .8, 0, W * .2, H * .8, Math.max(W, H) * .5); neb2.addColorStop(0, '#83184344'); neb2.addColorStop(1, '#05081600'); ctx.fillStyle = neb2; ctx.fillRect(0, 0, W, H);
-    for (const s of stars) { ctx.globalAlpha = .4 + Math.sin(G.t * 2 + s.tw) * .3; ctx.fillStyle = '#fff'; ctx.fillRect(s.x * W, s.y * H, s.s, s.s); } ctx.globalAlpha = 1;
-    if (!G.hole || G.mode === 'menu') return;
-    ctx.setTransform(dpr * S, 0, 0, dpr * S, dpr * OX, dpr * OY);
-    ctx.strokeStyle = '#ffffff10'; ctx.setLineDash([4, 8]); ctx.strokeRect(0, 0, FW, FH); ctx.setLineDash([]);
-    for (const p of G.hole.planets) if (p.orbit) { ctx.strokeStyle = '#ffffff12'; ctx.beginPath(); ctx.arc(p.cx, p.cy, p.orbit, 0, 7); ctx.stroke(); }
-    for (const p of G.hole.planets) drawPlanet(p);
+    const neb = (G.H && G.mode !== 'menu' ? COURSES[G.course] : COURSES[0]).neb;
+    const n1 = ctx.createRadialGradient(W * .7, H * .3, 0, W * .7, H * .3, Math.max(W, H) * .7); n1.addColorStop(0, neb[0] + '66'); n1.addColorStop(1, '#05081600'); ctx.fillStyle = n1; ctx.fillRect(0, 0, W, H);
+    const n2 = ctx.createRadialGradient(W * .2, H * .8, 0, W * .2, H * .8, Math.max(W, H) * .5); n2.addColorStop(0, neb[1] + '55'); n2.addColorStop(1, '#05081600'); ctx.fillStyle = n2; ctx.fillRect(0, 0, W, H);
+    for (const s of stars) { ctx.globalAlpha = .4 + Math.sin(clock * 2 + s.tw) * .3; ctx.fillStyle = '#fff'; ctx.fillRect(s.x * W, s.y * H, s.s, s.s); } ctx.globalAlpha = 1;
+    if (!G.H || G.mode === 'menu') return;
+    const Hh = G.H, sh = G.shake > 0 ? G.shake * 14 : 0, shx = (Math.random() - .5) * sh, shy = (Math.random() - .5) * sh;
+    ctx.setTransform(dpr * S, 0, 0, dpr * S, dpr * (OX + shx), dpr * (OY + shy));
+    ctx.strokeStyle = '#ffffff10'; ctx.setLineDash([4, 8]); ctx.strokeRect(0, 0, Hh.FW, Hh.FH); ctx.setLineDash([]);
+    for (const p of Hh.bodies) { if (p.orbit) { ctx.strokeStyle = '#ffffff14'; ctx.beginPath(); ctx.arc(p.cx, p.cy, p.orbit, 0, 7); ctx.stroke(); } else if (p.sx !== undefined) { ctx.strokeStyle = '#c084fc33'; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(p.cx - p.sx, p.cy - p.sy); ctx.lineTo(p.cx + p.sx, p.cy + p.sy); ctx.stroke(); ctx.setLineDash([]); } }
+    for (const w of Hh.worms) { ctx.strokeStyle = '#ffffff0d'; ctx.setLineDash([2, 10]); ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x2, w.y2); ctx.stroke(); ctx.setLineDash([]); drawWorm(w.x, w.y, '#22d3ee', 1); drawWorm(w.x2, w.y2, '#fb923c', -1); }
+    for (const p of Hh.bodies) drawPlanet(p);
+    // stardust
+    Hh.dust.forEach((d, i) => { if (G.gotDust[i]) return; const s = 1 + Math.sin(clock * 4 + i) * .15; ctx.fillStyle = '#fbbf2433'; ctx.beginPath(); ctx.arc(d.x, d.y, 14 * s, 0, 7); ctx.fill(); ctx.fillStyle = '#fde68a'; drawStar(d.x, d.y, 8 * s, clock * 1.5 + i); });
+    for (const r of G.rings) { ctx.strokeStyle = `rgba(251,191,36,${1 - r.t / .6})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y, 10 + r.t * 70, 0, 7); ctx.stroke(); }
     // cup + flag
-    const cp = G.hole.planets[G.hole.cupP], ca = G.hole.cupA, cx = cp.x + Math.cos(ca) * cp.r, cy = cp.y + Math.sin(ca) * cp.r;
+    const cp = Hh.bodies[Hh.cupP], ca = Hh.cupA, cx = cp.x + Math.cos(ca) * cp.r, cy = cp.y + Math.sin(ca) * cp.r;
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(ca + Math.PI / 2);
     ctx.fillStyle = '#0b0b10'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 4, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -46); ctx.stroke();
-    const wave = Math.sin(G.t * 6) * 3; ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.moveTo(0, -46); ctx.quadraticCurveTo(12, -42 + wave, 24, -40); ctx.lineTo(0, -32); ctx.fill();
+    const wave = Math.sin(clock * 6) * 3; ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.moveTo(0, -46); ctx.quadraticCurveTo(12, -42 + wave, 24, -40); ctx.lineTo(0, -32); ctx.fill();
     ctx.restore();
     // trail
-    if (G.trail.length > 1) { ctx.strokeStyle = '#ffffff55'; ctx.lineWidth = 2; ctx.beginPath(); G.trail.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
+    if (G.trail.length > 1) { ctx.lineCap = 'round'; for (let i = 1; i < G.trail.length; i++) { const f = i / G.trail.length; ctx.strokeStyle = `rgba(186,230,253,${f * .6})`; ctx.lineWidth = 1 + f * 4; ctx.beginPath(); ctx.moveTo(G.trail[i - 1][0], G.trail[i - 1][1]); ctx.lineTo(G.trail[i][0], G.trail[i][1]); ctx.stroke(); } }
+    for (const q of G.parts) { ctx.globalAlpha = Math.max(0, q.life / q.max); ctx.fillStyle = q.col; ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, 7); ctx.fill(); } ctx.globalAlpha = 1;
     const b = G.ball;
-    // aim preview
+    // aim preview: simulate the shot for ~0.8 s with the planets moving too
     if (b.rest && G.mode === 'play') {
-      const p = G.hole.planets[b.rest.p], sp = 90 + G.power * 520;
-      const sim = { x: b.x + Math.cos(b.rest.a) * 2, y: b.y + Math.sin(b.rest.a) * 2, vx: Math.cos(G.aimA) * sp + p.vx, vy: Math.sin(G.aimA) * sp + p.vy };
-      const nx = Math.cos(b.rest.a), ny = Math.sin(b.rest.a), vn = sim.vx * nx + sim.vy * ny; if (vn < 0) { sim.vx -= vn * nx * 1.2; sim.vy -= vn * ny * 1.2; }
-      ctx.fillStyle = '#ffffff'; const save = G.hole.cupP;
-      for (let i = 0; i < 46; i++) { for (let k = 0; k < 4; k++) if (stepBall(sim, 1 / 240, G.hole.planets, true)) { i = 99; break; } if (i < 99) { ctx.globalAlpha = 1 - i / 46; ctx.beginPath(); ctx.arc(sim.x, sim.y, 2.2, 0, 7); ctx.fill(); } }
-      ctx.globalAlpha = 1; G.hole.cupP = save;
-      // power arrow
+      const t0 = Hh.t, sim = { ...b, rest: { ...b.rest }, got: [] }; launch(Hh, sim, G.aimA, G.power);
+      ctx.fillStyle = '#ffffff';
+      outer: for (let i = 0; i < 48; i++) { for (let k = 0; k < 4; k++) { setTime(Hh, Hh.t + DT); if (stepBall(sim, Hh, DT, null)) break outer; } ctx.globalAlpha = (1 - i / 48) * .9; ctx.beginPath(); ctx.arc(sim.x, sim.y, 2.4, 0, 7); ctx.fill(); }
+      setTime(Hh, t0); ctx.globalAlpha = 1;
       ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(G.aimA); const len = 20 + G.power * 60;
       ctx.strokeStyle = `hsl(${120 - G.power * 120},90%,60%)`; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(len, 0); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(len + 6, 0); ctx.lineTo(len - 4, -6); ctx.lineTo(len - 4, 6); ctx.closePath(); ctx.fillStyle = ctx.strokeStyle; ctx.fill(); ctx.restore();
     }
     if (!b.inCup) { ctx.fillStyle = '#fff'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; ctx.beginPath(); ctx.arc(b.x, b.y, BR, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(b.x + 2, b.y + 2, 2, 0, 7); ctx.fill(); }
-    // off-screen pointer
-    if (b.x < 0 || b.y < 0 || b.x > FW || b.y > FH) { const x = Math.max(12, Math.min(FW - 12, b.x)), y = Math.max(12, Math.min(FH - 12, b.y)); ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); }
+    if (b.x < 0 || b.y < 0 || b.x > Hh.FW || b.y > Hh.FH) { const x = Math.max(12, Math.min(Hh.FW - 12, b.x)), y = Math.max(12, Math.min(Hh.FH - 12, b.y)); ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill(); }
     // HUD
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.textBaseline = 'middle';
-    const tot = G.strokes.reduce((a, s) => a + (s || 0), 0), parSoFar = HOLES.slice(0, G.holeI).reduce((a, h) => a + h.par, 0), rel = tot - parSoFar;
-    ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '900 18px system-ui'; ctx.fillText(`Hole ${G.holeI + 1}/9 · ${G.hole.name}`, 16, 24);
-    ctx.font = '700 13px system-ui'; ctx.fillStyle = '#9aa6cf'; ctx.fillText(`Par ${G.hole.par} · Strokes ${G.cur} · Round ${rel === 0 ? 'E' : rel > 0 ? '+' + rel : rel}`, 16, 46);
-    if (G.msg) { ctx.textAlign = 'center'; ctx.globalAlpha = Math.min(1, G.msg.t); ctx.font = '900 28px system-ui'; ctx.fillStyle = '#fbbf24'; ctx.fillText(G.msg.text, W / 2, H * .2); ctx.globalAlpha = 1; }
-    if (b.rest && G.mode === 'play' && G.cur === 0 && G.holeI === 0) { ctx.textAlign = 'center'; ctx.font = '700 14px system-ui'; ctx.fillStyle = '#ffffffaa'; ctx.fillText('Drag back and release to shoot', W / 2, H - 24); }
-    if (G.drag) { ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(G.drag.sx, G.drag.sy); ctx.lineTo(G.drag.x, G.drag.y); ctx.stroke(); ctx.setLineDash([]); }
+    const L = 14;
+    const tot = G.strokes.reduce((a, s) => a + (s || 0), 0), parSoFar = COURSES[G.course].holes.reduce((a, h, i) => a + (G.strokes[i] != null ? h.par : 0), 0), rel = tot - parSoFar;
+    ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = `900 ${W < 420 ? 15 : 18}px system-ui`;
+    ctx.fillText(`${G.practice ? 'Practice' : COURSES[G.course].name} · ${G.holeI + 1}/9`, L, 22);
+    ctx.font = `700 ${W < 420 ? 12 : 13}px system-ui`; ctx.fillStyle = '#9aa6cf';
+    const dustTxt = Hh.dust.length ? ` · ✦ ${G.gotDust.filter(Boolean).length}/${Hh.dust.length}` : '';
+    ctx.fillText(`Par ${Hh.par} · Strokes ${G.cur}${G.practice ? '' : ` · Round ${rel === 0 ? 'E' : rel > 0 ? '+' + rel : rel}`}${dustTxt}`, L, 44);
+    if (G.msg) {
+      ctx.textAlign = 'center'; ctx.globalAlpha = Math.min(1, G.msg.t * 1.5);
+      ctx.font = `900 ${W < 420 ? 24 : 30}px system-ui`; ctx.fillStyle = '#fbbf24'; ctx.fillText(G.msg.text, W / 2, H * .2);
+      if (G.msg.sub) { ctx.font = '700 14px system-ui'; ctx.fillStyle = '#e2e8f0'; ctx.fillText(G.msg.sub, W / 2, H * .2 + 26); }
+      ctx.globalAlpha = 1;
+    }
+    if (b.rest && G.mode === 'play' && G.cur === 0 && G.course === 0 && G.holeI === 0 && !G.msg) { ctx.textAlign = 'center'; ctx.font = '700 14px system-ui'; ctx.fillStyle = '#ffffffaa'; ctx.fillText('Drag back anywhere and let go to shoot', W / 2, H - 24); }
+    if (G.drag && G.drag.moved) { ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(G.drag.sx, G.drag.sy); ctx.lineTo(G.drag.x, G.drag.y); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#ffffff33'; ctx.beginPath(); ctx.arc(G.drag.sx, G.drag.sy, 6, 0, 7); ctx.fill(); }
   }
 
-  let last = 0;
-  function loop(now) { const dt = Math.min(.033, (now - last) / 1000 || 0); last = now; pollPads(dt); if (G.mode === 'menu') G.t += dt; else update(dt); draw(); requestAnimationFrame(loop); }
-  resize(); show('menu'); requestAnimationFrame(loop);
-  if (location.search.includes('debug')) window._gg = { G, HOLES, loadHole, stepBall, restOn, updatePlanets, BR };
-  if (location.search.includes('hole=')) { const h = +new URLSearchParams(location.search).get('hole') - 1; G.mode = 'play'; loadHole(Math.max(0, Math.min(8, h))); show(null); }
+  let lastT = 0;
+  function loop(now) { const dt = Math.min(.05, (now - lastT) / 1000 || 0); lastT = now; clock += dt; pollPads(dt); update(dt); draw(); requestAnimationFrame(loop); }
+  resize(); renderTally(); show('menu'); requestAnimationFrame(loop);
+  const qs = new URLSearchParams(location.search);
+  if (qs.has('debug')) window._gg = { G, COURSES, loadHole, save, startRound, stepBall, setTime, launch };
+  if (qs.has('hole')) { // ?hole=N (1-36) jumps straight to a hole for testing
+    const n = Math.max(1, Math.min(36, +qs.get('hole') || 1)) - 1; startRound(n / 9 | 0, true, n % 9);
+  }
 })();
 </script>
 </body>
