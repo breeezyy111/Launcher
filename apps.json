@@ -680,6 +680,600 @@
       "status": "live",
       "embed": true,
       "added": "2026-11-15"
+    },
+    {
+      "id": "skyhook-heist",
+      "name": "Skyhook Heist",
+      "description": "Grapple-swing between rooftops at night, grab loot bags, and stay out of the drone spotlights.",
+      "url": "skyhook-heist/",
+      "icon": "icons/skyhook-heist.svg",
+      "color": "#ffb347",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "grapple",
+        "runner",
+        "heist",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "tower-rush",
+      "name": "Tower Rush",
+      "description": "Tower defense where you build the maze: place towers to stretch the monsters' path, then upgrade them for bigger waves.",
+      "url": "tower-rush/",
+      "icon": "icons/tower-rush.svg",
+      "color": "#6be38f",
+      "category": "Games",
+      "genre": "Strategy",
+      "tags": [
+        "tower defense",
+        "strategy",
+        "maze",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pixel-dungeon-run",
+      "name": "Pixel Dungeon Run",
+      "description": "Turn-based roguelike: every run is a new dungeon with monsters, loot, potions and a boss every fifth floor.",
+      "url": "pixel-dungeon-run/",
+      "icon": "icons/pixel-dungeon-run.svg",
+      "color": "#e8a85c",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "roguelike",
+        "dungeon",
+        "rpg",
+        "turn based",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "battle-arena-2p",
+      "name": "Battle Arena 2P",
+      "description": "Sumo for blobs: shove the other player out of a shrinking ring. Two players on one screen, or play the CPU.",
+      "url": "battle-arena-2p/",
+      "icon": "icons/battle-arena-2p.svg",
+      "color": "#ff7a59",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "2 player",
+        "party",
+        "versus",
+        "sumo",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "tycoon-island",
+      "name": "Tycoon Island",
+      "description": "Build a tiny sandbar into a famous resort: beds bring guests, fun things draw crowds, and it keeps earning while you are away.",
+      "url": "tycoon-island/",
+      "icon": "icons/tycoon-island.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Strategy",
+      "tags": [
+        "tycoon",
+        "idle",
+        "builder",
+        "strategy",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "orbit-dash",
+      "name": "Orbit Dash",
+      "description": "Circle a planet, hop between three orbits to grab stars and dodge rocks. Every lap gets faster.",
+      "url": "orbit-dash/",
+      "icon": "icons/orbit-dash.svg",
+      "color": "#7cf0ff",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "space",
+        "one button",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "lava-climb",
+      "name": "Lava Climb",
+      "description": "The lava is rising: jump up a cave of crumbling, sliding and bouncy rocks with a double jump. How high can you get?",
+      "url": "lava-climb/",
+      "icon": "icons/lava-climb.svg",
+      "color": "#ff7b2e",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "platformer",
+        "climb",
+        "jump",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "bubble-burst",
+      "name": "Bubble Burst",
+      "description": "Aim and bounce bubbles to make groups of three. Drop whole clusters for big points before the ceiling comes down.",
+      "url": "bubble-burst/",
+      "icon": "icons/bubble-burst.svg",
+      "color": "#ff7ad9",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "bubbles",
+        "match 3",
+        "aim",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pipe-flow",
+      "name": "Pipe Flow",
+      "description": "Turn the pipes until water from the tap reaches every tile. Boards grow as you go, and your level is saved.",
+      "url": "pipe-flow/",
+      "icon": "icons/pipe-flow.svg",
+      "color": "#38d0ff",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "pipes",
+        "logic",
+        "rotate",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "puck-clash",
+      "name": "Puck Clash",
+      "description": "Table hockey against a CPU that gets tougher every time you beat it, or two players on one screen. First to 7.",
+      "url": "puck-clash/",
+      "icon": "icons/puck-clash.svg",
+      "color": "#ff4d8d",
+      "category": "Games",
+      "genre": "Sports",
+      "tags": [
+        "hockey",
+        "sports",
+        "2 player",
+        "versus",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "ski-slope",
+      "name": "Ski Slope",
+      "description": "Race down the mountain: ski through gates for combos, hit ramps for big air, and dodge the trees and rocks.",
+      "url": "ski-slope/",
+      "icon": "icons/ski-slope.svg",
+      "color": "#2f80ed",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "ski",
+        "winter",
+        "sports",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "sky-stack",
+      "name": "Sky Stack",
+      "description": "Drop sliding floors to build the tallest tower you can. Overhangs get chopped; three perfect drops in a row widen it again.",
+      "url": "sky-stack/",
+      "icon": "icons/sky-stack.svg",
+      "color": "#ffb86b",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "stacking",
+        "one button",
+        "tower",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "road-hop",
+      "name": "Road Hop",
+      "description": "Help Pip the bunny hop across busy roads, ride logs over rivers and dodge trains. Don't dawdle, the screen keeps moving.",
+      "url": "road-hop/",
+      "icon": "icons/road-hop.svg",
+      "color": "#ffcf4d",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "crossing",
+        "endless",
+        "hop",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "moon-lander",
+      "name": "Moon Lander",
+      "description": "Steer and thrust a lander onto small pads without crashing. Each landing refuels you a bit, but the ground gets rougher and the wind picks up.",
+      "url": "moon-lander/",
+      "icon": "icons/moon-lander.svg",
+      "color": "#9be564",
+      "category": "Games",
+      "genre": "Arcade",
+      "tags": [
+        "space",
+        "lander",
+        "physics",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "light-trails",
+      "name": "Light Trails",
+      "description": "Ride a light bike that leaves a wall behind it and box your rival in. Two players on one screen, or take on a CPU that learns to cut you off.",
+      "url": "light-trails/",
+      "icon": "icons/light-trails.svg",
+      "color": "#ff3df2",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "2 player",
+        "versus",
+        "party",
+        "arcade",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "laser-maze",
+      "name": "Laser Maze",
+      "description": "Place and flip mirrors to bounce a laser through every crystal. You only get so many mirrors, and each level is new.",
+      "url": "laser-maze/",
+      "icon": "icons/laser-maze.svg",
+      "color": "#ff4f6d",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "laser",
+        "mirrors",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "jam-escape",
+      "name": "Jam Escape",
+      "description": "A parking-lot puzzle: slide the other cars out of the way so the red car can drive out. Every level is generated and checked for the fewest moves.",
+      "url": "jam-escape/",
+      "icon": "icons/jam-escape.svg",
+      "color": "#ffcc33",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "sliding",
+        "logic",
+        "cars",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pixel-logic",
+      "name": "Pixel Logic",
+      "description": "Picture logic puzzles: use the row and column numbers to work out which squares are filled. Four sizes, every grid new.",
+      "url": "pixel-logic/",
+      "icon": "icons/pixel-logic.svg",
+      "color": "#5b5bd6",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "nonogram",
+        "picture",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "crate-push",
+      "name": "Crate Push",
+      "description": "Push every crate onto a red spot in a warehouse. You can push but never pull. Levels are generated backwards so they are always solvable.",
+      "url": "crate-push/",
+      "icon": "icons/crate-push.svg",
+      "color": "#f2b84b",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "sokoban style",
+        "boxes",
+        "logic",
+        "puzzle",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "gem-swap",
+      "name": "Gem Swap",
+      "description": "Swap neighbouring gems to match three or more. Match four for line gems that blast whole rows, and hit the goal before your moves run out.",
+      "url": "gem-swap/",
+      "icon": "icons/gem-swap.svg",
+      "color": "#ff6bd6",
+      "category": "Games",
+      "genre": "Puzzle",
+      "tags": [
+        "match 3",
+        "gems",
+        "puzzle",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "hex-arena",
+      "name": "Hex Arena",
+      "description": "Twin-stick survival: move with one hand, shoot with the other, and outlast waves of geometric enemies while building a score multiplier.",
+      "url": "hex-arena/",
+      "icon": "icons/hex-arena.svg",
+      "color": "#5cffb0",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "twin stick",
+        "shooter",
+        "survival",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "archer-duel",
+      "name": "Archer Duel",
+      "description": "Take turns firing arrows across the hills. Read the wind, aim the arc, and land a headshot. Play a CPU that gets sharper, or a friend.",
+      "url": "archer-duel/",
+      "icon": "icons/archer-duel.svg",
+      "color": "#ffc94d",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "archery",
+        "turn based",
+        "2 player",
+        "versus",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "deep-cast",
+      "name": "Deep Cast",
+      "description": "Drop a hook, steer it into fish, dodge the jellyfish, and sell your catch. Upgrade your line to reach rare glowing fish in the deep.",
+      "url": "deep-cast/",
+      "icon": "icons/deep-cast.svg",
+      "color": "#46e0c8",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "fishing",
+        "upgrades",
+        "relaxing",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "mole-mayhem",
+      "name": "Mole Mayhem",
+      "description": "Sixty seconds to bonk as many moles as you can. Golden moles add time, helmet moles take two hits, and never hit the bombs.",
+      "url": "mole-mayhem/",
+      "icon": "icons/mole-mayhem.svg",
+      "color": "#ff8c42",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "whack",
+        "reflex",
+        "timed",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "echo-pads",
+      "name": "Echo Pads",
+      "description": "Watch the pads play a tune, then play it back. More pads join as you go, and every fifth round you have to play it backwards.",
+      "url": "echo-pads/",
+      "icon": "icons/echo-pads.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "memory",
+        "music",
+        "sequence",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "checkers",
+      "name": "Checkers",
+      "description": "The classic board game with compulsory jumps, multi-jump chains and kings. Three CPU levels, or two players on one screen.",
+      "url": "checkers/",
+      "icon": "icons/checkers.svg",
+      "color": "#e94f37",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "board game",
+        "classic",
+        "2 player",
+        "strategy",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "box-claim",
+      "name": "Box Claim",
+      "description": "Take turns drawing lines between dots. Close a box to claim it and go again. Beat a CPU that won't hand you easy boxes, or a friend.",
+      "url": "box-claim/",
+      "icon": "icons/box-claim.svg",
+      "color": "#ff6b5b",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "dots",
+        "pen and paper",
+        "2 player",
+        "strategy",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "solitaire",
+      "name": "Solitaire",
+      "description": "Classic patience: build each suit from Ace to King. Tap a card to send it where it fits, drag stacks, undo freely. Draw 1 or Draw 3.",
+      "url": "solitaire/",
+      "icon": "icons/solitaire.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "cards",
+        "patience",
+        "classic",
+        "solo",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "hoop-shot",
+      "name": "Hoop Shot",
+      "description": "Sixty seconds to flick as many baskets as you can. Swishes score more, streaks add time, and the hoop starts moving as you get good.",
+      "url": "hoop-shot/",
+      "icon": "icons/hoop-shot.svg",
+      "color": "#ff8a3d",
+      "category": "Games",
+      "genre": "Sports",
+      "tags": [
+        "basketball",
+        "flick",
+        "timed",
+        "sports",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pin-strike",
+      "name": "Pin Strike",
+      "description": "Ten frames of bowling with real strike and spare scoring. Line up, swipe to roll, and bend your swipe to hook the ball into the pocket.",
+      "url": "pin-strike/",
+      "icon": "icons/pin-strike.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Sports",
+      "tags": [
+        "bowling",
+        "sports",
+        "swipe",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
     }
   ]
 }

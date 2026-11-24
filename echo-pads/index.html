@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Echo Pads</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'echo-pads', W: 480, H: 760, bg: '#120f26', accent: '#ffd166' });
+  const c = K.ctx, CX = 240, CY = 400, R = 150;
+  const PADS = [{ col: '#ff5d73', f: 261.6 }, { col: '#ffa94d', f: 329.6 }, { col: '#ffd166', f: 392 }, { col: '#7bd88f', f: 523.3 }, { col: '#4cc9f0', f: 659.3 }, { col: '#b388ff', f: 784 }];
+  let seq, step, phase, showI, showT, lit, round, reverse, count, wrongT;
+  const center = (i) => { const a = -Math.PI / 2 + i * Math.PI / 3; return { x: CX + Math.cos(a) * R, y: CY + Math.sin(a) * R }; };
+  function reset() { seq = []; round = 0; count = 6; lit = Array(6).fill(0); wrongT = 0; next(); }
+  function next() {
+    round++; reverse = round % 5 === 0; count = round > 8 ? 6 : round > 3 ? 5 : 4;
+    seq.push(K.randi(0, count - 1)); phase = 'show'; showI = -1; showT = 50; step = 0;
+  }
+  function flash(i, long) { lit[i] = long ? 26 : 16; K.tone(PADS[i].f, long ? .35 : .25, 'triangle', .12); }
+  function press(i) {
+    if (K.state !== 'play' || phase !== 'input' || i >= count) return;
+    flash(i);
+    const want = reverse ? seq[seq.length - 1 - step] : seq[step];
+    if (i !== want) {
+      phase = 'wrong'; wrongT = 60; K.tone(110, .6, 'sawtooth', .1); K.shake(8);
+      return K.over({ score: round - 1, text: `You echoed ${round - 1} round${round === 2 ? '' : 's'}. The pad was ${['red', 'orange', 'yellow', 'green', 'blue', 'purple'][want]}.`, again: start, delay: 900 });
+    }
+    step++;
+    if (step >= seq.length) { phase = 'wait'; showT = 50; K.burst(CX, CY, '#fff', 20, 4); if (round % 5 === 4) K.float(CX, CY - 40, 'Next one is backwards!', '#ffd166'); }
+  }
+  K.onDown = (p) => { for (let i = 0; i < count; i++) { const q = center(i); if (Math.hypot(p.x - q.x, p.y - q.y) < 62) return press(i); } };
+  K.onKey = (k) => { const i = '123456'.indexOf(k); if (i >= 0) press(i); const j = 'qweasd'.indexOf(k.toLowerCase()); if (j >= 0) press(j); };
+  function update() {
+    for (let i = 0; i < 6; i++) lit[i] = Math.max(0, lit[i] - 1);
+    if (phase === 'show') {
+      if (--showT <= 0) {
+        showI++;
+        if (showI >= seq.length) { phase = 'input'; step = 0; return; }
+        flash(seq[showI], true); showT = Math.max(14, 34 - round * 1.2);
+      }
+    } else if (phase === 'wait') { if (--showT <= 0) next(); }
+  }
+  function draw() {
+    K.begin('#120f26');
+    K.text(`Round ${round}`, CX, 70, { size: 34, weight: 900, align: 'center', color: '#ffd166' });
+    const tip = phase === 'show' ? 'Watch and listen…' : phase === 'input' ? (reverse ? 'Your turn: play it BACKWARDS' : 'Your turn: play it back') : phase === 'wait' ? 'Nice!' : '';
+    K.text(tip, CX, 112, { size: 18, align: 'center', color: reverse && phase === 'input' ? '#ff8fab' : '#d8d2ff', weight: 700 });
+    // progress dots
+    seq.forEach((_, i) => K.circle(CX - (seq.length - 1) * 8 + i * 16, 150, 5, phase === 'input' && i < step ? '#ffd166' : '#ffffff33'));
+    K.circle(CX, CY, R + 80, '#1b1738');
+    for (let i = 0; i < 6; i++) {
+      const { x, y } = center(i), on = lit[i] > 0, active = i < count;
+      c.save(); c.translate(x, y);
+      if (on) { c.shadowColor = PADS[i].col; c.shadowBlur = 40; }
+      c.fillStyle = active ? (on ? '#fff' : PADS[i].col) : '#2a2550'; c.globalAlpha = active ? (on ? 1 : .55) : .6;
+      c.beginPath(); for (let s = 0; s < 6; s++) { const a = s * Math.PI / 3; c.lineTo(Math.cos(a) * 58, Math.sin(a) * 58); } c.fill();
+      c.globalAlpha = 1; c.shadowBlur = 0;
+      if (on) { c.fillStyle = PADS[i].col; c.beginPath(); for (let s = 0; s < 6; s++) { const a = s * Math.PI / 3; c.lineTo(Math.cos(a) * 44, Math.sin(a) * 44); } c.fill(); }
+      if (active && !K.isTouch) K.text(String(i + 1), 0, 0, { size: 18, weight: 900, color: '#120f26aa', align: 'center' });
+      c.restore();
+    }
+    K.circle(CX, CY, 46, '#120f26'); K.text(String(seq.length), CX, CY + 2, { size: 30, weight: 900, align: 'center', color: '#fff' });
+    K.drawParts();
+    K.text('More pads light up as you go · every 5th round is backwards', CX, K.H - 50, { size: 13, align: 'center', color: '#8f86c2' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  K.fmtBest = (n) => `${n} rounds`;
+  seq = []; round = 0; count = 4; lit = Array(6).fill(0); phase = 'menu';
+  K.screen({ title: 'Echo Pads', text: 'The pads play a tune. Play it back. Each round adds a note, more pads join in, and every fifth round you have to play it backwards.', best: true,
+    lines: ['Tap the pads, or press 1–6', 'Sound helps: each pad has its own note'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

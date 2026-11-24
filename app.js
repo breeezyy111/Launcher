@@ -29,7 +29,7 @@
 
   // Sections and game types show in this order; anything else in apps.json goes after, A to Z.
   const SECTION_ORDER = ['Games', 'Create', 'Tools', 'Learn & Explore'];
-  const GENRE_ORDER = ['Action', 'Arcade', 'Puzzle', 'Casual', 'Board & Party'];
+  const GENRE_ORDER = ['Action', 'Arcade', 'Puzzle', 'Strategy', 'Sports', 'Casual', 'Board & Party'];
   const NEW_DAYS = 21;
 
   function loadView() {

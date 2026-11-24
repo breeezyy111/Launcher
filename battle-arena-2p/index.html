@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Battle Arena 2P</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'battle-arena-2p', W: 600, H: 600, bg: '#140f24', accent: '#ff7a59' });
+  const c = K.ctx, CX = 300, CY = 300, WIN = 3;
+  let P, ring, round, wins, mode, phase, phaseT, cpuLv = 1;
+  const COLS = ['#ff7a59', '#4cc9f0'];
+  function mk(i) { return { i, x: CX + (i ? 120 : -120), y: CY, vx: 0, vy: 0, r: 30, cd: 0, dash: 0, fall: 0, face: i ? Math.PI : 0, mx: 0, my: 0 }; }
+  function newRound() { P = [mk(0), mk(1)]; ring = 250; phase = 'count'; phaseT = 150; K.clearParts(); }
+  function newMatch(m) { mode = m; wins = [0, 0]; round = 1; newRound(); K.play(); }
+
+  // ---- input ----
+  const keys = new Set();
+  addEventListener('keydown', (e) => keys.add(e.key.toLowerCase())); addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase())); addEventListener('blur', () => keys.clear());
+  const touches = new Map(); // pointerId -> {p, sx, sy, x, y, t}
+  K.onDown = (p, e) => { const who = mode === 'cpu' ? 0 : p.y > K.H / 2 ? 0 : 1; touches.set(e.pointerId, { who, sx: p.x, sy: p.y, x: p.x, y: p.y, t: performance.now() }); };
+  K.onMove = (p, e) => { const t = touches.get(e.pointerId); if (t) { t.x = p.x; t.y = p.y; } };
+  K.onUp = (p, e) => { const t = touches.get(e.pointerId); if (!t) return; touches.delete(e.pointerId); if (performance.now() - t.t < 220 && Math.hypot(t.x - t.sx, t.y - t.sy) < 18) wantDash[t.who] = true; };
+  const wantDash = [false, false];
+  function control(i) {
+    let x = 0, y = 0, dash = wantDash[i]; wantDash[i] = false;
+    const k = (a) => keys.has(a);
+    if (i === 0) { x = (k('d') ? 1 : 0) - (k('a') ? 1 : 0); y = (k('s') ? 1 : 0) - (k('w') ? 1 : 0); if (mode === 'cpu') { x += (k('arrowright') ? 1 : 0) - (k('arrowleft') ? 1 : 0); y += (k('arrowdown') ? 1 : 0) - (k('arrowup') ? 1 : 0); } if (k(' ') || k('f') || (mode === 'cpu' && k('enter'))) dash = true; }
+    else { x = (k('arrowright') ? 1 : 0) - (k('arrowleft') ? 1 : 0); y = (k('arrowdown') ? 1 : 0) - (k('arrowup') ? 1 : 0); if (k('enter') || k('/') || k('l')) dash = true; }
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    const g = pads[i]; if (g) { if (Math.abs(g.axes[0]) > .2) x = g.axes[0]; if (Math.abs(g.axes[1]) > .2) y = g.axes[1]; if (g.buttons[0]?.pressed || g.buttons[1]?.pressed) dash = true; }
+    for (const t of touches.values()) if (t.who === i) { const dx = t.x - t.sx, dy = t.y - t.sy, m = Math.hypot(dx, dy); if (m > 10) { x = dx / Math.max(m, 50); y = dy / Math.max(m, 50); } }
+    const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+    return { x, y, dash };
+  }
+  function cpu() {
+    const me = P[1], foe = P[0];
+    // aim to push the player outward: stand on the far side of them from the edge
+    const ex = foe.x - CX, ey = foe.y - CY, ed = Math.hypot(ex, ey) || 1;
+    let tx = foe.x - ex / ed * 40, ty = foe.y - ey / ed * 40;
+    const md = Math.hypot(me.x - CX, me.y - CY);
+    if (md > ring - 70) { tx = CX; ty = CY; }
+    let x = tx - me.x, y = ty - me.y; const m = Math.hypot(x, y) || 1; x /= m; y /= m;
+    const lv = .55 + cpuLv * .12; x *= lv; y *= lv;
+    const d = K.dist(me.x, me.y, foe.x, foe.y);
+    const ax = (foe.x - me.x) / d, ay = (foe.y - me.y) / d;
+    const dash = d < 130 && (ax * (ex / ed) + ay * (ey / ed)) > .3 && Math.random() < .04 + cpuLv * .02;
+    return { x, y, dash };
+  }
+  function update() {
+    if (phase === 'count') { if (--phaseT <= 0) phase = 'fight'; if (phaseT % 50 === 0 && phaseT > 0) K.tone(440, .1, 'square', .06); if (phaseT === 0) K.tone(880, .2, 'square', .07); return; }
+    if (phase === 'end') { if (--phaseT <= 0) endRound(); for (const p of P) if (p.fall) { p.fall++; } return; }
+    ring = Math.max(150, ring - .05);
+    P.forEach((p, i) => {
+      const ctl = i === 1 && mode === 'cpu' ? cpu() : control(i);
+      p.mx = ctl.x; p.my = ctl.y;
+      p.vx += ctl.x * .38; p.vy += ctl.y * .38;
+      if (ctl.x || ctl.y) p.face = Math.atan2(ctl.y, ctl.x);
+      p.cd--; p.dash--;
+      if (ctl.dash && p.cd <= 0) { p.cd = 55; p.dash = 12; p.vx += Math.cos(p.face) * 9; p.vy += Math.sin(p.face) * 9; K.tone(220, .12, 'triangle', .07, 520); K.burst(p.x, p.y, COLS[i], 8, 3); }
+      p.vx *= .93; p.vy *= .93;
+      p.x += p.vx; p.y += p.vy;
+    });
+    const [a, b] = P, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, min = a.r + b.r;
+    if (d < min) {
+      const nx = dx / d, ny = dy / d, over = (min - d) / 2;
+      a.x -= nx * over; a.y -= ny * over; b.x += nx * over; b.y += ny * over;
+      const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      if (rv < 0) {
+        // dashing makes you heavier: you push more and get pushed less
+        const wa = a.dash > 0 ? .4 : 1, wb = b.dash > 0 ? .4 : 1, imp = -1.6 * rv / (wa + wb);
+        a.vx -= imp * wa * nx; a.vy -= imp * wa * ny; b.vx += imp * wb * nx; b.vy += imp * wb * ny;
+        if (Math.abs(rv) > 3) { K.sfx.hit(); K.shake(Math.min(10, Math.abs(rv))); K.burst((a.x + b.x) / 2, (a.y + b.y) / 2, '#fff', 10, 4); }
+      }
+    }
+    for (const p of P) if (Math.hypot(p.x - CX, p.y - CY) > ring + p.r * .3 && !p.fall) {
+      p.fall = 1; phase = 'end'; phaseT = 90; wins[1 - p.i]++; K.sfx.boom(); K.shake(12);
+    }
+  }
+  function endRound() {
+    const w = wins[0] >= WIN ? 0 : wins[1] >= WIN ? 1 : -1;
+    if (w < 0) { round++; newRound(); return; }
+    const name = mode === 'cpu' ? (w === 0 ? 'You win!' : 'CPU wins') : `Player ${w + 1} wins!`;
+    if (mode === 'cpu' && w === 0) cpuLv++;
+    K.state = 'over';
+    K.screen({ title: name, big: `${wins[0]} – ${wins[1]}`, text: mode === 'cpu' ? (w === 0 ? `The CPU gets tougher: level ${cpuLv}.` : 'Shove it out first next time.') : 'Rematch?',
+      buttons: [{ label: 'Rematch', act: () => newMatch(mode) }, { label: 'Menu', alt: true, act: menu }] });
+  }
+  function draw() {
+    K.begin('#140f24');
+    // ring
+    const g = c.createRadialGradient(CX, CY, 20, CX, CY, ring);
+    g.addColorStop(0, '#3b2f63'); g.addColorStop(1, '#2a2148');
+    K.circle(CX, CY, ring + 10, '#0b0816'); K.circle(CX, CY, ring, g);
+    c.strokeStyle = '#ffd166'; c.lineWidth = 6; c.beginPath(); c.arc(CX, CY, ring, 0, 7); c.stroke();
+    c.strokeStyle = '#ffffff14'; c.lineWidth = 2; c.beginPath(); c.arc(CX, CY, 60, 0, 7); c.stroke();
+    if (mode === '2p') { c.strokeStyle = '#ffffff10'; c.setLineDash([8, 10]); c.beginPath(); c.moveTo(0, CY); c.lineTo(K.W, CY); c.stroke(); c.setLineDash([]); }
+    for (const p of P) {
+      const s = p.fall ? Math.max(0, 1 - p.fall / 40) : 1; if (s <= 0) continue;
+      c.save(); c.translate(p.x, p.y); c.scale(s, s);
+      K.circle(4, 6, p.r, '#0006');
+      K.circle(0, 0, p.r, COLS[p.i]);
+      K.circle(0, 0, p.r - 7, p.dash > 0 ? '#fff' : COLS[p.i] + 'aa');
+      c.rotate(p.face); K.circle(12, -9, 6, '#fff'); K.circle(12, 9, 6, '#fff'); K.circle(15, -9, 3, '#111'); K.circle(15, 9, 3, '#111');
+      c.restore();
+      // dash meter
+      if (!p.fall) { c.strokeStyle = COLS[p.i]; c.lineWidth = 4; c.beginPath(); c.arc(p.x, p.y, p.r + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - Math.max(0, p.cd) / 55)); c.stroke(); }
+    }
+    K.drawParts();
+    K.text(`${mode === 'cpu' ? 'You' : 'P1'}  ${'●'.repeat(wins[0])}${'○'.repeat(WIN - wins[0])}`, 16, K.H - 22, { size: 18, color: COLS[0], weight: 800 });
+    K.text(`${'●'.repeat(wins[1])}${'○'.repeat(WIN - wins[1])}  ${mode === 'cpu' ? 'CPU ' + cpuLv : 'P2'}`, K.W - 16, 22, { size: 18, color: COLS[1], weight: 800, align: 'right' });
+    if (K.state !== 'menu') K.text(`Round ${round}`, 16, 22, { size: 16, color: '#bbb' });
+    if (phase === 'count' && K.state === 'play') K.text(phaseT > 100 ? '3' : phaseT > 50 ? '2' : '1', CX, CY, { size: 90, weight: 900, align: 'center', glow: '#ffd166' });
+    if (phase === 'count' && phaseT < 15) K.text('PUSH!', CX, CY, { size: 70, weight: 900, align: 'center', color: '#ffd166' });
+    if (phase === 'end') { const w = P[0].fall ? 1 : 0; K.text(mode === 'cpu' ? (w ? 'CPU scores' : 'You score!') : `P${w + 1} scores!`, CX, CY, { size: 48, weight: 900, align: 'center', color: COLS[w] }); }
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu'; newRound(); mode = mode || 'cpu';
+    K.screen({ title: 'Battle Arena 2P', text: 'Sumo for blobs. Shove the other player out of the ring. The ring shrinks, so don\'t wait around. First to 3 wins.',
+      lines: ['P1: WASD to move, Space or F to dash', 'P2: arrow keys, Enter or L to dash', 'Phone: drag on your half to move, tap to dash', 'Gamepads work too, one each'],
+      buttons: [{ label: '2 players', act: () => newMatch('2p') }, { label: 'Vs CPU', alt: true, act: () => newMatch('cpu') }] });
+  }
+  K.onQuit = menu;
+  mode = 'cpu'; wins = [0, 0]; round = 1; newRound(); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

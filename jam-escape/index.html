@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jam Escape</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'jam-escape', W: 460, H: 740, bg: '#14202b', accent: '#ffcc33' });
+  const c = K.ctx, N = 6, EXIT_ROW = 2;
+  const COLS = ['#5ab1ff', '#7bd88f', '#ff9f43', '#b388ff', '#ff6fa8', '#4dd0c8', '#c3e06a', '#f7a3ff', '#8fa8ff', '#ffb38a'];
+  let cars, level, moves, par, sel, drag, won, history;
+  function occ(list, skip = -1) { const g = Array.from({ length: N }, () => Array(N).fill(-1)); list.forEach((v, i) => { if (i === skip) return; for (let k = 0; k < v.len; k++) g[v.y + (v.h ? 0 : k)][v.x + (v.h ? k : 0)] = i; }); return g; }
+  const key = (list) => list.map((v) => (v.h ? v.x : v.y)).join('');
+  function solve(start) {
+    const seen = new Map([[key(start), 0]]); let frontier = [start.map((v) => ({ ...v }))], d = 0;
+    while (frontier.length && seen.size < 60000) {
+      const next = [];
+      for (const st of frontier) {
+        if (st[0].x === N - 2) return d;
+        const g = occ(st);
+        st.forEach((v, i) => {
+          for (const dir of [-1, 1]) {
+            for (let s = 1; s < N; s++) {
+              const nx = v.h ? v.x + dir * s : v.x, ny = v.h ? v.y : v.y + dir * s;
+              const hx = v.h ? (dir > 0 ? nx + v.len - 1 : nx) : nx, hy = v.h ? ny : (dir > 0 ? ny + v.len - 1 : ny);
+              if (hx < 0 || hy < 0 || hx >= N || hy >= N || g[hy][hx] !== -1) break;
+              const ns = st.map((q) => ({ ...q })); ns[i].x = nx; ns[i].y = ny;
+              const k = key(ns); if (!seen.has(k)) { seen.set(k, d + 1); next.push(ns); }
+            }
+          }
+        });
+      }
+      frontier = next; d++;
+    }
+    return -1;
+  }
+  function gen(lv) {
+    level = lv; const want = Math.min(4 + lv * 2, 22), t0 = performance.now();
+    let best = null, bestD = -1;
+    while (performance.now() - t0 < 600 || bestD < 2) {
+      const list = [{ x: K.randi(0, 1), y: EXIT_ROW, len: 2, h: true }];
+      const n = Math.min(13, 7 + Math.floor(lv / 2));
+      for (let tries = 0; list.length < n && tries < 200; tries++) {
+        const h = Math.random() < .45, len = Math.random() < .25 ? 3 : 2;
+        if (h && 0) continue;
+        const x = K.randi(0, h ? N - len : N - 1), y = K.randi(0, h ? N - 1 : N - len);
+        if (h && y === EXIT_ROW) continue; // nothing else lies across the exit lane horizontally
+        const g = occ(list); let ok = true; for (let k = 0; k < len; k++) if (g[y + (h ? 0 : k)][x + (h ? k : 0)] !== -1) ok = false;
+        if (ok) list.push({ x, y, len, h });
+      }
+      const d = solve(list);
+      if (d > bestD) { best = list; bestD = d; }
+      if (d >= want) break;
+      if (performance.now() - t0 > 2500) break;
+    }
+    cars = best.map((v, i) => ({ ...v, col: i ? COLS[i % COLS.length] : '#ff4d4d', dx: v.x, dy: v.y })); par = bestD; moves = 0; sel = 0; won = false; history = [];
+  }
+  const geo = () => { const S = Math.floor((K.W - 40) / N); return { S, ox: 20, oy: 150 }; };
+  function range(i) { // how far car i can slide each way
+    const v = cars[i], g = occ(cars, i); let lo = 0, hi = 0;
+    for (let s = 1; s < N; s++) { const hx = v.h ? v.x - s : v.x, hy = v.h ? v.y : v.y - s; if (hx < 0 || hy < 0 || g[hy][hx] !== -1) break; lo = -s; }
+    for (let s = 1; s < N; s++) { const hx = v.h ? v.x + v.len - 1 + s : v.x, hy = v.h ? v.y : v.y + v.len - 1 + s; if (hx >= N || hy >= N || g[hy][hx] !== -1) break; hi = s; }
+    return [lo, hi];
+  }
+  function commit(i, off) {
+    if (!off) return; const v = cars[i]; history.push([i, v.x, v.y]);
+    if (v.h) v.x += off; else v.y += off; moves++; K.tone(300 + Math.abs(off) * 40, .05, 'triangle', .06);
+    if (cars[0].x === N - 2) { won = true; K.sfx.win(); K.store.set('jam-escape:level', level + 1); K.submit(level);
+      setTimeout(() => K.screen({ title: 'Escaped!', big: `${moves} moves`, text: moves <= par ? `Perfect: that's the fewest possible (${par}).` : `It can be done in ${par}.`, buttons: [{ label: 'Next level', act: () => { gen(level + 1); K.play(); } }, { label: 'Retry', alt: true, act: () => { restart(); K.play(); } }] }), 800); }
+  }
+  function restart() { while (history.length) undo(true); moves = 0; won = false; }
+  function undo(quiet) { const h = history.pop(); if (!h) return; cars[h[0]].x = h[1]; cars[h[0]].y = h[2]; if (!quiet) { moves++; K.sfx.blip(); } }
+  K.onDown = (p) => {
+    if (K.state !== 'play' || won) return; const { S, ox, oy } = geo();
+    const gx = Math.floor((p.x - ox) / S), gy = Math.floor((p.y - oy) / S);
+    if (p.y > oy + N * S + 20) { if (p.x < K.W / 2) undo(); else restart(); return; }
+    const g = occ(cars); const i = g[gy]?.[gx]; if (i == null || i < 0) return;
+    sel = i; drag = { i, sx: p.x, sy: p.y, range: range(i), off: 0 };
+  };
+  K.onMove = (p) => { if (!drag) return; const { S } = geo(), v = cars[drag.i]; const raw = (v.h ? p.x - drag.sx : p.y - drag.sy) / S; drag.off = K.clamp(raw, drag.range[0], drag.range[1]); };
+  K.onUp = () => { if (!drag) return; const o = Math.round(drag.off); const i = drag.i; drag = null; commit(i, o); };
+  K.onKey = (k) => { if (K.state !== 'play') return; if (k === 'Tab' || k === 'x' || k === 'X') { sel = (sel + 1) % cars.length; } if (k === 'u' || k === 'U' || k === 'Backspace') undo(); if (k === 'r' || k === 'R') restart(); };
+  addEventListener('keydown', (e) => { if (e.key === 'Tab') e.preventDefault(); });
+  function update() {
+    if (won) return;
+    const v = cars[sel]; let d = 0;
+    if (K.pressed('left') && v.h || K.pressed('up') && !v.h) d = -1; if (K.pressed('right') && v.h || K.pressed('down') && !v.h) d = 1;
+    if (d) { const [lo, hi] = range(sel); if (d < 0 && lo < 0 || d > 0 && hi > 0) commit(sel, d); }
+    if (K.pressed('a')) sel = (sel + 1) % cars.length;
+    // smooth draw positions
+    for (const [i, car] of cars.entries()) { const o = drag && drag.i === i ? drag.off : 0; const tx = car.x + (car.h ? o : 0), ty = car.y + (car.h ? 0 : o); car.dx = K.lerp(car.dx, tx, .4); car.dy = K.lerp(car.dy, ty, .4); }
+    if (won) { cars[0].dx += .2; }
+  }
+  function draw() {
+    K.begin('#14202b');
+    const { S, ox, oy } = geo();
+    K.text(`Level ${level}`, 20, 40, { size: 28, weight: 900, color: '#ffcc33' });
+    K.text(`Moves ${moves}  ·  best possible ${par}`, 20, 74, { size: 15, color: '#9fb3c8' });
+    K.text('Slide the red car out of the gap on the right', 20, 110, { size: 14, color: '#c8d6e5' });
+    c.fillStyle = '#0d151d'; K.rr(ox - 10, oy - 10, S * N + 20, S * N + 20, 16); c.fill();
+    c.fillStyle = '#ffcc33'; c.fillRect(ox + S * N + 2, oy + EXIT_ROW * S + 6, 10, S - 12);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { c.fillStyle = '#1d2c3a'; K.rr(ox + x * S + 3, oy + y * S + 3, S - 6, S - 6, 8); c.fill(); }
+    cars.forEach((v, i) => {
+      const px = ox + v.dx * S + 5, py = oy + v.dy * S + 5, w = (v.h ? v.len : 1) * S - 10, h = (v.h ? 1 : v.len) * S - 10;
+      c.fillStyle = '#0005'; K.rr(px + 3, py + 5, w, h, 12); c.fill();
+      c.fillStyle = v.col; K.rr(px, py, w, h, 12); c.fill();
+      c.fillStyle = '#ffffff40'; if (v.h) { c.fillRect(px + w * .55, py + 8, w * .2, h - 16); } else { c.fillRect(px + 8, py + h * .25, w - 16, h * .2); }
+      if (i === 0) K.text('★', px + w * .25, py + h / 2, { size: 22, align: 'center', color: '#fff' });
+      if (i === sel && !K.isTouch) { c.strokeStyle = '#fff'; c.lineWidth = 3; K.rr(px - 2, py - 2, w + 4, h + 4, 13); c.stroke(); }
+    });
+    const by = oy + N * S + 30;
+    c.fillStyle = '#22313f'; K.rr(20, by, K.W / 2 - 30, 52, 14); c.fill(); K.rr(K.W / 2 + 10, by, K.W / 2 - 30, 52, 14); c.fill();
+    K.text('↶ Undo (U)', K.W / 4 + 5, by + 26, { size: 16, align: 'center' }); K.text('⟲ Restart (R)', K.W * .75 - 5, by + 26, { size: 16, align: 'center' });
+    if (!K.isTouch) K.text('Drag cars, or: Tab/X/Space picks a car, arrows slide it', K.W / 2, by + 86, { size: 13, color: '#7f93a8', align: 'center' });
+    K.end();
+  }
+  K.fmtBest = (n) => 'Level ' + n;
+  const saved = K.store.get('jam-escape:level', 1);
+  gen(saved);
+  K.screen({ title: 'Jam Escape', text: 'A parking-lot puzzle. Slide the other cars out of the way so the red car can drive out of the gap. Every level is freshly made and checked to be solvable.', best: true,
+    lines: ['Drag a car along its lane', 'Long cars and side-on cars only move one way', 'Your level is saved'],
+    buttons: [{ label: saved > 1 ? `Continue level ${saved}` : 'Play', act: () => K.play() }, ...(saved > 1 ? [{ label: 'Start at level 1', alt: true, act: () => { gen(1); K.play(); } }] : [])] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Puck Clash</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'puck-clash', W: 420, H: 720, bg: '#081420', accent: '#ff4d8d' });
+  const c = K.ctx, M = 16, GOAL = 150, PR = 30, BR = 17, TO = 7;
+  let pk, pads, score, mode, serveT, cpuLv = K.store.get('puck-clash:lv', 1), flash = 0;
+  const COL = ['#ff4d8d', '#3ad0ff'];
+  function place(toward) {
+    pk = { x: K.W / 2, y: K.H / 2 + (toward === 0 ? 60 : toward === 1 ? -60 : 0), vx: 0, vy: 0, trail: [] };
+    serveT = 50;
+  }
+  function newMatch(m) {
+    mode = m; score = [0, 0];
+    pads = [{ x: K.W / 2, y: K.H - 110, vx: 0, vy: 0, tx: K.W / 2, ty: K.H - 110 }, { x: K.W / 2, y: 110, vx: 0, vy: 0, tx: K.W / 2, ty: 110 }];
+    place(0); K.play();
+  }
+  const touches = new Map();
+  K.onDown = (p, e) => { const who = mode === '2p' && p.y < K.H / 2 ? 1 : 0; touches.set(e.pointerId, who); aimAt(who, p); };
+  K.onMove = (p, e) => { if (!K.isTouch && e.pointerType === 'mouse' && !touches.size) return aimAt(0, p); const who = touches.get(e.pointerId); if (who != null) aimAt(who, p); };
+  K.onUp = (p, e) => touches.delete(e.pointerId);
+  let mouseUsed = false;
+  function aimAt(i, p) { if (!pads) return; pads[i].tx = p.x; pads[i].ty = i === 0 ? p.y - (K.isTouch ? 40 : 0) : p.y + (K.isTouch ? 40 : 0); if (i === 0) mouseUsed = true; }
+  const keys = new Set(); addEventListener('keydown', (e) => keys.add(e.key.toLowerCase())); addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+  function clampPad(p, i) {
+    p.tx = K.clamp(p.tx, M + PR, K.W - M - PR);
+    p.ty = i === 0 ? K.clamp(p.ty, K.H / 2 + PR, K.H - M - PR) : K.clamp(p.ty, M + PR, K.H / 2 - PR);
+  }
+  function cpu() {
+    const p = pads[1], lv = Math.min(cpuLv, 8);
+    const coming = pk.vy < 0, inHalf = pk.y < K.H / 2;
+    let tx = K.W / 2 + (pk.x - K.W / 2) * .6, ty = 80;
+    if (inHalf) { tx = pk.x + (pk.x - K.W / 2) * .1; ty = pk.y - 30; if (pk.y < p.y) { ty = 50; tx = pk.x > K.W / 2 ? pk.x - 50 : pk.x + 50; } }
+    else if (coming) { tx = pk.x; ty = 120; }
+    const sp = 3.5 + lv * .9;
+    const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy) || 1, step = Math.min(sp, d);
+    p.tx = p.x + dx / d * step; p.ty = p.y + dy / d * step;
+  }
+  function update() {
+    const ax = K.axis();
+    if (ax.x || ax.y) { pads[0].tx = pads[0].x + ax.x * 9; pads[0].ty = pads[0].y + ax.y * 9; }
+    if (mode === '2p') {
+      const x2 = (keys.has('l') ? 1 : 0) - (keys.has('j') ? 1 : 0), y2 = (keys.has('k') ? 1 : 0) - (keys.has('i') ? 1 : 0);
+      if (x2 || y2) { pads[1].tx = pads[1].x + x2 * 9; pads[1].ty = pads[1].y + y2 * 9; }
+      const g = navigator.getGamepads?.()[1]; if (g && (Math.abs(g.axes[0]) > .2 || Math.abs(g.axes[1]) > .2)) { pads[1].tx = pads[1].x + g.axes[0] * 9; pads[1].ty = pads[1].y + g.axes[1] * 9; }
+    } else cpu();
+    pads.forEach((p, i) => { clampPad(p, i); const nx = K.lerp(p.x, p.tx, .5), ny = K.lerp(p.y, p.ty, .5); p.vx = nx - p.x; p.vy = ny - p.y; p.x = nx; p.y = ny; });
+    if (serveT > 0) { serveT--; return; }
+    for (let s = 0; s < 4; s++) {
+      pk.x += pk.vx / 4; pk.y += pk.vy / 4;
+      if (pk.x < M + BR) { pk.x = M + BR; pk.vx = Math.abs(pk.vx) * .9; bonk(); }
+      if (pk.x > K.W - M - BR) { pk.x = K.W - M - BR; pk.vx = -Math.abs(pk.vx) * .9; bonk(); }
+      const inGoal = Math.abs(pk.x - K.W / 2) < GOAL / 2;
+      if (pk.y < M + BR && !inGoal) { pk.y = M + BR; pk.vy = Math.abs(pk.vy) * .9; bonk(); }
+      if (pk.y > K.H - M - BR && !inGoal) { pk.y = K.H - M - BR; pk.vy = -Math.abs(pk.vy) * .9; bonk(); }
+      if (pk.y < -BR) return goal(0); if (pk.y > K.H + BR) return goal(1);
+      for (const p of pads) {
+        const dx = pk.x - p.x, dy = pk.y - p.y, d = Math.hypot(dx, dy) || 1;
+        if (d < PR + BR) {
+          const nx = dx / d, ny = dy / d; pk.x = p.x + nx * (PR + BR); pk.y = p.y + ny * (PR + BR);
+          const rvx = pk.vx - p.vx * 1.2, rvy = pk.vy - p.vy * 1.2, dot = rvx * nx + rvy * ny;
+          if (dot < 0) { pk.vx -= 1.9 * dot * nx; pk.vy -= 1.9 * dot * ny; }
+          pk.vx += p.vx * .35; pk.vy += p.vy * .35;
+          K.tone(260 + Math.hypot(pk.vx, pk.vy) * 20, .05, 'square', .06); K.burst(pk.x - nx * BR, pk.y - ny * BR, '#fff', 5, 2);
+        }
+      }
+    }
+    const sp = Math.hypot(pk.vx, pk.vy); if (sp > 24) { pk.vx *= 24 / sp; pk.vy *= 24 / sp; }
+    pk.vx *= .996; pk.vy *= .996;
+    pk.trail.push([pk.x, pk.y]); if (pk.trail.length > 10) pk.trail.shift();
+    flash = Math.max(0, flash - 1);
+  }
+  function bonk() { K.tone(180, .04, 'triangle', .05); }
+  function goal(w) {
+    score[w]++; flash = 30; K.shake(10); K.burst(pk.x, w === 0 ? 0 : K.H, COL[w], 30, 6); K.sfx.good();
+    if (score[w] >= TO) {
+      if (mode === 'cpu' && w === 0) { cpuLv++; K.store.set('puck-clash:lv', cpuLv); }
+      K.state = 'over';
+      const t = mode === 'cpu' ? (w === 0 ? 'You win!' : 'CPU wins') : `${w === 0 ? 'Pink' : 'Blue'} wins!`;
+      return setTimeout(() => K.screen({ title: t, big: `${score[0]} – ${score[1]}`, text: mode === 'cpu' && w === 0 ? `Next match: CPU level ${cpuLv}.` : '', buttons: [{ label: 'Rematch', act: () => newMatch(mode) }, { label: 'Menu', alt: true, act: menu }] }), 600);
+    }
+    place(w === 0 ? 1 : 0);
+  }
+  function draw() {
+    K.begin('#0b1c2c');
+    c.fillStyle = '#d8eef8'; K.rr(4, 4, K.W - 8, K.H - 8, 30); c.fill();
+    c.fillStyle = '#eaf7fd'; K.rr(M, M, K.W - 2 * M, K.H - 2 * M, 22); c.fill();
+    c.strokeStyle = '#ff4d8d55'; c.lineWidth = 4; c.beginPath(); c.moveTo(M, K.H / 2); c.lineTo(K.W - M, K.H / 2); c.stroke();
+    c.beginPath(); c.arc(K.W / 2, K.H / 2, 60, 0, 7); c.stroke();
+    c.strokeStyle = '#3ad0ff55'; c.beginPath(); c.arc(K.W / 2, M, 80, 0, Math.PI); c.stroke(); c.beginPath(); c.arc(K.W / 2, K.H - M, 80, Math.PI, 0); c.stroke();
+    c.fillStyle = '#0b1c2c'; c.fillRect(K.W / 2 - GOAL / 2, 0, GOAL, M); c.fillRect(K.W / 2 - GOAL / 2, K.H - M, GOAL, M);
+    K.text(score[1], K.W - 34, K.H / 2 - 36, { size: 40, weight: 900, color: COL[1] + '88', align: 'center' });
+    K.text(score[0], K.W - 34, K.H / 2 + 38, { size: 40, weight: 900, color: COL[0] + '88', align: 'center' });
+    pk.trail.forEach(([x, y], i) => { c.globalAlpha = i / 25; K.circle(x, y, BR * i / 10, '#203040'); }); c.globalAlpha = 1;
+    K.circle(pk.x + 2, pk.y + 3, BR, '#0003'); K.circle(pk.x, pk.y, BR, '#1d2b3a'); K.circle(pk.x, pk.y, BR - 5, '#2f4256');
+    pads.forEach((p, i) => { K.circle(p.x + 3, p.y + 4, PR, '#0003'); K.circle(p.x, p.y, PR, COL[i]); K.circle(p.x, p.y, PR - 9, '#fff6'); K.circle(p.x, p.y, 10, COL[i]); });
+    K.drawParts();
+    if (serveT > 0 && K.state === 'play') K.text('Ready', K.W / 2, K.H / 2, { size: 26, weight: 900, color: '#0b1c2c88', align: 'center' });
+    if (mode === 'cpu') K.text(`CPU level ${Math.min(cpuLv, 8)}`, 30, 40, { size: 13, color: '#3ad0ff', weight: 800 });
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Puck Clash', text: 'Table hockey. Smack the puck into the other goal. First to 7.',
+      lines: ['Move your mallet with the mouse, a finger, or arrow keys', 'Two players: bottom uses mouse/arrows, top uses I J K L', 'On a phone, each player drags on their own half'],
+      buttons: [{ label: 'Vs CPU', act: () => newMatch('cpu') }, { label: '2 players', alt: true, act: () => newMatch('2p') }] });
+  }
+  K.onQuit = menu;
+  mode = 'cpu'; score = [0, 0]; pads = [{ x: K.W / 2, y: K.H - 110, tx: K.W / 2, ty: K.H - 110 }, { x: K.W / 2, y: 110, tx: K.W / 2, ty: 110 }]; place(2);
+  menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

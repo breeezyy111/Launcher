@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Dungeon Run</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'pixel-dungeon-run', W: 440, H: 720, bg: '#120d16', accent: '#e8a85c' });
+  const c = K.ctx, CW = 11, CH = 13, S = 40, BX = 0, BY = 96;
+  const MON = {
+    slime: { hp: 3, atk: 1, col: '#7bd88f', ch: 'slime', xp: 1 },
+    bat: { hp: 2, atk: 1, col: '#b48ead', ch: 'bat', xp: 1, erratic: true },
+    skel: { hp: 5, atk: 2, col: '#e5e1d8', ch: 'skel', xp: 2 },
+    knight: { hp: 9, atk: 3, col: '#88a4d8', ch: 'knight', xp: 4 },
+    boss: { hp: 22, atk: 4, col: '#ff5d73', ch: 'boss', xp: 12 },
+  };
+  let map, hero, mons, items, floor, gold, log, stairs, anim = 0, msgT, turn = 0;
+
+  function newRun() { floor = 0; gold = 0; hero = { x: 1, y: 1, hp: 12, max: 12, atk: 2, def: 0, flash: 0 }; nextFloor(); }
+  function nextFloor() {
+    floor++;
+    let tries = 0;
+    do {
+      map = Array.from({ length: CH }, (_, y) => Array.from({ length: CW }, (_, x) => (x === 0 || y === 0 || x === CW - 1 || y === CH - 1 ? 1 : Math.random() < .2 ? 1 : 0)));
+      // carve a few pillars-free rooms so it isn't all noise
+      for (let i = 0; i < 2; i++) { const rx = K.randi(1, CW - 5), ry = K.randi(1, CH - 5); for (let y = ry; y < ry + 3; y++) for (let x = rx; x < rx + 4; x++) map[y][x] = 0; }
+      hero.x = K.randi(1, CW - 2); hero.y = K.randi(1, CH - 2); map[hero.y][hero.x] = 0;
+      var reach = bfs(hero.x, hero.y); tries++;
+    } while (reach.cells.length < 50 && tries < 50);
+    // close off unreachable pockets
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (!map[y][x] && reach.d[y][x] < 0) map[y][x] = 1;
+    const far = reach.cells.sort((a, b) => b.d - a.d)[0]; stairs = { x: far.x, y: far.y };
+    const free = K.shuffle(reach.cells.filter((p) => p.d > 2 && !(p.x === stairs.x && p.y === stairs.y)));
+    mons = []; items = [];
+    const n = Math.min(3 + Math.floor(floor * .8), 10);
+    const pool = floor < 3 ? ['slime', 'slime', 'bat'] : floor < 6 ? ['slime', 'bat', 'skel', 'skel'] : ['bat', 'skel', 'knight', 'knight'];
+    for (let i = 0; i < n && free.length; i++) { const p = free.pop(), k = K.pick(pool), M = MON[k], sc = 1 + floor * .12; mons.push({ x: p.x, y: p.y, k, hp: Math.ceil(M.hp * sc), max: Math.ceil(M.hp * sc), atk: Math.ceil(M.atk * (1 + floor * .08)), flash: 0 }); }
+    if (floor % 5 === 0) { const s = stairs; mons.push({ x: s.x, y: s.y, k: 'boss', hp: 22 + floor * 3, max: 22 + floor * 3, atk: 4 + Math.floor(floor / 5), flash: 0 }); }
+    const loot = ['gold', 'gold', 'gold', 'potion', Math.random() < .4 ? 'sword' : 'shield', Math.random() < .5 ? 'potion' : 'gold'];
+    for (const k of loot) if (free.length) { const p = free.pop(); items.push({ x: p.x, y: p.y, k }); }
+    say(floor % 5 === 0 ? `Floor ${floor}: a boss guards the stairs!` : `Floor ${floor}`);
+  }
+  function bfs(sx, sy) {
+    const d = Array.from({ length: CH }, () => Array(CW).fill(-1)), cells = [], q = [[sx, sy]]; d[sy][sx] = 0;
+    while (q.length) { const [x, y] = q.shift(); cells.push({ x, y, d: d[y][x] }); for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + a, ny = y + b; if (map[ny]?.[nx] === 0 && d[ny][nx] < 0) { d[ny][nx] = d[y][x] + 1; q.push([nx, ny]); } } }
+    return { d, cells };
+  }
+  function say(t) { log = t; msgT = 150; }
+  const monAt = (x, y) => mons.find((m) => m.x === x && m.y === y && m.hp > 0);
+  function step(dx, dy) {
+    if (K.state !== 'play' || anim > 0) return;
+    const nx = hero.x + dx, ny = hero.y + dy;
+    if (map[ny]?.[nx] !== 0) return;
+    const m = monAt(nx, ny);
+    if (m) {
+      const dmg = hero.atk + K.randi(0, 1); m.hp -= dmg; m.flash = 8; K.sfx.hit(); K.float(BX + nx * S + S / 2, BY + ny * S, `-${dmg}`, '#ffd166');
+      if (m.hp <= 0) { K.burst(BX + nx * S + S / 2, BY + ny * S + S / 2, MON[m.k].col, 16, 3); const g = MON[m.k].xp * 5; gold += g; if (m.k === 'boss') { hero.max += 4; hero.hp = hero.max; hero.atk++; say('Boss down! Max HP and attack up.'); K.sfx.win(); } }
+    } else {
+      hero.x = nx; hero.y = ny; K.tone(180, .03, 'square', .025);
+      const it = items.find((i) => i.x === nx && i.y === ny);
+      if (it) {
+        items.splice(items.indexOf(it), 1);
+        if (it.k === 'gold') { const g = 5 + floor * 2; gold += g; K.sfx.coin(); K.float(BX + nx * S + S / 2, BY + ny * S, `+${g}`, '#ffd166'); }
+        if (it.k === 'potion') { hero.hp = Math.min(hero.max, hero.hp + 6); K.sfx.good(); say('Potion: +6 HP'); }
+        if (it.k === 'sword') { hero.atk++; K.sfx.good(); say('Sharper sword: attack +1'); }
+        if (it.k === 'shield') { hero.def++; hero.max += 2; hero.hp += 2; K.sfx.good(); say('Shield: defense +1, max HP +2'); }
+      }
+      if (nx === stairs.x && ny === stairs.y && !mons.some((m) => m.k === 'boss' && m.hp > 0)) { K.sfx.good(); anim = 20; setTimeout(() => { nextFloor(); }, 250); return; }
+    }
+    mons = mons.filter((m) => m.hp > 0);
+    monsTurn();
+  }
+  function monsTurn() {
+    const d = bfs(hero.x, hero.y).d;
+    for (const m of mons) {
+      const near = Math.abs(m.x - hero.x) + Math.abs(m.y - hero.y);
+      if (near === 1) {
+        const dmg = Math.max(0, m.atk - hero.def + K.randi(-1, 0)); if (dmg > 0) { hero.hp -= dmg; hero.flash = 8; K.shake(4); K.tone(140, .1, 'sawtooth', .06); K.float(BX + hero.x * S + S / 2, BY + hero.y * S, `-${dmg}`, '#ff6b6b'); } else K.float(BX + hero.x * S + S / 2, BY + hero.y * S, 'block', '#9ad');
+        continue;
+      }
+      if (d[m.y][m.x] < 0 || d[m.y][m.x] > 8) continue; // too far to notice you
+      let opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [m.x + a, m.y + b]).filter(([x, y]) => d[y]?.[x] >= 0 && !monAt(x, y) && !(x === hero.x && y === hero.y));
+      if (MON[m.k].erratic && Math.random() < .4) { const o = K.pick(opts); if (o) [m.x, m.y] = o; continue; }
+      if (m.k === 'boss' && turn % 2) continue; // bosses are slow
+      opts.sort((a, b) => d[a[1]][a[0]] - d[b[1]][b[0]]);
+      if (opts[0] && d[opts[0][1]][opts[0][0]] < d[m.y][m.x]) [m.x, m.y] = opts[0];
+    }
+    turn++;
+    if (hero.hp <= 0) { hero.hp = 0; K.sfx.boom(); K.over({ score: floor * 100 + gold, text: `You fell on floor ${floor} with ${gold} gold.`, again: start }); }
+  }
+  let held = 0;
+  function update() {
+    anim = Math.max(0, (anim || 0) - 1);
+    const ax = K.axis();
+    const dir = Math.abs(ax.x) > .5 ? [Math.sign(ax.x), 0] : Math.abs(ax.y) > .5 ? [0, Math.sign(ax.y)] : null;
+    if (dir) { if (held === 0 || (held > 14 && held % 7 === 0)) step(...dir); held++; } else held = 0;
+    if (K.pressed('a')) monsTurn(); // wait a turn
+    for (const m of mons) m.flash = Math.max(0, m.flash - 1); hero.flash = Math.max(0, hero.flash - 1); msgT--;
+  }
+  // tap or swipe: move toward where you tapped
+  let sw = null;
+  K.onDown = (p) => { sw = p; };
+  K.onUp = (p) => {
+    if (!sw) return; const dx = p.x - sw.x, dy = p.y - sw.y; let vx, vy;
+    if (Math.hypot(dx, dy) > 24) { vx = dx; vy = dy; } else { vx = p.x - (BX + hero.x * S + S / 2); vy = p.y - (BY + hero.y * S + S / 2); if (Math.hypot(vx, vy) < S * .5) { monsTurn(); sw = null; return; } }
+    if (Math.abs(vx) > Math.abs(vy)) step(Math.sign(vx), 0); else step(0, Math.sign(vy));
+    sw = null;
+  };
+
+  function sprite(k, x, y, col, flash) {
+    const px = BX + x * S, py = BY + y * S, cx = px + S / 2, cy = py + S / 2, bob = Math.sin(performance.now() / 250 + x) * 1.5;
+    c.fillStyle = flash ? '#fff' : col;
+    if (k === 'hero') { c.fillRect(cx - 9, cy - 8 + bob, 18, 18); c.fillStyle = flash ? '#fff' : '#ffd9a8'; c.fillRect(cx - 7, cy - 14 + bob, 14, 9); c.fillStyle = '#222'; c.fillRect(cx - 4, cy - 11 + bob, 3, 3); c.fillRect(cx + 2, cy - 11 + bob, 3, 3); c.fillStyle = '#cfd8e3'; c.fillRect(cx + 10, cy - 10 + bob, 3, 18); }
+    else if (k === 'slime') { c.beginPath(); c.ellipse(cx, cy + 6, 14, 10 + bob, 0, Math.PI, 0); c.fill(); c.fillRect(cx - 14, cy + 6, 28, 6); c.fillStyle = '#163'; c.fillRect(cx - 6, cy, 3, 4); c.fillRect(cx + 3, cy, 3, 4); }
+    else if (k === 'bat') { c.beginPath(); c.moveTo(cx - 16, cy - 4 + bob * 2); c.lineTo(cx, cy + 4); c.lineTo(cx + 16, cy - 4 + bob * 2); c.lineTo(cx, cy - 6); c.fill(); K.circle(cx, cy, 6, flash ? '#fff' : col); c.fillStyle = '#f33'; c.fillRect(cx - 3, cy - 2, 2, 2); c.fillRect(cx + 1, cy - 2, 2, 2); }
+    else if (k === 'skel' || k === 'knight' || k === 'boss') {
+      const sc = k === 'boss' ? 1.35 : 1;
+      c.fillRect(cx - 8 * sc, cy - 14 * sc + bob, 16 * sc, 12 * sc); c.fillRect(cx - 6 * sc, cy - 1 * sc + bob, 12 * sc, 14 * sc);
+      c.fillStyle = '#201820'; c.fillRect(cx - 5 * sc, cy - 10 * sc + bob, 3 * sc, 3 * sc); c.fillRect(cx + 2 * sc, cy - 10 * sc + bob, 3 * sc, 3 * sc);
+      if (k !== 'skel') { c.fillStyle = k === 'boss' ? '#ffd166' : '#c0c8d8'; c.fillRect(cx - 9 * sc, cy - 17 * sc + bob, 18 * sc, 4 * sc); }
+    }
+  }
+  function draw() {
+    K.begin('#120d16');
+    K.text(`Floor ${floor}`, 14, 24, { size: 22, weight: 900, color: '#e8a85c' });
+    K.text(`💰 ${gold}`, K.W - 14, 24, { size: 18, weight: 800, color: '#ffd166', align: 'right' });
+    // hp bar
+    c.fillStyle = '#2a1d2a'; K.rr(14, 46, 200, 14, 7); c.fill(); c.fillStyle = '#ff5d73'; K.rr(14, 46, 200 * hero.hp / hero.max, 14, 7); c.fill();
+    K.text(`${hero.hp}/${hero.max}`, 220, 53, { size: 13, color: '#fbb' });
+    K.text(`⚔ ${hero.atk}   🛡 ${hero.def}`, K.W - 14, 53, { size: 14, color: '#cdb', align: 'right' });
+    if (msgT > 0) K.text(log, K.W / 2, 80, { size: 14, align: 'center', color: '#f5deb3' });
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+      const px = BX + x * S, py = BY + y * S;
+      if (map[y][x]) { c.fillStyle = '#3b2b3c'; c.fillRect(px, py, S, S); c.fillStyle = '#4a374b'; c.fillRect(px, py, S, 6); c.fillStyle = '#2d1f2e'; c.fillRect(px + (y % 2 ? 0 : S / 2), py + S / 2, 2, S / 2); }
+      else { c.fillStyle = (x + y) % 2 ? '#1f1720' : '#231a24'; c.fillRect(px, py, S, S); }
+    }
+    // stairs
+    { const px = BX + stairs.x * S, py = BY + stairs.y * S; c.fillStyle = '#0a070b'; c.fillRect(px + 4, py + 4, S - 8, S - 8); c.fillStyle = '#8a6a50'; for (let i = 0; i < 4; i++) c.fillRect(px + 6 + i * 4, py + 8 + i * 7, S - 12 - i * 8, 4); }
+    for (const it of items) {
+      const cx = BX + it.x * S + S / 2, cy = BY + it.y * S + S / 2;
+      if (it.k === 'gold') { K.circle(cx, cy, 8, '#ffd166'); K.circle(cx, cy, 4, '#e0a83a'); }
+      if (it.k === 'potion') { K.circle(cx, cy + 3, 8, '#ff5d73'); c.fillStyle = '#ddd'; c.fillRect(cx - 3, cy - 10, 6, 7); }
+      if (it.k === 'sword') { c.fillStyle = '#cfd8e3'; c.fillRect(cx - 2, cy - 12, 4, 18); c.fillStyle = '#e8a85c'; c.fillRect(cx - 7, cy + 4, 14, 4); }
+      if (it.k === 'shield') { c.fillStyle = '#6c8cd5'; c.beginPath(); c.moveTo(cx - 10, cy - 10); c.lineTo(cx + 10, cy - 10); c.lineTo(cx + 8, cy + 4); c.lineTo(cx, cy + 12); c.lineTo(cx - 8, cy + 4); c.fill(); }
+    }
+    for (const m of mons) { sprite(m.k, m.x, m.y, MON[m.k].col, m.flash > 0); if (m.hp < m.max) { c.fillStyle = '#000a'; c.fillRect(BX + m.x * S + 6, BY + m.y * S + 2, S - 12, 4); c.fillStyle = '#ff5d73'; c.fillRect(BX + m.x * S + 6, BY + m.y * S + 2, (S - 12) * m.hp / m.max, 4); } }
+    sprite('hero', hero.x, hero.y, '#4f8fe8', hero.flash > 0);
+    K.drawParts();
+    K.text(K.isTouch ? 'Swipe or tap beside the hero to move · tap the hero to wait' : 'Arrows / WASD move · bump to attack · Space waits', K.W / 2, BY + CH * S + 22, { size: 13, color: '#9a8a9a', align: 'center' });
+    K.end();
+  }
+  function start() { newRun(); K.play(); }
+  newRun();
+  K.screen({ title: 'Pixel Dungeon Run', text: 'A new dungeon every run. Each move is one turn: monsters move when you do. Find the stairs, grab loot, and see how deep you can go.', best: true,
+    lines: ['Move with arrows, WASD, swipes or taps', 'Walk into a monster to hit it', 'Potions heal · swords and shields make you stronger', 'Every fifth floor has a boss'],
+    buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

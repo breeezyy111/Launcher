@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bubble Burst</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'bubble-burst', W: 440, H: 760, bg: '#120a2a', accent: '#ff7ad9' });
+  const c = K.ctx, R = 20, COLS = 11, RH = R * Math.sqrt(3), TOP = 60, ROWS = 17, LOSE = TOP + 15 * RH;
+  const PAL = ['#ff5d73', '#ffd166', '#4cc9f0', '#7bd88f', '#b388ff', '#ff9f43'];
+  let grid, parity, shot, next, cur, aim, score, shots, colorsN, falling, level, dropEvery;
+  const odd = (r) => (r + parity) % 2 === 1;
+  const ncols = (r) => (odd(r) ? COLS - 1 : COLS);
+  const pos = (r, q) => ({ x: R + q * 2 * R + (odd(r) ? R : 0), y: TOP + R + r * RH });
+  function reset(lv = 1) {
+    level = lv; parity = 0; colorsN = Math.min(6, 3 + Math.floor(lv / 2)); dropEvery = Math.max(4, 8 - lv);
+    grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    for (let r = 0; r < 5 + Math.min(lv, 4); r++) for (let q = 0; q < ncols(r); q++) grid[r][q] = K.randi(0, colorsN - 1);
+    if (lv === 1) score = 0;
+    shots = 0; shot = null; falling = []; aim = -Math.PI / 2; cur = pickColor(); next = pickColor(); K.clearParts();
+  }
+  function present() { const s = new Set(); for (const row of grid) for (const v of row) if (v != null) s.add(v); return [...s]; }
+  function pickColor() { const p = present(); return p.length ? K.pick(p) : K.randi(0, colorsN - 1); }
+  function neighbors(r, q) {
+    const o = odd(r) ? [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]] : [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]];
+    return o.map(([dr, dq]) => [r + dr, q + dq]).filter(([rr, qq]) => rr >= 0 && rr < ROWS && qq >= 0 && qq < ncols(rr));
+  }
+  function fire() {
+    if (shot || K.state !== 'play') return;
+    shot = { x: K.W / 2, y: K.H - 70, vx: Math.cos(aim) * 13, vy: Math.sin(aim) * 13, col: cur }; cur = next; next = pickColor();
+    K.tone(500, .06, 'sine', .06, 300);
+  }
+  function snap(x, y) {
+    let best = null, bd = 1e9;
+    for (let r = 0; r < ROWS; r++) for (let q = 0; q < ncols(r); q++) {
+      if (grid[r][q] != null) continue; const p = pos(r, q), d = Math.hypot(p.x - x, p.y - y);
+      if (d < bd && (r === 0 || neighbors(r, q).some(([a, b]) => grid[a][b] != null))) { bd = d; best = [r, q]; }
+    }
+    return best;
+  }
+  function land(r, q, col) {
+    grid[r][q] = col;
+    // flood same colour
+    const same = [[r, q]], seen = new Set([r + ',' + q]);
+    for (let i = 0; i < same.length; i++) for (const [a, b] of neighbors(...same[i])) if (!seen.has(a + ',' + b) && grid[a][b] === col) { seen.add(a + ',' + b); same.push([a, b]); }
+    if (same.length >= 3) {
+      for (const [a, b] of same) { const p = pos(a, b); K.burst(p.x, p.y, PAL[grid[a][b]], 8, 3); grid[a][b] = null; }
+      score += same.length * 10; K.tone(600 + same.length * 40, .1, 'triangle', .08);
+      // anything not hanging from the top falls
+      const hang = new Set(), q2 = [];
+      for (let b = 0; b < ncols(0); b++) if (grid[0][b] != null) { hang.add('0,' + b); q2.push([0, b]); }
+      for (let i = 0; i < q2.length; i++) for (const [a, b] of neighbors(...q2[i])) if (grid[a][b] != null && !hang.has(a + ',' + b)) { hang.add(a + ',' + b); q2.push([a, b]); }
+      let dropped = 0;
+      for (let a = 0; a < ROWS; a++) for (let b = 0; b < ncols(a); b++) if (grid[a][b] != null && !hang.has(a + ',' + b)) { const p = pos(a, b); falling.push({ ...p, vy: K.rand(-2, 0), vx: K.rand(-1, 1), col: grid[a][b] }); grid[a][b] = null; dropped++; }
+      if (dropped) { score += dropped * 20 * Math.min(dropped, 6); K.float(K.W / 2, K.H / 2, `${dropped} dropped! +${dropped * 20 * Math.min(dropped, 6)}`, '#ffd166'); K.sfx.good(); }
+    } else { K.tone(220, .05, 'square', .04); shots++; }
+    if (!present().length) { K.sfx.win(); score += 500 * level; K.float(K.W / 2, K.H / 2 - 30, 'Board clear!', '#7bd88f'); setTimeout(() => { reset(level + 1); }, 900); return; }
+    if (shots >= dropEvery) { shots = 0; pushRow(); }
+    for (let a = 0; a < ROWS; a++) for (let b = 0; b < ncols(a); b++) if (grid[a][b] != null && pos(a, b).y + R > LOSE) return lose();
+    if (!present().includes(cur)) cur = pickColor(); if (!present().includes(next)) next = pickColor();
+  }
+  function pushRow() {
+    grid.pop(); parity = 1 - parity; grid.unshift(Array(COLS).fill(null));
+    for (let q = 0; q < ncols(0); q++) grid[0][q] = K.pick(present().length ? present() : [0, 1, 2]);
+    K.shake(5); K.noise(.15, .06);
+  }
+  function lose() { K.sfx.boom(); K.over({ score, text: `The bubbles reached the line on level ${level}.`, again: start }); }
+  function setAim(p) { const a = Math.atan2(p.y - (K.H - 70), p.x - K.W / 2); aim = K.clamp(a, -Math.PI + .12, -.12); if (a > Math.PI / 2) aim = -Math.PI + .12; else if (a > 0) aim = -.12; }
+  K.onMove = (p) => { if (K.state === 'play' && (p && (K.pointerHeld || !K.isTouch))) setAim(p); };
+  K.onDown = (p) => { if (K.state === 'play') setAim(p); };
+  K.onUp = (p) => { if (K.state === 'play' && p.y < K.H - 30) fire(); };
+  function update() {
+    const ax = K.axis().x; if (ax) aim = K.clamp(aim + ax * .03, -Math.PI + .12, -.12);
+    if (K.pressed('a')) fire();
+    if (K.pressed('b')) { [cur, next] = [next, cur]; K.sfx.blip(); }
+    if (shot) {
+      for (let i = 0; i < 4; i++) {
+        shot.x += shot.vx / 4; shot.y += shot.vy / 4;
+        if (shot.x < R) { shot.x = R; shot.vx *= -1; } if (shot.x > K.W - R) { shot.x = K.W - R; shot.vx *= -1; }
+        let hit = shot.y < TOP + R;
+        if (!hit) for (let r = 0; r < ROWS && !hit; r++) for (let q = 0; q < ncols(r); q++) if (grid[r][q] != null) { const p = pos(r, q); if (Math.hypot(p.x - shot.x, p.y - shot.y) < R * 1.7) { hit = true; break; } }
+        if (hit) { const s = snap(shot.x, shot.y); const col = shot.col; shot = null; if (s) land(s[0], s[1], col); break; }
+      }
+    }
+    for (const f of falling) { f.vy += .5; f.x += f.vx; f.y += f.vy; }
+    falling = falling.filter((f) => f.y < K.H + 40);
+  }
+  function bubble(x, y, col, r = R - 1) {
+    const g = c.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r); g.addColorStop(0, '#fff'); g.addColorStop(.25, PAL[col]); g.addColorStop(1, PAL[col] + 'aa');
+    K.circle(x, y, r, g);
+  }
+  function draw() {
+    K.begin('#120a2a');
+    c.fillStyle = '#1c1240'; c.fillRect(0, TOP, K.W, LOSE - TOP);
+    c.strokeStyle = '#ff5d7366'; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(0, LOSE); c.lineTo(K.W, LOSE); c.stroke(); c.setLineDash([]);
+    for (let r = 0; r < ROWS; r++) for (let q = 0; q < ncols(r); q++) if (grid[r][q] != null) { const p = pos(r, q); bubble(p.x, p.y, grid[r][q]); }
+    for (const f of falling) bubble(f.x, f.y, f.col);
+    // aim guide with one bounce
+    if (K.state === 'play' && !shot) {
+      let x = K.W / 2, y = K.H - 70, vx = Math.cos(aim), vy = Math.sin(aim);
+      c.fillStyle = '#ffffff55';
+      for (let i = 0; i < 46; i++) { x += vx * 12; y += vy * 12; if (x < R || x > K.W - R) vx *= -1; if (y < TOP) break; if (i % 2) K.circle(x, y, 2.5, '#ffffff66'); }
+    }
+    if (shot) bubble(shot.x, shot.y, shot.col);
+    // launcher
+    c.save(); c.translate(K.W / 2, K.H - 70); c.rotate(aim + Math.PI / 2); c.fillStyle = '#3a2a70'; K.rr(-10, -46, 20, 46, 8); c.fill(); c.restore();
+    K.circle(K.W / 2, K.H - 70, 30, '#2a1c55');
+    bubble(K.W / 2, K.H - 70, cur);
+    bubble(K.W / 2 + 70, K.H - 50, next, 13); K.text('next', K.W / 2 + 70, K.H - 26, { size: 12, color: '#a99be0', align: 'center' });
+    K.drawParts();
+    K.text(score.toLocaleString(), 14, 30, { size: 24, weight: 900 });
+    K.text(`Level ${level}`, K.W - 14, 22, { size: 15, color: '#ff7ad9', align: 'right' });
+    K.text(`Drop in ${dropEvery - shots}`, K.W - 14, 42, { size: 13, color: '#a99be0', align: 'right' });
+    K.text(K.isTouch ? 'Drag to aim, let go to shoot' : 'Aim with mouse or ←/→ · click/Space shoots · X swaps', K.W / 2, K.H - 12, { size: 12, color: '#8a7cc0', align: 'center' });
+    K.end();
+  }
+  function start() { reset(1); K.play(); }
+  reset(1);
+  K.screen({ title: 'Bubble Burst', text: 'Shoot bubbles to make groups of three or more of the same colour. Anything left hanging falls for big points. Every few misses the ceiling drops.', best: true,
+    lines: ['Aim with the mouse, a drag, or arrow keys', 'Bounce shots off the walls', 'X swaps your bubble with the next one'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

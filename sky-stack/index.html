@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sky Stack</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'sky-stack', W: 420, H: 720, bg: '#1b2a4a', accent: '#ffb86b', fit: 'grow' });
+  const c = K.ctx, BH = 34;
+  let stack, mover, chips, camY, perfect, score, hue;
+  function reset() {
+    stack = [{ x: K.W / 2 - 80, w: 160, y: 0, h: 200 }]; chips = []; camY = 0; perfect = 0; score = 0; hue = K.rand(0, 360);
+    spawn(); K.clearParts();
+  }
+  const top = () => stack[stack.length - 1];
+  function spawn() {
+    const t = top(), n = stack.length, dir = n % 2 ? 1 : -1, sp = Math.min(7.5, 2.6 + n * .09);
+    mover = { x: dir > 0 ? -t.w : K.W, w: t.w, y: n, v: dir * sp };
+  }
+  const colorOf = (i) => `hsl(${(hue + i * 9) % 360} 70% ${60 - (i % 2) * 6}%)`;
+  function drop() {
+    if (K.state !== 'play') return;
+    const t = top(), m = mover;
+    const l = Math.max(t.x, m.x), r = Math.min(t.x + t.w, m.x + m.w), w = r - l;
+    if (w <= 0) { chips.push({ x: m.x, y: m.y, w: m.w, vy: 0, vx: m.v * .3, rot: 0, i: stack.length }); K.sfx.boom(); K.shake(8); mover = null; return K.over({ score, text: `Your tower is ${stack.length - 1} floors tall.`, again: start, delay: 900 }); }
+    if (Math.abs(m.x - t.x) < 5) {
+      perfect++; m.x = t.x; const grow = perfect >= 3 ? Math.min(12, 200 - t.w) : 0;
+      stack.push({ x: t.x - grow / 2, w: t.w + grow, y: m.y }); score += 2 + perfect;
+      K.tone(440 * Math.pow(1.06, Math.min(perfect, 12)), .15, 'triangle', .09); K.float(K.W / 2, 150, perfect > 1 ? `Perfect ×${perfect}` : 'Perfect!', '#fff');
+      K.burst(t.x + t.w / 2, 0, '#fff', 0);
+      ring = { x: t.x - grow / 2, w: t.w + grow, y: m.y, t: 20 };
+    } else {
+      perfect = 0;
+      stack.push({ x: l, w, y: m.y }); score += 1;
+      const cx = m.x < t.x ? m.x : r, cw = m.w - w;
+      chips.push({ x: cx, y: m.y, w: cw, vy: 0, vx: (m.x < t.x ? -1 : 1) * 1.5, rot: 0, i: stack.length - 1 });
+      K.tone(300, .08, 'square', .05);
+    }
+    spawn();
+  }
+  let ring = null;
+  K.onDown = () => drop();
+  function update() {
+    if (K.pressed('a') || K.pressed('down')) drop();
+    if (mover) { mover.x += mover.v; if (mover.x + mover.w > K.W + 40 && mover.v > 0 || mover.x < -40 && mover.v < 0) mover.v *= -1; }
+    for (const ch of chips) { ch.vy += .5; ch.y -= ch.vy / BH; ch.x += ch.vx; ch.rot += ch.vx * .01; }
+    chips = chips.filter((ch) => ch.y > camY - 30);
+    camY = K.lerp(camY, Math.max(0, stack.length - 9), .08);
+    if (ring) ring.t--;
+  }
+  const sy = (i) => K.H - 160 - (i - camY) * BH;
+  function draw() {
+    K.begin();
+    const n = stack.length, g = c.createLinearGradient(0, 0, 0, K.H);
+    g.addColorStop(0, `hsl(${(220 + n * 2) % 360} 50% ${Math.max(6, 22 - n * .3)}%)`); g.addColorStop(1, `hsl(${(200 + n * 3) % 360} 55% ${Math.max(12, 45 - n * .5)}%)`);
+    c.fillStyle = g; c.fillRect(0, 0, K.W, K.H);
+    for (let i = 0; i < 6; i++) { const y = ((i * 170 + camY * 12) % (K.H + 100)) - 50; c.fillStyle = '#ffffff14'; c.beginPath(); c.ellipse((i * 97) % K.W, y, 60, 16, 0, 0, 7); c.fill(); }
+    // base
+    c.fillStyle = '#26314d'; c.fillRect(stack[0].x, sy(0), stack[0].w, K.H);
+    for (let i = 1; i < stack.length; i++) { const b = stack[i]; c.fillStyle = colorOf(i); c.fillRect(b.x, sy(i), b.w, BH); c.fillStyle = '#0001'; c.fillRect(b.x, sy(i) + BH - 6, b.w, 6); c.fillStyle = '#fff3'; for (let wx = b.x + 8; wx < b.x + b.w - 10; wx += 18) c.fillRect(wx, sy(i) + 9, 8, 12); }
+    if (ring && ring.t > 0) { c.strokeStyle = `rgba(255,255,255,${ring.t / 20})`; c.lineWidth = 3; c.strokeRect(ring.x - (20 - ring.t), sy(ring.y) - (20 - ring.t) / 2, ring.w + (20 - ring.t) * 2, BH + (20 - ring.t)); }
+    if (mover) { c.fillStyle = colorOf(mover.y); c.fillRect(mover.x, sy(mover.y), mover.w, BH); c.fillStyle = '#fff3'; for (let wx = mover.x + 8; wx < mover.x + mover.w - 10; wx += 18) c.fillRect(wx, sy(mover.y) + 9, 8, 12); }
+    for (const ch of chips) { c.save(); c.translate(ch.x + ch.w / 2, sy(ch.y) + BH / 2); c.rotate(ch.rot); c.fillStyle = colorOf(ch.i); c.fillRect(-ch.w / 2, -BH / 2, ch.w, BH); c.restore(); }
+    K.drawParts();
+    K.text(String(score), K.W / 2, 80, { size: 64, weight: 900, align: 'center', color: '#ffffffee' });
+    K.text(`${stack.length - 1} floors`, K.W / 2, 122, { size: 15, align: 'center', color: '#ffffffaa' });
+    if (K.state === 'play' && stack.length < 3) K.text('Tap or Space to drop the floor', K.W / 2, K.H - 60, { size: 16, align: 'center', color: '#fff' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.screen({ title: 'Sky Stack', text: 'Drop each sliding floor on top of the last one. Whatever hangs over gets chopped off. Line up three perfect drops in a row and the tower grows wider again.', best: true,
+    lines: ['Tap, click or Space to drop'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

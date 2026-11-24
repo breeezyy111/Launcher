@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deep Cast</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'deep-cast', W: 440, H: 760, bg: '#0a3a5c', accent: '#46e0c8' });
+  const c = K.ctx, SAVE = 'deep-cast:save', SURF = 120;
+  const FISH = [
+    { n: 'Minnow', col: '#c9e4f2', d: 0, v: 3, w: 18 }, { n: 'Sunny', col: '#ffd166', d: 50, v: 6, w: 22 }, { n: 'Coral Puff', col: '#ff8fab', d: 150, v: 12, w: 24 },
+    { n: 'Bluefin', col: '#4d96ff', d: 260, v: 20, w: 34 }, { n: 'Glowfin', col: '#7dffb3', d: 420, v: 40, w: 28, glow: true }, { n: 'Lantern', col: '#ffef7a', d: 600, v: 70, w: 30, glow: true },
+    { n: 'Ghost Ray', col: '#d4c1ff', d: 800, v: 120, w: 44 }, { n: 'Abyss King', col: '#ff5d5d', d: 1050, v: 260, w: 50, glow: true },
+  ];
+  let sv = K.store.get(SAVE, null) || { coins: 0, cap: 1, line: 1, reel: 1, caught: {} };
+  let hook, fish, jellies, haul, phase, camY, tripCoins, timer;
+  const maxDepth = () => 200 + sv.line * 160, capacity = () => 2 + sv.cap, reelSp = () => 4 + sv.reel * 1.5;
+  const cost = (lv) => Math.floor(30 * Math.pow(2.1, lv - 1));
+  function startTrip() {
+    hook = { x: K.W / 2, y: SURF, vx: 0 }; fish = []; jellies = []; haul = []; phase = 'down'; camY = 0; tripCoins = 0; timer = 0;
+    for (let i = 0; i < 40; i++) addFish(K.rand(SURF + 40, SURF + maxDepth() + 200));
+    for (let i = 0; i < 6 + sv.line * 2; i++) jellies.push({ x: K.rand(20, K.W - 20), y: K.rand(SURF + 150, SURF + maxDepth()), t: K.rand(0, 6), vx: K.rand(-.4, .4) });
+    K.clearParts(); K.play();
+  }
+  function addFish(y) {
+    const depth = y - SURF, opts = FISH.filter((f) => f.d <= depth);
+    const f = opts.length > 1 && Math.random() < .55 ? opts[opts.length - 1] : K.pick(opts.length ? opts : [FISH[0]]);
+    const dir = Math.random() < .5 ? 1 : -1;
+    fish.push({ ...f, x: K.rand(0, K.W), y, dir, sp: K.rand(.6, 1.6) * (1 + f.d / 800), t: K.rand(0, 6) });
+  }
+  function update() {
+    timer++;
+    const ax = K.axis();
+    let tx = hook.x + ax.x * 6;
+    if (K.pointerHeld && K.pointer) tx = K.pointer.x;
+    hook.x = K.clamp(K.lerp(hook.x, tx, .2), 10, K.W - 10);
+    if (phase === 'down') {
+      hook.y += 3.2; if (hook.y >= SURF + maxDepth()) phase = 'up';
+      if (K.pressed('a') || K.pressed('up')) phase = 'up';
+    } else if (phase === 'up') {
+      hook.y -= reelSp(); if (hook.y <= SURF) return land();
+    }
+    camY = K.clamp(hook.y - K.H * .45, 0, maxDepth() + 200);
+    for (const f of fish) {
+      if (f.hooked) continue;
+      f.t += .05; f.x += f.dir * f.sp; f.y += Math.sin(f.t) * .3;
+      if (f.x < -40) { f.x = K.W + 40; } if (f.x > K.W + 40) { f.x = -40; }
+      if (haul.length < capacity() && Math.abs(f.x - hook.x) < f.w * .6 && Math.abs(f.y - hook.y) < 14) {
+        f.hooked = true; haul.push(f); K.tone(500 + haul.length * 80, .08, 'triangle', .07); K.burst(hook.x, hook.y, f.col, 10, 3);
+        if (haul.length >= capacity()) { phase = 'up'; K.float(hook.x, hook.y - camY - 20, 'Line full! Reeling in', '#fff'); }
+      }
+    }
+    for (const j of jellies) {
+      j.t += .04; j.x += j.vx + Math.sin(j.t) * .3; j.y += Math.sin(j.t * .7) * .4; if (j.x < 10 || j.x > K.W - 10) j.vx *= -1;
+      if (!j.cd && Math.hypot(j.x - hook.x, j.y - hook.y) < 22) {
+        j.cd = 60;
+        if (haul.length) { const lost = haul.pop(); lost.hooked = false; lost.y = hook.y + 10; K.float(hook.x, hook.y - camY, `Stung! Lost a ${lost.n}`, '#ff9bd2'); } else K.float(hook.x, hook.y - camY, 'Stung!', '#ff9bd2');
+        K.sfx.hit(); K.shake(5); phase = 'up';
+      }
+      if (j.cd) j.cd--;
+    }
+    fish = fish.filter((f) => !f.hooked || haul.includes(f));
+  }
+  function land() {
+    phase = 'done'; let sum = 0;
+    for (const f of haul) { sum += f.v; sv.caught[f.n] = (sv.caught[f.n] || 0) + 1; }
+    sv.coins += sum; K.store.set(SAVE, sv); const rec = K.submit(sum); if (sum) K.sfx.coin();
+    K.state = 'over'; tripMenu(haul.length ? `You caught ${haul.map((f) => f.n).join(', ')} for ${sum} coins.` : 'Nothing this time.', rec);
+  }
+  function tripMenu(text, rec) {
+    const up = (k, label) => ({ label: `${label} Lv ${sv[k]} → ${sv[k] + 1}  (${cost(sv[k])}¢)`, alt: true, act: () => { if (sv.coins < cost(sv[k])) { K.sfx.bad(); return; } sv.coins -= cost(sv[k]); sv[k]++; K.store.set(SAVE, sv); K.sfx.good(); tripMenu(`Upgraded! You have ${sv.coins} coins.`); } });
+    const seen = FISH.filter((f) => sv.caught[f.n]).length;
+    K.screen({ title: phase === 'done' ? 'Back at the dock' : 'Deep Cast', big: `${sv.coins}¢`, text: `${text || ''} ${rec ? 'Best haul yet!' : ''}`.trim(),
+      lines: [`Line reaches ${maxDepth()} m · holds ${capacity()} fish`, `Fish found: ${seen}/${FISH.length}`, 'Steer the hook with a finger, the mouse or arrows · Space reels in'],
+      buttons: [{ label: 'Cast!', act: startTrip }, up('line', 'Longer line'), up('cap', 'Bigger hook'), up('reel', 'Faster reel')] });
+  }
+  function draw() {
+    K.begin();
+    const g = c.createLinearGradient(0, -camY, 0, -camY + SURF + 1400); g.addColorStop(0, '#7cc6f2'); g.addColorStop(SURF / 1400, '#1f8ec7'); g.addColorStop(.5, '#0a3a5c'); g.addColorStop(1, '#020a18');
+    c.fillStyle = g; c.fillRect(0, 0, K.W, K.H);
+    c.save(); c.translate(0, -camY);
+    c.fillStyle = '#b9e6ff'; c.fillRect(0, 0, K.W, SURF);
+    c.fillStyle = '#2aa3dd'; c.beginPath(); c.moveTo(0, SURF); for (let x = 0; x <= K.W; x += 20) c.lineTo(x, SURF + Math.sin(x / 30 + performance.now() / 500) * 4); c.lineTo(K.W, SURF + 30); c.lineTo(0, SURF + 30); c.fill();
+    // boat
+    c.fillStyle = '#b5543c'; c.beginPath(); c.moveTo(K.W / 2 - 60, SURF - 18); c.lineTo(K.W / 2 + 60, SURF - 18); c.lineTo(K.W / 2 + 40, SURF + 6); c.lineTo(K.W / 2 - 40, SURF + 6); c.fill();
+    c.fillStyle = '#f2e2c4'; c.fillRect(K.W / 2 - 20, SURF - 44, 26, 26); K.circle(K.W / 2 + 28, SURF - 30, 9, '#ffd9b3'); c.fillStyle = '#ffcf4d'; c.fillRect(K.W / 2 + 18, SURF - 42, 20, 5);
+    // depth marks
+    for (let d = 100; d <= maxDepth() + 200; d += 100) { const y = SURF + d; c.fillStyle = d > maxDepth() ? '#ff5d5d55' : '#ffffff22'; c.fillRect(0, y, 14, 2); K.text(`${d} m`, 18, y, { size: 11, color: d > maxDepth() ? '#ff8a8a' : '#ffffff55' }); }
+    c.strokeStyle = '#ff5d5d66'; c.setLineDash([6, 8]); c.beginPath(); c.moveTo(0, SURF + maxDepth()); c.lineTo(K.W, SURF + maxDepth()); c.stroke(); c.setLineDash([]);
+    for (const j of jellies) { c.fillStyle = '#ff9bd2aa'; c.beginPath(); c.arc(j.x, j.y, 13, Math.PI, 0); c.fill(); c.strokeStyle = '#ff9bd277'; c.lineWidth = 2; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(j.x + i * 5, j.y); c.quadraticCurveTo(j.x + i * 5 + Math.sin(j.t * 3 + i) * 4, j.y + 12, j.x + i * 5, j.y + 22); c.stroke(); } }
+    for (const f of fish) {
+      if (f.hooked) continue;
+      drawFish(f.x, f.y, f.dir, f);
+    }
+    if (hook) {
+      c.strokeStyle = '#ffffffaa'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(K.W / 2 + 40, SURF - 40); c.lineTo(hook.x, hook.y); c.stroke();
+      haul.forEach((f, i) => drawFish(hook.x + Math.sin(performance.now() / 150 + i) * 5, hook.y + 14 + i * 16, 1, f, Math.PI / 2));
+      c.strokeStyle = '#ddd'; c.lineWidth = 3; c.beginPath(); c.arc(hook.x, hook.y + 4, 6, 0, Math.PI); c.moveTo(hook.x - 6, hook.y + 4); c.lineTo(hook.x - 6, hook.y - 6); c.stroke();
+    }
+    c.restore();
+    K.drawParts();
+    c.fillStyle = '#0008'; K.rr(10, 10, 210, 58, 12); c.fill();
+    K.text(`${sv.coins}¢`, 22, 30, { size: 20, weight: 900, color: '#ffd166' });
+    if (hook) K.text(`${Math.max(0, Math.floor(hook.y - SURF))} m · 🐟 ${haul.length}/${capacity()}`, 22, 54, { size: 14, color: '#cfefff' });
+    if (K.state === 'play') K.text(phase === 'down' ? 'Steer into fish, dodge jellies · Space reels in early' : 'Reeling in…', K.W / 2, K.H - 20, { size: 13, color: '#cfefffcc', align: 'center' });
+    K.end();
+  }
+  function drawFish(x, y, dir, f, rot = 0) {
+    c.save(); c.translate(x, y); if (rot) c.rotate(rot); c.scale(dir, 1);
+    if (f.glow) { c.shadowColor = f.col; c.shadowBlur = 16; }
+    c.fillStyle = f.col; c.beginPath(); c.ellipse(0, 0, f.w / 2, f.w / 4, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-f.w / 2 + 2, 0); c.lineTo(-f.w / 2 - 9, -f.w / 5); c.lineTo(-f.w / 2 - 9, f.w / 5); c.fill();
+    c.shadowBlur = 0; K.circle(f.w / 4, -2, 2, '#123');
+    c.restore();
+  }
+  K.fmtBest = (n) => `${n}¢ in one trip`;
+  K.noPause = false;
+  hook = null; fish = []; jellies = []; haul = []; camY = 0;
+  phase = 'menu'; tripMenu('Drop your hook, steer it into fish, and sell what you catch. Spend coins on a longer line to find rarer fish deep down.');
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

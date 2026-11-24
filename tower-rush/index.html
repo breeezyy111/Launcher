@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tower Rush</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'tower-rush', W: 460, H: 820, bg: '#0d1a14', accent: '#6be38f' });
+  const c = K.ctx, COLS = 10, ROWS = 14, S = 44, BX = 10, BY = 64;
+  const IN = { x: 4, y: 0 }, OUT = { x: 5, y: ROWS - 1 };
+  const TYPES = [
+    { n: 'Dart', cost: 10, col: '#6be38f', range: 2.3, rate: 22, dmg: 4, key: '1' },
+    { n: 'Cannon', cost: 25, col: '#ff9f43', range: 2.2, rate: 60, dmg: 10, splash: 1.1, key: '2' },
+    { n: 'Frost', cost: 20, col: '#6cc8ff', range: 2, rate: 40, dmg: 1, slow: 90, key: '3' },
+    { n: 'Zap', cost: 40, col: '#d38bff', range: 2.6, rate: 50, dmg: 7, chain: 3, key: '4' },
+  ];
+  let grid, towers, foes, shots, gold, lives, wave, spawnQ, spawnT, sel, cur, dist, sellMode, auto, waveOn, kills;
+
+  function reset() {
+    grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    towers = []; foes = []; shots = []; gold = 60; lives = 20; wave = 0; spawnQ = []; spawnT = 0; sel = 0; cur = { x: 4, y: 6 }; sellMode = false; auto = 600; waveOn = false; kills = 0;
+    dist = flow(); K.clearParts();
+  }
+  // Distance from every cell to the exit; monsters walk downhill. Null means blocked.
+  function flow(g = grid) {
+    const d = Array.from({ length: ROWS }, () => Array(COLS).fill(Infinity));
+    const q = [OUT]; d[OUT.y][OUT.x] = 0;
+    while (q.length) {
+      const { x, y } = q.shift();
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || g[ny][nx] || d[ny][nx] !== Infinity) continue;
+        d[ny][nx] = d[y][x] + 1; q.push({ x: nx, y: ny });
+      }
+    }
+    return d[IN.y][IN.x] === Infinity ? null : d;
+  }
+  const cellOf = (f) => (Math.floor(f.y) >= 0 ? { x: K.clamp(Math.floor(f.x), 0, COLS - 1), y: K.clamp(Math.floor(f.y), 0, ROWS - 1) } : null);
+  function build(x, y) {
+    if (sellMode) { const t = grid[y][x]; if (t) { gold += Math.floor(t.spent * .7); towers.splice(towers.indexOf(t), 1); grid[y][x] = null; dist = flow(); K.sfx.blip(); } return; }
+    const t = grid[y][x];
+    if (t) { // upgrade
+      const cost = Math.floor(TYPES[t.k].cost * (t.lv + .5));
+      if (t.lv >= 3) return K.float(BX + x * S + S / 2, BY + y * S, 'Max level', '#fff');
+      if (gold < cost) return K.float(BX + x * S + S / 2, BY + y * S, `Need ${cost}`, '#ff6b6b');
+      gold -= cost; t.spent += cost; t.lv++; K.sfx.good(); K.burst(BX + x * S + S / 2, BY + y * S + S / 2, TYPES[t.k].col, 14, 3); return;
+    }
+    if ((x === IN.x && y === IN.y) || (x === OUT.x && y === OUT.y)) return;
+    const T = TYPES[sel]; if (gold < T.cost) { K.sfx.bad(); return K.float(BX + x * S + S / 2, BY + y * S, `Need ${T.cost}`, '#ff6b6b'); }
+    grid[y][x] = { blocked: true };
+    const d = flow();
+    const onFoe = foes.some((f) => { const cc = cellOf(f); return (cc && cc.x === x && cc.y === y) || (f.to && f.to.x === x && f.to.y === y); });
+    if (!d || onFoe || foes.some((f) => { const cc = cellOf(f); return cc && d[cc.y][cc.x] === Infinity; })) { grid[y][x] = null; K.sfx.bad(); return K.float(BX + x * S + S / 2, BY + y * S, "Can't block the path", '#ff6b6b'); }
+    const tw = { x, y, k: sel, lv: 1, cd: 0, spent: T.cost, ang: 0 };
+    grid[y][x] = tw; towers.push(tw); dist = d; gold -= T.cost; K.tone(500, .06, 'triangle', .07);
+  }
+  function startWave() {
+    if (waveOn) return; wave++; waveOn = true; auto = 0;
+    const n = 6 + wave * 2, hp = 8 * Math.pow(1.17, wave);
+    for (let i = 0; i < n; i++) {
+      let k = 'norm';
+      if (wave >= 3 && i % 4 === 3) k = 'fast';
+      if (wave >= 5 && i % 6 === 5) k = 'tank';
+      spawnQ.push(k);
+    }
+    if (wave % 5 === 0) spawnQ.push('boss');
+    spawnQ.hp = hp; K.sfx.good();
+  }
+  const FOE = { norm: { sp: .035, hp: 1, col: '#ff6b6b', r: 11, g: 2 }, fast: { sp: .06, hp: .6, col: '#ffd166', r: 9, g: 2 }, tank: { sp: .022, hp: 3.2, col: '#a29bfe', r: 14, g: 5 }, boss: { sp: .02, hp: 14, col: '#ff4dc4', r: 18, g: 30 } };
+
+  function update() {
+    // input: cursor + build
+    const ax = K.pressed('right') - K.pressed('left'), ay = K.pressed('down') - K.pressed('up');
+    if (ax || ay) { cur.x = K.clamp(cur.x + ax, 0, COLS - 1); cur.y = K.clamp(cur.y + ay, 0, ROWS - 1); cur.show = true; }
+    if (K.pressed('a')) build(cur.x, cur.y);
+    if (K.pressed('b')) sel = (sel + 1) % 4;
+    if (!waveOn) { auto++; if (auto > 60 * 20 && wave > 0) startWave(); }
+    if (spawnQ.length && --spawnT <= 0) {
+      const k = spawnQ.shift(), F = FOE[k];
+      foes.push({ x: IN.x + .5, y: -.5, k, hp: spawnQ.hp * F.hp || 8 * F.hp, max: spawnQ.hp * F.hp || 8 * F.hp, slow: 0 });
+      if (!spawnQ.length) spawnQ.hp = 0; else spawnQ.hp = spawnQ.hp; spawnT = k === 'fast' ? 22 : 40;
+    }
+    for (const f of foes) {
+      const F = FOE[f.k], sp = F.sp * (f.slow > 0 ? .5 : 1); f.slow--;
+      if (!f.to) f.to = { x: Math.floor(f.x), y: 0 };
+      const tx = f.to.x + .5, ty = f.to.y + .5, dx = tx - f.x, dy = ty - f.y, m = Math.hypot(dx, dy);
+      if (m <= sp) {
+        f.x = tx; f.y = ty;
+        if (f.to.x === OUT.x && f.to.y === OUT.y) { f.to = { x: OUT.x, y: ROWS + 1 }; continue; }
+        if (f.to.y >= ROWS) { f.gone = true; lives -= f.k === 'boss' ? 5 : 1; K.sfx.hit(); K.shake(6); continue; }
+        // pick the neighbour closest to the exit
+        let bx = f.to.x, by = f.to.y, bd = dist[by][bx];
+        for (const [ex, ey] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) { const nx = f.to.x + ex, ny = f.to.y + ey; if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && dist[ny][nx] < bd) { bd = dist[ny][nx]; bx = nx; by = ny; } }
+        f.to = { x: bx, y: by };
+      } else { f.x += dx / m * sp; f.y += dy / m * sp; }
+    }
+    for (const t of towers) {
+      const T = TYPES[t.k], range = T.range + (t.lv - 1) * .3; t.cd--;
+      if (t.cd > 0) continue;
+      let tg = null, bd = 1e9;
+      for (const f of foes) { const d = K.dist(t.x + .5, t.y + .5, f.x, f.y); if (d < range && f.y > 0) { const pr = dist[Math.floor(f.y)]?.[Math.floor(f.x)] ?? 99; if (pr < bd) { bd = pr; tg = f; } } }
+      if (!tg) continue;
+      t.cd = T.rate * (1 - (t.lv - 1) * .12); t.ang = Math.atan2(tg.y - t.y - .5, tg.x - t.x - .5);
+      const dmg = T.dmg * (1 + (t.lv - 1) * .7);
+      if (T.chain) {
+        let from = { x: t.x + .5, y: t.y + .5 }, hit = new Set([tg]), cur2 = tg;
+        for (let i = 0; i < T.chain + t.lv - 1 && cur2; i++) {
+          shots.push({ zap: true, x1: from.x, y1: from.y, x2: cur2.x, y2: cur2.y, t: 10 }); cur2.hp -= dmg; from = cur2;
+          cur2 = foes.filter((f) => !hit.has(f) && K.dist(f.x, f.y, from.x, from.y) < 1.8).sort((a, b) => K.dist(a.x, a.y, from.x, from.y) - K.dist(b.x, b.y, from.x, from.y))[0]; if (cur2) hit.add(cur2);
+        }
+        K.tone(1200, .05, 'sawtooth', .03, 300);
+      } else shots.push({ x: t.x + .5, y: t.y + .5, tg, k: t.k, dmg, sp: T.splash ? .14 : .25 });
+    }
+    for (const s of shots) {
+      if (s.zap) { s.t--; continue; }
+      const dx = s.tg.x - s.x, dy = s.tg.y - s.y, d = Math.hypot(dx, dy);
+      if (d < s.sp) {
+        const T = TYPES[s.k]; s.done = true;
+        if (T.splash) { for (const f of foes) if (K.dist(f.x, f.y, s.tg.x, s.tg.y) < T.splash) f.hp -= s.dmg; K.burst(BX + s.tg.x * S, BY + s.tg.y * S, '#ff9f43', 12, 3); K.noise(.08, .05); }
+        else { s.tg.hp -= s.dmg; if (T.slow) s.tg.slow = T.slow; }
+      } else { s.x += dx / d * s.sp; s.y += dy / d * s.sp; }
+    }
+    shots = shots.filter((s) => (s.zap ? s.t > 0 : !s.done && s.tg.hp > -999));
+    for (const f of foes) if (f.hp <= 0 && !f.gone) { f.gone = true; gold += FOE[f.k].g; kills++; K.burst(BX + f.x * S, BY + f.y * S, FOE[f.k].col, 10, 3); if (f.k === 'boss') { K.sfx.boom(); K.float(BX + f.x * S, BY + f.y * S, '+30', '#ffd166'); } else K.tone(300 + Math.random() * 100, .04, 'square', .03); }
+    foes = foes.filter((f) => !f.gone);
+    if (waveOn && !spawnQ.length && !foes.length) { waveOn = false; auto = 0; gold += 10 + wave * 2; K.float(K.W / 2, BY + 300, `Wave ${wave} cleared! +${10 + wave * 2}`, '#6be38f'); }
+    if (lives <= 0) { lives = 0; K.sfx.boom(); K.over({ score: wave, text: `The monsters broke through on wave ${wave}. ${kills} defeated.`, again: start }); }
+  }
+  // ---- input by pointer ----
+  const btns = () => {
+    const y = BY + ROWS * S + 12, w = (K.W - 20 - 8 * 3) / 4;
+    const list = TYPES.map((T, i) => ({ x: 10 + i * (w + 8), y, w, h: 62, i }));
+    list.push({ x: 10, y: y + 70, w: (K.W - 28) / 2, h: 48, act: 'sell' }, { x: 18 + (K.W - 28) / 2, y: y + 70, w: (K.W - 28) / 2, h: 48, act: 'wave' });
+    return list;
+  };
+  K.onDown = (p) => {
+    if (K.state !== 'play') return;
+    const gx = Math.floor((p.x - BX) / S), gy = Math.floor((p.y - BY) / S);
+    if (gx >= 0 && gy >= 0 && gx < COLS && gy < ROWS) { cur = { x: gx, y: gy }; build(gx, gy); return; }
+    for (const b of btns()) if (p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h) {
+      if (b.act === 'sell') sellMode = !sellMode; else if (b.act === 'wave') startWave(); else { sel = b.i; sellMode = false; }
+      K.sfx.blip();
+    }
+  };
+  K.onKey = (k) => { if (K.state !== 'play') return; const i = '1234'.indexOf(k); if (i >= 0) { sel = i; sellMode = false; } if (k === 'n' || k === 'N') startWave(); if (k === 's' && false) sellMode = !sellMode; if (k === 'Delete' || k === 'Backspace' || k === 'q' || k === 'Q') sellMode = !sellMode; };
+
+  function draw() {
+    K.begin('#0d1a14');
+    K.text(`Wave ${wave}`, 12, 22, { size: 20, weight: 900, color: '#6be38f' });
+    K.text(`💰 ${gold}`, K.W / 2 - 20, 22, { size: 20, weight: 800, color: '#ffd166', align: 'center' });
+    K.text(`❤ ${lives}`, K.W - 62, 22, { size: 20, weight: 800, color: '#ff6b6b', align: 'right' });
+    if (!waveOn && wave > 0) K.text(`Next wave in ${Math.max(0, Math.ceil(20 - auto / 60))}s`, K.W / 2, 46, { size: 13, color: '#9fd8b4', align: 'center' });
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const d = dist?.[y][x]; c.fillStyle = (x + y) % 2 ? '#173426' : '#1a3a2b';
+      c.fillRect(BX + x * S, BY + y * S, S, S);
+      if (d !== undefined && d !== Infinity && !grid[y][x] && d % 2 === 0 && d < 999) { c.fillStyle = '#ffffff0d'; c.fillRect(BX + x * S + 18, BY + y * S + 18, 8, 8); }
+    }
+    c.fillStyle = '#3ddc84'; c.fillRect(BX + IN.x * S + 6, BY - 4, S - 12, 6);
+    c.fillStyle = '#ff6b6b'; c.fillRect(BX + OUT.x * S + 6, BY + ROWS * S - 2, S - 12, 6);
+    for (const t of towers) {
+      const T = TYPES[t.k], px = BX + t.x * S, py = BY + t.y * S;
+      c.fillStyle = '#2c4a3a'; K.rr(px + 3, py + 3, S - 6, S - 6, 9); c.fill();
+      c.save(); c.translate(px + S / 2, py + S / 2); c.rotate(t.ang);
+      c.fillStyle = T.col; if (t.k === 1) c.fillRect(0, -5, 18, 10); else if (t.k === 0) c.fillRect(0, -3, 17, 6); c.restore();
+      K.circle(px + S / 2, py + S / 2, 10 + t.lv, T.col);
+      for (let i = 0; i < t.lv; i++) K.circle(px + 10 + i * 8, py + S - 8, 2.5, '#fff');
+    }
+    for (const f of foes) {
+      const F = FOE[f.k], px = BX + f.x * S, py = BY + f.y * S;
+      K.circle(px, py, F.r, f.slow > 0 ? '#9fe3ff' : F.col);
+      K.circle(px - 3, py - 3, 2.5, '#111'); K.circle(px + 3, py - 3, 2.5, '#111');
+      c.fillStyle = '#0008'; c.fillRect(px - 12, py - F.r - 8, 24, 4); c.fillStyle = '#6be38f'; c.fillRect(px - 12, py - F.r - 8, 24 * Math.max(0, f.hp / f.max), 4);
+    }
+    for (const s of shots) {
+      if (s.zap) { c.strokeStyle = '#e3b8ff'; c.lineWidth = 3; c.beginPath(); c.moveTo(BX + s.x1 * S, BY + s.y1 * S); c.lineTo(BX + (s.x1 + s.x2) / 2 * S + K.rand(-6, 6), BY + (s.y1 + s.y2) / 2 * S + K.rand(-6, 6)); c.lineTo(BX + s.x2 * S, BY + s.y2 * S); c.stroke(); }
+      else K.circle(BX + s.x * S, BY + s.y * S, s.k === 1 ? 5 : 3, TYPES[s.k].col);
+    }
+    // cursor + range preview
+    if (cur.show || K.state !== 'play') {
+      c.strokeStyle = sellMode ? '#ff6b6b' : '#fff'; c.lineWidth = 2; c.strokeRect(BX + cur.x * S + 1, BY + cur.y * S + 1, S - 2, S - 2);
+    }
+    const ct = grid[cur.y]?.[cur.x];
+    if (ct && ct.k !== undefined) { c.strokeStyle = TYPES[ct.k].col + '88'; c.beginPath(); c.arc(BX + (cur.x + .5) * S, BY + (cur.y + .5) * S, (TYPES[ct.k].range + (ct.lv - 1) * .3) * S, 0, 7); c.stroke(); }
+    K.drawParts();
+    for (const b of btns()) {
+      const on = b.i === sel && !sellMode || b.act === 'sell' && sellMode;
+      c.fillStyle = on ? '#2f6b4a' : '#173426'; K.rr(b.x, b.y, b.w, b.h, 12); c.fill();
+      if (on) { c.strokeStyle = '#6be38f'; c.lineWidth = 2; c.stroke(); }
+      if (b.i !== undefined) { const T = TYPES[b.i]; K.circle(b.x + 18, b.y + 22, 9, T.col); K.text(T.n, b.x + 32, b.y + 22, { size: 14, weight: 800 }); K.text(`💰${T.cost}  [${T.key}]`, b.x + 10, b.y + 46, { size: 12, color: gold >= T.cost ? '#ffd166' : '#a66' }); }
+      else if (b.act === 'sell') K.text(sellMode ? 'Selling: tap a tower' : 'Sell (Q)', b.x + b.w / 2, b.y + 24, { size: 15, align: 'center', color: sellMode ? '#ff9b9b' : '#cfe' });
+      else K.text(waveOn ? 'Wave in progress' : wave ? 'Send next wave (N)' : 'Start wave 1 (N)', b.x + b.w / 2, b.y + 24, { size: 15, align: 'center', color: waveOn ? '#7a9' : '#6be38f' });
+    }
+    K.text('Tap a tower again to upgrade it', K.W / 2, K.H - 10, { size: 12, color: '#7fa792', align: 'center' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.fmtBest = (n) => 'Wave ' + n;
+  K.screen({ title: 'Tower Rush', text: 'Monsters march from the green gate to the red one. Build towers to make a long maze and shoot them down. You can never fully block the path.', best: true,
+    lines: ['Tap a square to build the selected tower, tap it again to upgrade', 'Dart: fast · Cannon: splash · Frost: slows · Zap: chains', 'Keys: arrows + Space to build, 1-4 pick, N next wave, Q sell'],
+    buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

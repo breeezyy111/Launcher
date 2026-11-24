@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gem Swap</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'gem-swap', W: 480, H: 760, bg: '#1a1033', accent: '#ff6bd6' });
+  const c = K.ctx, N = 8, S = 56, OX = (480 - N * S) / 2, OY = 170;
+  const COL = ['#ff4d6d', '#ffb020', '#ffe14d', '#3ddc84', '#38bdf8', '#a78bfa', '#ff7ae0'];
+  let g, score, moves, level, goal, sel, busy, cur, sw, combo, total;
+  // cell: { t: colour index, line: 0 | 'h' | 'v', y: draw y (falls), pop: 0..1 }
+  function mk(t) { return { t, line: 0, dy: 0, pop: 0 }; }
+  function fill() {
+    g = Array.from({ length: N }, () => Array(N).fill(null));
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let t; do { t = K.randi(0, colors() - 1); } while ((x > 1 && g[y][x - 1].t === t && g[y][x - 2].t === t) || (y > 1 && g[y - 1][x].t === t && g[y - 2][x].t === t)); g[y][x] = mk(t); g[y][x].dy = -8 - y; }
+    if (!hasMove()) fill();
+  }
+  const colors = () => Math.min(7, 5 + Math.floor(level / 3));
+  function newLevel(lv) { level = lv; moves = 22; goal = 1500 + (lv - 1) * 900; score = 0; sel = null; busy = 0; combo = 0; cur = { x: 3, y: 3 }; fill(); }
+  function findMatches() {
+    const out = [];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N;) { let e = x; while (e + 1 < N && g[y][e + 1] && g[y][x] && g[y][e + 1].t === g[y][x].t) e++; if (e - x >= 2) out.push({ cells: Array.from({ length: e - x + 1 }, (_, i) => [x + i, y]), dir: 'h' }); x = e + 1; }
+    for (let x = 0; x < N; x++) for (let y = 0; y < N;) { let e = y; while (e + 1 < N && g[e + 1][x] && g[y][x] && g[e + 1][x].t === g[y][x].t) e++; if (e - y >= 2) out.push({ cells: Array.from({ length: e - y + 1 }, (_, i) => [x, y + i]), dir: 'v' }); y = e + 1; }
+    return out;
+  }
+  function hasMove() {
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const nx = x + dx, ny = y + dy; if (nx >= N || ny >= N) continue;
+      [g[y][x], g[ny][nx]] = [g[ny][nx], g[y][x]]; const m = findMatches().length; [g[y][x], g[ny][nx]] = [g[ny][nx], g[y][x]]; if (m) return true;
+    }
+    return false;
+  }
+  function trySwap(a, b) {
+    if (busy || K.state !== 'play') return;
+    if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) return;
+    const A = g[a.y][a.x], B = g[b.y][b.x];
+    g[a.y][a.x] = B; g[b.y][b.x] = A; A.sx = (b.x - a.x) * -1; A.sy = 0; // swap animation offsets
+    A.ox = a.x - b.x; A.oy = a.y - b.y; B.ox = b.x - a.x; B.oy = b.y - a.y;
+    if (!findMatches().length) { g[a.y][a.x] = A; g[b.y][b.x] = B; A.ox = b.x - a.x; A.oy = b.y - a.y; B.ox = a.x - b.x; B.oy = a.y - b.y; K.sfx.bad(); return; }
+    moves--; combo = 0; resolve(b);
+  }
+  function resolve(spot) {
+    const ms = findMatches();
+    if (!ms.length) {
+      busy = 0;
+      if (score >= goal) { K.sfx.win(); total = (total || 0) + score; K.submit(level); K.state = 'over'; setTimeout(() => K.screen({ title: `Level ${level} cleared!`, big: score.toLocaleString(), text: `${moves} moves to spare`, buttons: [{ label: 'Next level', act: () => { newLevel(level + 1); K.play(); } }] }), 500); return; }
+      if (moves <= 0) { K.sfx.bad(); K.state = 'over'; setTimeout(() => K.screen({ title: 'Out of moves', big: `${score.toLocaleString()} / ${goal.toLocaleString()}`, text: `You reached level ${level}.`, best: true, buttons: [{ label: 'Try again', act: () => { newLevel(level); K.play(); } }, { label: 'From level 1', alt: true, act: () => { newLevel(1); K.play(); } }] }), 500); return; }
+      if (!hasMove()) { K.float(K.W / 2, OY + 200, 'No moves: shuffling', '#fff'); fill(); }
+      return;
+    }
+    busy = 1; combo++;
+    const clear = new Set(), lines = [];
+    for (const m of ms) {
+      for (const [x, y] of m.cells) clear.add(x + ',' + y);
+      if (m.cells.length >= 4) { const at = m.cells.find(([x, y]) => spot && x === spot.x && y === spot.y) || m.cells[1]; lines.push({ at, dir: m.dir, t: g[at[1]][at[0]].t, big: m.cells.length >= 5 }); }
+    }
+    // line gems that get matched fire across their row/column
+    let grew = true;
+    while (grew) { grew = false; for (const key of [...clear]) { const [x, y] = key.split(',').map(Number), cell = g[y][x]; if (cell.line && !cell.fired) { cell.fired = true; for (let i = 0; i < N; i++) { const kk = cell.line === 'h' ? i + ',' + y : x + ',' + i; if (!clear.has(kk)) { clear.add(kk); grew = true; } } K.sfx.boom(); K.shake(6); } } }
+    const pts = clear.size * 20 * combo; score += pts;
+    let sx = 0, sy = 0; for (const key of clear) { const [x, y] = key.split(',').map(Number); sx += x; sy += y; K.burst(OX + x * S + S / 2, OY + y * S + S / 2, COL[g[y][x].t], 6, 3); }
+    K.float(OX + sx / clear.size * S + S / 2, OY + sy / clear.size * S, `+${pts}${combo > 1 ? ' ×' + combo : ''}`, '#fff');
+    K.tone(440 * Math.pow(1.12, combo), .12, 'triangle', .08);
+    for (const key of clear) { const [x, y] = key.split(',').map(Number); g[y][x] = null; }
+    for (const l of lines) { const [x, y] = l.at; g[y][x] = mk(l.t); g[y][x].line = l.big ? (l.dir === 'h' ? 'v' : 'h') : l.dir; }
+    // drop and refill
+    for (let x = 0; x < N; x++) { let w = N - 1; for (let y = N - 1; y >= 0; y--) if (g[y][x]) { if (w !== y) { g[w][x] = g[y][x]; g[w][x].dy = (g[w][x].dy || 0) - (w - y); g[y][x] = null; } w--; } for (let y = w; y >= 0; y--) { g[y][x] = mk(K.randi(0, colors() - 1)); g[y][x].dy = -(w + 1) - 1; } }
+    setTimeout(() => resolve(null), 330);
+  }
+  K.onDown = (p) => { if (K.state !== 'play') return; const x = Math.floor((p.x - OX) / S), y = Math.floor((p.y - OY) / S); if (x < 0 || y < 0 || x >= N || y >= N) return; sw = { x, y, px: p.x, py: p.y }; };
+  K.onMove = (p) => { if (!sw || !K.pointerHeld) return; const dx = p.x - sw.px, dy = p.y - sw.py; if (Math.hypot(dx, dy) > S * .4) { const b = Math.abs(dx) > Math.abs(dy) ? { x: sw.x + Math.sign(dx), y: sw.y } : { x: sw.x, y: sw.y + Math.sign(dy) }; if (b.x >= 0 && b.y >= 0 && b.x < N && b.y < N) trySwap(sw, b); sw = null; sel = null; } };
+  K.onUp = () => { if (!sw) return; const t = sw; sw = null; if (sel && (sel.x !== t.x || sel.y !== t.y) && Math.abs(sel.x - t.x) + Math.abs(sel.y - t.y) === 1) { trySwap(sel, t); sel = null; } else sel = sel && sel.x === t.x && sel.y === t.y ? null : { x: t.x, y: t.y }; };
+  function update() {
+    const dx = K.pressed('right') - K.pressed('left'), dy = K.pressed('down') - K.pressed('up');
+    if (dx || dy) { const n = { x: K.clamp(cur.x + dx, 0, N - 1), y: K.clamp(cur.y + dy, 0, N - 1) }; if (sel && sel.kb) { trySwap(sel, n); sel = null; } else cur = n; cur.kb = true; }
+    if (K.pressed('a')) sel = sel ? null : { ...cur, kb: true };
+    for (const row of g) for (const cell of row) if (cell) { cell.dy = Math.min(0, cell.dy + .45); cell.ox = (cell.ox || 0) * .7; cell.oy = (cell.oy || 0) * .7; }
+  }
+  function gem(x, y, cell) {
+    const cx = OX + (x + (cell.ox || 0)) * S + S / 2, cy = OY + (y + cell.dy + (cell.oy || 0)) * S + S / 2, r = S * .38, col = COL[cell.t];
+    if (cy < OY - S / 2) return;
+    c.save(); c.translate(cx, cy);
+    c.fillStyle = col; c.beginPath();
+    const sides = [6, 4, 5, 8, 3, 6, 4][cell.t], rot = [0, Math.PI / 4, -Math.PI / 2, Math.PI / 8, -Math.PI / 2, Math.PI / 6, 0][cell.t];
+    for (let i = 0; i < sides; i++) { const a = rot + i * Math.PI * 2 / sides; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.fill();
+    c.fillStyle = '#ffffff55'; c.beginPath(); c.arc(-r * .25, -r * .3, r * .3, 0, 7); c.fill();
+    if (cell.line) { c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); if (cell.line === 'h') { c.moveTo(-r, 0); c.lineTo(r, 0); } else { c.moveTo(0, -r); c.lineTo(0, r); } c.stroke(); }
+    c.restore();
+  }
+  function draw() {
+    K.begin('#1a1033');
+    K.text(`Level ${level}`, 20, 36, { size: 26, weight: 900, color: '#ff6bd6' });
+    K.text(`Moves ${moves}`, K.W - 70, 36, { size: 20, weight: 900, align: 'right' });
+    K.text(score.toLocaleString(), 20, 80, { size: 30, weight: 900 });
+    K.text(`goal ${goal.toLocaleString()}`, 20, 108, { size: 14, color: '#b9a6e6' });
+    c.fillStyle = '#2b1d55'; K.rr(20, 126, K.W - 40, 12, 6); c.fill(); c.fillStyle = '#ff6bd6'; K.rr(20, 126, (K.W - 40) * Math.min(1, score / goal), 12, 6); c.fill();
+    c.fillStyle = '#241645'; K.rr(OX - 6, OY - 6, N * S + 12, N * S + 12, 14); c.fill();
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { c.fillStyle = (x + y) % 2 ? '#2b1d55' : '#30215e'; c.fillRect(OX + x * S, OY + y * S, S, S); }
+    c.save(); c.beginPath(); c.rect(OX, OY, N * S, N * S); c.clip();
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (g[y][x]) gem(x, y, g[y][x]);
+    c.restore();
+    if (sel) { c.strokeStyle = '#fff'; c.lineWidth = 3; K.rr(OX + sel.x * S + 3, OY + sel.y * S + 3, S - 6, S - 6, 10); c.stroke(); }
+    if (cur.kb && !sel) { c.strokeStyle = '#ffffff88'; c.lineWidth = 2; K.rr(OX + cur.x * S + 3, OY + cur.y * S + 3, S - 6, S - 6, 10); c.stroke(); }
+    K.drawParts();
+    K.text(K.isTouch ? 'Swipe a gem to swap it with its neighbour' : 'Drag or click two gems · arrows + Space work too', K.W / 2, OY + N * S + 34, { size: 14, color: '#b9a6e6', align: 'center' });
+    K.text('Match 4 for a line gem that blasts a whole row', K.W / 2, OY + N * S + 58, { size: 13, color: '#8a78bd', align: 'center' });
+    K.end();
+  }
+  K.fmtBest = (n) => 'Level ' + n;
+  newLevel(1);
+  K.screen({ title: 'Gem Swap', text: 'Swap neighbouring gems to line up three or more of a kind. Reach the score goal before you run out of moves.', best: true,
+    lines: ['Match 4 or 5 to make a line gem', 'Chain reactions multiply your points'], buttons: [{ label: 'Play', act: () => K.play() }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoop Shot</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'hoop-shot', W: 440, H: 760, bg: '#1b1530', accent: '#ff8a3d' });
+  const c = K.ctx, G = .42, BR = 17;
+  let ball, hoop, score, streak, time, drag, shots, made, scoredThis, touchedRim, aimKey;
+  function reset() { score = 0; streak = 0; time = 60 * 60; shots = 0; made = 0; hoop = { x: 220, y: 230, w: 74, vx: 0 }; newBall(); K.clearParts(); }
+  function newBall() {
+    ball = { x: K.rand(120, 320), y: 640, vx: 0, vy: 0, live: false, rot: 0, behind: false };
+    scoredThis = false; touchedRim = false; aimKey = { ang: -1.4, pow: 19.5 };
+    // the hoop starts moving once you're doing well
+    const lv = Math.floor(made / 5); hoop.vx = lv >= 1 ? Math.sign(hoop.vx || 1) * Math.min(3.2, .8 + lv * .5) : 0;
+  }
+  function shoot(vx, vy) { if (ball.live || K.state !== 'play') return; ball.vx = vx; ball.vy = vy; ball.live = true; shots++; K.tone(250, .1, 'triangle', .07, 400); }
+  K.onDown = (p) => { if (!ball.live) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, t: performance.now() }; };
+  K.onMove = (p) => { if (drag) { drag.x = p.x; drag.y = p.y; } };
+  K.onUp = (p) => {
+    if (!drag) return; const d = drag; drag = null;
+    const dx = p.x - d.sx, dy = p.y - d.sy; if (dy > -30) return;
+    // a flick upward: length sets power, direction sets aim
+    const len = Math.min(320, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
+    const pow = 9 + len / 320 * 12;
+    shoot(Math.cos(ang) * pow * .7, Math.sin(ang) * pow);
+  };
+  const rims = () => [{ x: hoop.x - hoop.w / 2, y: hoop.y }, { x: hoop.x + hoop.w / 2, y: hoop.y }];
+  function update() {
+    time--; if (time <= 0) { K.sfx.win(); return K.over({ score, text: `${made} of ${shots} shots made.`, again: start }); }
+    hoop.x += hoop.vx; if (hoop.x < 70 || hoop.x > K.W - 70) hoop.vx *= -1;
+    if (!ball.live) {
+      const ax = K.axis(); aimKey.ang = K.clamp(aimKey.ang + ax.x * .02, -2.6, -.5); aimKey.pow = K.clamp(aimKey.pow - ax.y * .1, 12, 23);
+      if (K.pressed('a')) shoot(Math.cos(aimKey.ang) * aimKey.pow * .7, Math.sin(aimKey.ang) * aimKey.pow);
+      return;
+    }
+    const prevY = ball.y;
+    for (let s = 0; s < 3; s++) {
+      ball.vy += G / 3; ball.x += ball.vx / 3; ball.y += ball.vy / 3; ball.rot += ball.vx * .02;
+      if (ball.vy > 0) ball.behind = true; // falling: ball drawn behind the front of the rim
+      for (const r of rims()) {
+        const dx = ball.x - r.x, dy = ball.y - r.y, d = Math.hypot(dx, dy);
+        if (d < BR + 4) { const nx = dx / d, ny = dy / d, dot = ball.vx * nx + ball.vy * ny; if (dot < 0) { ball.vx -= 1.6 * dot * nx; ball.vy -= 1.6 * dot * ny; touchedRim = true; K.tone(180, .05, 'square', .05); } ball.x = r.x + nx * (BR + 4); ball.y = r.y + ny * (BR + 4); }
+      }
+      // backboard
+      const bx = hoop.x + hoop.w / 2 + 10;
+      if (ball.x + BR > bx && ball.x < bx + 10 && ball.y > hoop.y - 110 && ball.y < hoop.y + 10 && ball.vx > 0) { ball.vx = -Math.abs(ball.vx) * .6; ball.x = bx - BR; touchedRim = true; K.noise(.05, .05); }
+      if (ball.x < BR) { ball.x = BR; ball.vx = Math.abs(ball.vx) * .7; } if (ball.x > K.W - BR) { ball.x = K.W - BR; ball.vx = -Math.abs(ball.vx) * .7; }
+    }
+    if (!scoredThis && ball.vy > 0 && prevY < hoop.y && ball.y >= hoop.y && Math.abs(ball.x - hoop.x) < hoop.w / 2 - 4) {
+      scoredThis = true; made++; streak++;
+      const swish = !touchedRim, pts = (swish ? 3 : 2) * Math.min(4, 1 + Math.floor(streak / 3)) + (hoop.vx ? 1 : 0);
+      score += pts; K.sfx.good(); K.burst(hoop.x, hoop.y + 20, '#ffd166', 18, 4); K.float(hoop.x, hoop.y - 50, `${swish ? 'Swish! ' : ''}+${pts}`, '#ffd166');
+      if (streak % 3 === 0) { time = Math.min(60 * 60, time + 120); K.float(hoop.x, hoop.y - 80, '+2s', '#7bd88f'); }
+    }
+    if (ball.y > K.H + 40) { if (!scoredThis) { streak = 0; } newBall(); }
+  }
+  function drawBall() {
+    c.save(); c.translate(ball.x, ball.y); c.rotate(ball.rot);
+    K.circle(0, 0, BR, '#ff8a3d'); c.strokeStyle = '#7a3200'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, BR, 0, 7); c.moveTo(-BR, 0); c.lineTo(BR, 0); c.moveTo(0, -BR); c.lineTo(0, BR); c.stroke();
+    c.beginPath(); c.arc(-BR * 1.4, 0, BR, -.8, .8); c.stroke(); c.beginPath(); c.arc(BR * 1.4, 0, BR, Math.PI - .8, Math.PI + .8); c.stroke();
+    c.restore();
+  }
+  function draw() {
+    K.begin('#1b1530');
+    c.fillStyle = '#2a2147'; c.fillRect(0, 520, K.W, 300); c.fillStyle = '#3a2d5e'; for (let x = 0; x < K.W; x += 40) c.fillRect(x, 520, 2, 300);
+    for (let i = 0; i < 40; i++) K.circle((i * 47) % K.W, 40 + (i * 29) % 120, 3, '#ffffff10');
+    // backboard
+    const bx = hoop.x + hoop.w / 2 + 10;
+    c.fillStyle = '#e9e7f5'; c.fillRect(bx, hoop.y - 110, 10, 130); c.fillStyle = '#9a96b8'; c.fillRect(bx + 10, hoop.y - 60, 30, 8);
+    // net (back)
+    c.strokeStyle = '#ffffffaa'; c.lineWidth = 1.5;
+    for (let i = 0; i <= 6; i++) { const x0 = hoop.x - hoop.w / 2 + i * hoop.w / 6, x1 = hoop.x - hoop.w / 3 + i * hoop.w / 9; c.beginPath(); c.moveTo(x0, hoop.y); c.lineTo(x1, hoop.y + 46); c.stroke(); }
+    if (ball.behind) drawBall();
+    c.strokeStyle = '#ff4d4d'; c.lineWidth = 5; c.beginPath(); c.moveTo(hoop.x - hoop.w / 2, hoop.y); c.lineTo(hoop.x + hoop.w / 2, hoop.y); c.stroke();
+    if (!ball.behind) drawBall();
+    if (!ball.live && K.state === 'play') {
+      let vx, vy;
+      if (drag && drag.y < drag.sy - 10) { const dx = drag.x - drag.sx, dy = drag.y - drag.sy, len = Math.min(320, Math.hypot(dx, dy)), a = Math.atan2(dy, dx), pow = 9 + len / 320 * 12; vx = Math.cos(a) * pow * .7; vy = Math.sin(a) * pow; }
+      else if (!K.isTouch) { vx = Math.cos(aimKey.ang) * aimKey.pow * .7; vy = Math.sin(aimKey.ang) * aimKey.pow; }
+      if (vx != null) { let x = ball.x, y = ball.y; for (let i = 0; i < 14; i++) { for (let s = 0; s < 3; s++) { vy += G / 3; x += vx / 3; y += vy / 3; } if (i % 2 === 0) K.circle(x, y, 3, '#ffffff66'); } }
+    }
+    K.drawParts();
+    K.text(String(score), 20, 40, { size: 40, weight: 900 });
+    K.text(`${made}/${shots}${streak >= 3 ? `  🔥 ×${Math.min(4, 1 + Math.floor(streak / 3))}` : ''}`, 20, 76, { size: 15, color: '#c7bff0' });
+    const sec = Math.ceil(time / 60); K.text(`${sec}s`, K.W / 2, 40, { size: 30, weight: 900, align: 'center', color: sec <= 10 ? '#ff6b6b' : '#fff' });
+    if (K.state === 'play' && shots === 0) K.text(K.isTouch ? 'Flick up from the ball to shoot' : 'Flick up with the mouse · or ←→ aim, ↑↓ power, Space', K.W / 2, 720, { size: 14, align: 'center', color: '#c7bff0' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.screen({ title: 'Hoop Shot', text: 'Sixty seconds on the clock. Flick the ball into the hoop. Swishes are worth more, three in a row adds time, and the hoop starts moving as you get good.', best: true,
+    lines: ['Flick upward: longer flick = more power', 'Keys: ← → aim, ↑ ↓ power, Space shoots'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

@@ -28,7 +28,7 @@ Edit **`apps.json`**:
       "icon": "🚀",                        // an emoji, or an image URL/path such as icons/my-app.png
       "color": "#6366f1",
       "category": "Tools",                // section: Games, Create, Tools or Learn & Explore
-      "genre": "Puzzle",                  // optional type inside a section (Games use Action, Arcade, Puzzle, Casual, Board & Party)
+      "genre": "Puzzle",                  // optional type inside a section (Games use Action, Arcade, Puzzle, Strategy, Sports, Casual, Board & Party)
       "added": "2026-11-15",              // optional: shows a New badge and the New row for 3 weeks
       "featured": true,                   // optional: headline game, gets the Home banner until it has been played once
       "status": "live",                   // live | beta | dev | archived
@@ -92,3 +92,11 @@ Apps with `"embed": true` open in a player inside the launcher, with a back butt
 | `sw.js`, `manifest.webmanifest` | Offline support and install as an app |
 | `.github/workflows/pages.yml` | Deploys to GitHub Pages |
 - **New in this batch** (each one self-contained `index.html` in its own folder, saving progress in the browser and working offline): **Star Swarm** (`star-swarm/`, wave space shooter with bosses), **Paddle Panic** (`paddle-panic/`, brick breaker with power-ups), **Fuse Field** (`fuse-field/`, logic puzzle where numbers count hidden fuses), **Sudoku** (`sudoku/`, generated puzzles in four levels with notes and hints), **Mind Match** (`mind-match/`, memory pairs), **Drop Four** (`drop-four/`, four-in-a-row vs CPU or a friend), **Reversi** (`reversi/`, vs CPU or a friend), **Calc** (`calc/`, calculator and unit converter), **Tasks** (`tasks/`, to-do lists), **Decider** (`decider/`, coin, dice, wheel, number and team picker), **Sketch** (`sketch/`, drawing pad with PNG export), **Keystorm** (`keystorm/`, typing speed test) and **Math Sprint** (`math-sprint/`, timed mental maths).
+- **Thirty more original games** (added 2026-11-24), each one `index.html` in its own folder that loads the shared **game kit** at `kit/kit.js` (letterboxed canvas, keyboard + gamepad + on-screen touch controls, start/pause/game-over screens, best scores, mute, small Web Audio sounds and particles; precached by `sw.js`):
+  - Action: **Skyhook Heist** (`skyhook-heist/`, grapple-swing rooftop runner), **Pixel Dungeon Run** (`pixel-dungeon-run/`, turn-based roguelike), **Lava Climb** (`lava-climb/`, platform climb ahead of rising lava), **Hex Arena** (`hex-arena/`, twin-stick survival), **Archer Duel** (`archer-duel/`, turn-based archery vs CPU or a friend).
+  - Arcade: **Orbit Dash** (`orbit-dash/`), **Ski Slope** (`ski-slope/`), **Sky Stack** (`sky-stack/`), **Road Hop** (`road-hop/`), **Moon Lander** (`moon-lander/`).
+  - Puzzle: **Bubble Burst** (`bubble-burst/`), **Pipe Flow** (`pipe-flow/`), **Laser Maze** (`laser-maze/`), **Jam Escape** (`jam-escape/`), **Pixel Logic** (`pixel-logic/`), **Crate Push** (`crate-push/`), **Gem Swap** (`gem-swap/`). Puzzle levels are generated and always solvable.
+  - Strategy: **Tower Rush** (`tower-rush/`, maze-building tower defense), **Tycoon Island** (`tycoon-island/`, resort builder that earns while you're away).
+  - Sports: **Puck Clash** (`puck-clash/`, table hockey), **Hoop Shot** (`hoop-shot/`), **Pin Strike** (`pin-strike/`, ten-frame bowling).
+  - Casual: **Deep Cast** (`deep-cast/`, fishing with upgrades), **Mole Mayhem** (`mole-mayhem/`), **Echo Pads** (`echo-pads/`, memory tunes).
+  - Board & Party: **Battle Arena 2P** (`battle-arena-2p/`, sumo), **Light Trails** (`light-trails/`), **Checkers** (`checkers/`), **Box Claim** (`box-claim/`, dots and boxes), **Solitaire** (`solitaire/`). The versus games work for two players on one screen or against the CPU.

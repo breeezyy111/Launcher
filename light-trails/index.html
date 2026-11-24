@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Light Trails</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'light-trails', W: 600, H: 640, bg: '#05050c', accent: '#ff3df2' });
+  const c = K.ctx, N = 50, S = 12, OX = 0, OY = 40, WIN = 3;
+  const COL = ['#ff3df2', '#2ef2ff'], D = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  let grid, P, mode, wins, tick, every, phase, phaseT, cpuLv = 1;
+  function round() {
+    grid = Array.from({ length: N }, () => new Uint8Array(N));
+    P = [{ x: 12, y: N - 10, d: 0, q: [], alive: true }, { x: N - 13, y: 9, d: 2, q: [], alive: true }];
+    P.forEach((p, i) => (grid[p.y][p.x] = i + 1));
+    tick = 0; every = 5; phase = 'count'; phaseT = 120;
+  }
+  function match(m) { mode = m; wins = [0, 0]; round(); K.play(); }
+  function turn(i, d) { const p = P[i], last = p.q.length ? p.q[p.q.length - 1] : p.d; if (d !== last && (d + 2) % 4 !== last && p.q.length < 3) p.q.push(d); }
+  K.onKey = (k) => {
+    if (K.state !== 'play') return; const kl = k.toLowerCase();
+    const wasd = { w: 0, d: 1, s: 2, a: 3 }[kl], arr = { arrowup: 0, arrowright: 1, arrowdown: 2, arrowleft: 3 }[kl];
+    if (mode === '2p') { if (wasd != null) turn(0, wasd); if (arr != null) turn(1, arr); }
+    else { const d = wasd ?? arr; if (d != null) turn(0, d); }
+  };
+  const sw = new Map();
+  K.onDown = (p, e) => sw.set(e.pointerId, p);
+  K.onMove = (p, e) => { const s = sw.get(e.pointerId); if (!s) return; const dx = p.x - s.x, dy = p.y - s.y; if (Math.hypot(dx, dy) < 22) return; const who = mode === '2p' && s.y < K.H / 2 ? 1 : 0; turn(who, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0)); sw.set(e.pointerId, p); };
+  K.onUp = (p, e) => sw.delete(e.pointerId);
+  const free = (x, y) => x >= 0 && y >= 0 && x < N && y < N && !grid[y][x];
+  function space(x, y, cap) { // flood fill size from a cell, capped
+    if (!free(x, y)) return 0; const seen = new Set([y * N + x]), q = [[x, y]];
+    while (q.length && seen.size < cap) { const [a, b] = q.pop(); for (const [dx, dy] of D) { const nx = a + dx, ny = b + dy, k = ny * N + nx; if (free(nx, ny) && !seen.has(k)) { seen.add(k); q.push([nx, ny]); } } }
+    return seen.size;
+  }
+  function cpu() {
+    const p = P[1], o = P[0];
+    let best = p.d, bs = -1;
+    for (const d of [p.d, (p.d + 1) % 4, (p.d + 3) % 4]) {
+      const nx = p.x + D[d][0], ny = p.y + D[d][1];
+      if (!free(nx, ny)) continue;
+      let s = space(nx, ny, 300 + cpuLv * 100);
+      // a smarter CPU likes to cut you off
+      if (cpuLv > 1) s += Math.max(0, 30 - Math.hypot(nx - o.x - D[o.d][0] * 4, ny - o.y - D[o.d][1] * 4)) * cpuLv * .5;
+      if (d === p.d) s += 2;
+      if (Math.random() < .03) s += 40;
+      if (s > bs) { bs = s; best = d; }
+    }
+    p.d = best;
+  }
+  function update() {
+    if (phase === 'count') { phaseT--; if (phaseT % 40 === 0) K.tone(phaseT ? 440 : 880, .12, 'square', .06); if (phaseT <= 0) phase = 'go'; return; }
+    if (phase === 'end') { if (--phaseT <= 0) after(); return; }
+    // gamepads: one per player
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    pads.slice(0, mode === '2p' ? 2 : 1).forEach((g, i) => { const ax = g.axes[0], ay = g.axes[1]; if (g.buttons[12]?.pressed || ay < -.6) turn(i, 0); else if (g.buttons[13]?.pressed || ay > .6) turn(i, 2); else if (g.buttons[14]?.pressed || ax < -.6) turn(i, 3); else if (g.buttons[15]?.pressed || ax > .6) turn(i, 1); });
+    if (++tick % every) return;
+    if (tick % 600 === 0) every = Math.max(3, every - 1);
+    if (mode === 'cpu') cpu();
+    for (const p of P) { if (p.q.length) p.d = p.q.shift(); p.nx = p.x + D[p.d][0]; p.ny = p.y + D[p.d][1]; }
+    for (const p of P) p.alive = free(p.nx, p.ny);
+    if (P[0].nx === P[1].nx && P[0].ny === P[1].ny) P[0].alive = P[1].alive = false;
+    P.forEach((p, i) => { if (p.alive) { p.x = p.nx; p.y = p.ny; grid[p.y][p.x] = i + 1; } else K.burst(OX + p.x * S + S / 2, OY + p.y * S + S / 2, COL[i], 30, 5); });
+    if (!P[0].alive || !P[1].alive) {
+      K.sfx.boom(); K.shake(10); phase = 'end'; phaseT = 80;
+      if (P[0].alive) wins[0]++; else if (P[1].alive) wins[1]++;
+    } else if (tick % (every * 2) === 0) K.tone(110 + tick % 40, .03, 'sawtooth', .015);
+  }
+  function after() {
+    const w = wins[0] >= WIN ? 0 : wins[1] >= WIN ? 1 : -1;
+    if (w < 0) return round();
+    if (mode === 'cpu' && w === 0) cpuLv = Math.min(4, cpuLv + 1);
+    K.state = 'over';
+    K.screen({ title: mode === 'cpu' ? (w ? 'CPU wins' : 'You win!') : `${w ? 'Cyan' : 'Pink'} wins!`, big: `${wins[0]} – ${wins[1]}`, text: mode === 'cpu' && !w ? `CPU is now level ${cpuLv}.` : '', buttons: [{ label: 'Rematch', act: () => match(mode) }, { label: 'Menu', alt: true, act: menu }] });
+  }
+  function draw() {
+    K.begin('#05050c');
+    c.strokeStyle = '#ffffff0c'; c.lineWidth = 1;
+    for (let i = 0; i <= N; i += 2) { c.beginPath(); c.moveTo(OX + i * S, OY); c.lineTo(OX + i * S, OY + N * S); c.moveTo(OX, OY + i * S); c.lineTo(OX + N * S, OY + i * S); c.stroke(); }
+    c.strokeStyle = '#ffffff44'; c.strokeRect(OX + 1, OY + 1, N * S - 2, N * S - 2);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) { c.fillStyle = COL[grid[y][x] - 1] + 'aa'; c.fillRect(OX + x * S + 2, OY + y * S + 2, S - 4, S - 4); }
+    P.forEach((p, i) => { c.shadowColor = COL[i]; c.shadowBlur = 16; c.fillStyle = '#fff'; c.fillRect(OX + p.x * S, OY + p.y * S, S, S); c.shadowBlur = 0; });
+    K.drawParts();
+    K.text(`${mode === 'cpu' ? 'You' : 'Pink'} ${wins[0]}`, 12, 20, { size: 18, weight: 900, color: COL[0] });
+    K.text(`${wins[1]} ${mode === 'cpu' ? 'CPU ' + cpuLv : 'Cyan'}`, K.W / 2 + 30, 20, { size: 18, weight: 900, color: COL[1] });
+    K.text(`first to ${WIN}`, K.W / 2 - 10, 20, { size: 13, color: '#888', align: 'right' });
+    if (phase === 'count' && K.state === 'play') K.text(String(Math.ceil(phaseT / 40)), K.W / 2, OY + N * S / 2, { size: 80, weight: 900, align: 'center', glow: '#fff' });
+    if (phase === 'end' && K.state === 'play') K.text(!P[0].alive && !P[1].alive ? 'Draw!' : P[0].alive ? (mode === 'cpu' ? 'You take the round' : 'Pink takes it') : (mode === 'cpu' ? 'CPU takes the round' : 'Cyan takes it'), K.W / 2, OY + N * S / 2, { size: 34, weight: 900, align: 'center' });
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Light Trails', text: 'Your bike leaves a wall of light behind it. Box the other rider in and make them crash before you do. First to 3 rounds.',
+      lines: ['Vs CPU: arrows or WASD (swipe on a phone)', '2 players: Pink uses WASD, Cyan uses arrows', 'Phone 2P: each player swipes on their half', 'It speeds up as the round goes on'],
+      buttons: [{ label: 'Vs CPU', act: () => match('cpu') }, { label: '2 players', alt: true, act: () => match('2p') }] });
+  }
+  K.onQuit = menu;
+  mode = 'cpu'; wins = [0, 0]; round(); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

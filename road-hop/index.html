@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Road Hop</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'road-hop', W: 432, H: 720, bg: '#5bbf6a', accent: '#ffcf4d', fit: 'grow' });
+  const c = K.ctx, S = 48, COLS = 9;
+  let rows, hero, camY, best, coins, idle, dead;
+  // Row y counts upward: row 0 is the start, higher rows are further ahead.
+  function makeRow(y) {
+    if (y < 3) return { y, k: 'grass', trees: y === 0 ? [] : treesFor(y) };
+    const lvl = Math.min(1, y / 150), r = Math.random(), prev = rows[rows.length - 1];
+    if (prev && prev.k !== 'grass' && Math.random() < .3) return { y, k: 'grass', trees: treesFor(y) };
+    if (r < .45) { const dir = Math.random() < .5 ? 1 : -1, sp = K.rand(1.2, 2.4 + lvl * 2.5) * dir, n = K.randi(1, 3), len = K.pick([1, 1, 2]); const cars = []; for (let i = 0; i < n; i++) cars.push({ x: i * (K.W + 200) / n + K.rand(0, 60), len, col: K.pick(['#ff5d5d', '#4d8cff', '#ffcf4d', '#b06cff', '#ff8f3d']) }); return { y, k: 'road', sp, cars }; }
+    if (r < .75) { const dir = Math.random() < .5 ? 1 : -1, sp = K.rand(.9, 1.8 + lvl) * dir, logs = []; let x = K.rand(-50, 0); while (x < K.W + 100) { const len = K.randi(2, 4); logs.push({ x, len }); x += len * S + K.rand(60, 150 - lvl * 40); } return { y, k: 'river', sp, logs }; }
+    if (r < .85) return { y, k: 'rail', t: K.rand(200, 500), train: null };
+    return { y, k: 'grass', trees: treesFor(y), coin: Math.random() < .5 ? K.randi(0, COLS - 1) : -1 };
+  }
+  function treesFor() { const t = new Set(); const n = K.randi(0, 3); for (let i = 0; i < n; i++) t.add(K.randi(0, COLS - 1)); t.delete(4); return t; }
+  function reset() {
+    rows = []; for (let y = 0; y < 30; y++) rows.push(makeRow(y));
+    rows[0].trees = new Set([0, 8]);
+    hero = { gx: 4, gy: 0, x: 4 * S, hop: 0, onLog: null, face: 0 }; camY = 0; best = 0; coins = 0; idle = 0; dead = false; K.clearParts();
+  }
+  const row = (y) => rows.find((r) => r.y === y);
+  function move(dx, dy) {
+    if (K.state !== 'play' || dead || hero.hop > 0) return;
+    const nx = Math.round(hero.x / S) + dx, ny = hero.gy + dy;
+    if (nx < 0 || nx >= COLS || ny < Math.max(0, best - 4)) return;
+    const r = row(ny); if (r && r.k === 'grass' && r.trees.has(nx)) return;
+    hero.x = nx * S; hero.gy = ny; hero.hop = 8; hero.face = dx; idle = 0; K.tone(500 + (dy > 0 ? 100 : 0), .04, 'square', .04);
+    if (ny > best) best = ny;
+    if (r && r.coin === nx) { r.coin = -1; coins++; K.sfx.coin(); }
+    while (rows[rows.length - 1].y < best + 20) rows.push(makeRow(rows[rows.length - 1].y + 1));
+    rows = rows.filter((q) => q.y > best - 12);
+  }
+  let sw = null;
+  K.onDown = (p) => { sw = p; };
+  K.onUp = (p) => { if (!sw) return; const dx = p.x - sw.x, dy = p.y - sw.y; sw = null; if (Math.hypot(dx, dy) < 20) return move(0, 1); if (Math.abs(dx) > Math.abs(dy)) move(Math.sign(dx), 0); else move(0, dy < 0 ? 1 : -1); };
+  function die(why) { if (dead) return; dead = true; K.sfx.boom(); K.shake(10); K.burst(hero.x + S / 2, sy(hero.gy) + S / 2, '#fff', 24, 5); K.over({ score: best + coins * 5, text: `${why} You hopped ${best} rows and found ${coins} coins.`, again: start, delay: 700 }); }
+  const sy = (gy) => K.H - 220 - (gy - camY) * S;
+  function update() {
+    if (K.pressed('up')) move(0, 1); else if (K.pressed('down')) move(0, -1); else if (K.pressed('left')) move(-1, 0); else if (K.pressed('right')) move(1, 0); else if (K.pressed('a')) move(0, 1);
+    if (hero.hop > 0) hero.hop--;
+    camY = K.lerp(camY, Math.max(hero.gy, camY), .1);
+    if (!dead) { idle++; camY += Math.min(.012, best / 6000); if (sy(hero.gy) > K.H + 10) return die('You fell too far behind!'); }
+    for (const r of rows) {
+      if (r.k === 'road') for (const car of r.cars) { car.x += r.sp; const w = car.len * S + 20; if (r.sp > 0 && car.x > K.W + 40) car.x = -w - K.rand(0, 120); if (r.sp < 0 && car.x < -w - 40) car.x = K.W + K.rand(0, 120); }
+      if (r.k === 'river') for (const lg of r.logs) { lg.x += r.sp; const w = lg.len * S; if (r.sp > 0 && lg.x > K.W + 20) lg.x -= K.W + w + 120; if (r.sp < 0 && lg.x < -w - 20) lg.x += K.W + w + 120; }
+      if (r.k === 'rail') { r.t--; if (r.t < 0 && !r.train) { r.train = { x: Math.random() < .5 ? -900 : K.W + 100, warn: 70 }; r.train.v = r.train.x < 0 ? 22 : -22; } if (r.train) { if (r.train.warn > 0) { r.train.warn--; if (r.train.warn % 20 === 0 && Math.abs(r.y - hero.gy) < 6) K.tone(900, .08, 'square', .04); } else { r.train.x += r.train.v; if (r.train.x > K.W + 900 || r.train.x < -1800) { r.train = null; r.t = K.rand(200, 500); } } } }
+    }
+    if (dead || hero.hop > 3) return;
+    const r = row(hero.gy); if (!r) return;
+    const hx = hero.x + S / 2;
+    if (r.k === 'road') for (const car of r.cars) if (hx > car.x + 4 && hx < car.x + car.len * S + 16) return die('Splat! Watch the traffic.');
+    if (r.k === 'rail' && r.train && r.train.warn <= 0 && hx > r.train.x && hx < r.train.x + 800) return die('Ran over by a train!');
+    if (r.k === 'river') {
+      const lg = r.logs.find((l) => hx > l.x + 4 && hx < l.x + l.len * S - 4);
+      if (!lg) return die('Splash! You can\'t swim.');
+      hero.x += r.sp; if (hero.x < -S / 2 || hero.x > K.W - S / 2) return die('Swept away down the river!');
+    } else hero.x = K.lerp(hero.x, Math.round(hero.x / S) * S, .3);
+  }
+  function draw() {
+    K.begin('#5bbf6a');
+    const lo = Math.floor(camY) - 6, hi = Math.ceil(camY + K.H / S) + 2;
+    for (const r of rows) {
+      if (r.y < lo || r.y > hi) continue; const y = sy(r.y);
+      if (r.k === 'grass') { c.fillStyle = r.y % 2 ? '#5bbf6a' : '#64c873'; c.fillRect(0, y, K.W, S); for (const t of r.trees) { K.circle(t * S + S / 2, y + S / 2 - 6, 18, '#2f8a43'); K.circle(t * S + S / 2 - 6, y + S / 2 - 12, 9, '#47a85a'); c.fillStyle = '#6b4a2e'; c.fillRect(t * S + S / 2 - 4, y + S / 2 + 8, 8, 10); } if (r.coin >= 0) { K.circle(r.coin * S + S / 2, y + S / 2, 10, '#ffcf4d'); K.text('¢', r.coin * S + S / 2, y + S / 2 + 1, { size: 13, align: 'center', color: '#8a6200' }); } }
+      if (r.k === 'road') { c.fillStyle = '#4a4e5a'; c.fillRect(0, y, K.W, S); c.fillStyle = '#ffffff55'; for (let x = 10; x < K.W; x += 48) c.fillRect(x, y + S / 2 - 2, 24, 4); for (const car of r.cars) { const w = car.len * S + 12; c.fillStyle = car.col; K.rr(car.x, y + 7, w, S - 14, 8); c.fill(); c.fillStyle = '#cfe8ff'; const fx = r.sp > 0 ? car.x + w - 20 : car.x + 6; c.fillRect(fx, y + 12, 14, S - 24); c.fillStyle = '#222'; c.fillRect(car.x + 8, y + 3, 12, 5); c.fillRect(car.x + w - 20, y + 3, 12, 5); c.fillRect(car.x + 8, y + S - 8, 12, 5); c.fillRect(car.x + w - 20, y + S - 8, 12, 5); } }
+      if (r.k === 'river') { c.fillStyle = '#3d9be0'; c.fillRect(0, y, K.W, S); c.fillStyle = '#ffffff33'; for (let x = (performance.now() / 20 * Math.sign(r.sp)) % 60 - 60; x < K.W; x += 60) c.fillRect(x, y + 12, 18, 3); for (const lg of r.logs) { c.fillStyle = '#8a5a34'; K.rr(lg.x, y + 8, lg.len * S, S - 16, 12); c.fill(); c.fillStyle = '#a8703f'; c.fillRect(lg.x + 10, y + 14, lg.len * S - 20, 4); } }
+      if (r.k === 'rail') { c.fillStyle = '#7b6f64'; c.fillRect(0, y, K.W, S); c.fillStyle = '#5a4d42'; for (let x = 0; x < K.W; x += 20) c.fillRect(x, y + 6, 8, S - 12); c.fillStyle = '#b8b8c0'; c.fillRect(0, y + 14, K.W, 3); c.fillRect(0, y + S - 17, K.W, 3); if (r.train && r.train.warn > 0 && r.train.warn % 20 < 10) { K.circle(16, y + S / 2, 7, '#ff3b3b'); K.circle(K.W - 16, y + S / 2, 7, '#ff3b3b'); } if (r.train && r.train.warn <= 0) { for (let i = 0; i < 5; i++) { c.fillStyle = i === (r.train.v > 0 ? 4 : 0) ? '#d64545' : '#3a6fd6'; K.rr(r.train.x + i * 162, y + 4, 156, S - 8, 6); c.fill(); c.fillStyle = '#cfe8ff'; for (let w = 0; w < 5; w++) c.fillRect(r.train.x + i * 162 + 14 + w * 28, y + 12, 16, 10); } } }
+    }
+    // hero
+    if (!dead) {
+      const hx = hero.x + S / 2, hy = sy(hero.gy) + S / 2 - Math.sin(hero.hop / 8 * Math.PI) * 14;
+      c.fillStyle = '#0002'; c.beginPath(); c.ellipse(hx, sy(hero.gy) + S - 8, 14, 5, 0, 0, 7); c.fill();
+      K.circle(hx, hy, 15, '#fff6e8'); c.fillStyle = '#fff6e8'; K.rr(hx - 10, hy - 30, 7, 18, 4); c.fill(); K.rr(hx + 3, hy - 30, 7, 18, 4); c.fill();
+      c.fillStyle = '#ffb3c1'; c.fillRect(hx - 8, hy - 26, 3, 10); c.fillRect(hx + 5, hy - 26, 3, 10);
+      K.circle(hx - 5 + hero.face * 3, hy - 3, 2.5, '#222'); K.circle(hx + 5 + hero.face * 3, hy - 3, 2.5, '#222'); K.circle(hx + hero.face * 3, hy + 3, 2.5, '#ff8fa3');
+    }
+    K.drawParts();
+    K.text(String(best), 18, 34, { size: 32, weight: 900, glow: '#0006' });
+    K.text(`¢ ${coins}`, 18, 64, { size: 16, color: '#ffcf4d', weight: 800 });
+    if (K.state === 'play' && best < 2) K.text(K.isTouch ? 'Tap to hop forward, swipe to turn' : 'Arrow keys or WASD to hop', K.W / 2, K.H - 40, { size: 16, align: 'center', weight: 800 });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.screen({ title: 'Road Hop', text: 'Help Pip the bunny hop as far as possible: cross busy roads, ride logs over rivers, and listen for the train bells. Don\'t dawdle, the screen keeps moving.', best: true,
+    lines: ['Arrows / WASD to hop', 'Phone: tap to hop forward, swipe to go sideways or back', 'Coins are worth 5 rows'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

@@ -1,11 +1,11 @@
 // Network-first, so updates show up right away, but never left hanging: if the network is
 // slow or gone, the cached copy answers. Every built-in app is cached on install, so the
 // launcher and its games work offline.
-const CACHE = 'launcher-v26';
+const CACHE = 'launcher-v27';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'apps.json', 'manifest.webmanifest', 'icons/icon.svg'];
 // Files built-in apps load themselves (not listed in apps.json).
 const EXTRAS = ['orca/app.js', 'orca/config.js', 'orca/style.css', 'orca/vendor/marked.min.js', 'orca/vendor/purify.min.js',
-  'word-blitz/words.txt', 'word-blitz/common.txt'];
+  'word-blitz/words.txt', 'word-blitz/common.txt', 'kit/kit.js'];
 const NETWORK_TIMEOUT = 3000;
 
 // Every same-origin app page and icon from apps.json, so new apps need no edit here.

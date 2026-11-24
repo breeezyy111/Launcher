@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ski Slope</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'ski-slope', W: 420, H: 720, bg: '#eef6ff', accent: '#2f80ed', fit: 'grow' });
+  const c = K.ctx;
+  let sk, things, dist, speed, score, gates, missed, lives, trail, nextY, hitT, combo;
+  function reset() {
+    sk = { x: K.W / 2, y: 0, ang: 0, vx: 0 }; things = []; dist = 0; speed = 4; score = 0; gates = 0; missed = 0; lives = 3; trail = []; nextY = 400; hitT = 0; combo = 0;
+    K.clearParts(); gen();
+  }
+  function gen() {
+    while (nextY < dist + K.H + 300) {
+      const lvl = Math.min(1, dist / 30000);
+      if (Math.random() < .45) { const w = K.rand(130 - lvl * 40, 170 - lvl * 50), x = K.rand(30 + w / 2, K.W - 30 - w / 2); things.push({ k: 'gate', x, y: nextY, w, col: K.pick(['#ff4d6d', '#2f80ed']) }); }
+      const n = 1 + Math.floor(Math.random() * (2 + lvl * 3));
+      for (let i = 0; i < n; i++) {
+        const x = K.rand(10, K.W - 10), y = nextY + K.rand(60, 160);
+        if (things.some((t) => t.k === 'gate' && Math.abs(t.y - y) < 50 && Math.abs(t.x - x) < t.w / 2 + 30)) continue;
+        things.push({ k: Math.random() < .7 ? 'tree' : Math.random() < .5 ? 'rock' : 'flag', x, y, s: K.rand(.8, 1.3) });
+      }
+      if (Math.random() < .12) things.push({ k: 'jump', x: K.rand(60, K.W - 60), y: nextY + 120 });
+      nextY += K.rand(170, 230);
+    }
+  }
+  let air = 0;
+  function update() {
+    const ax = K.axis().x;
+    sk.ang = K.lerp(sk.ang, ax * 1.1, .12);
+    const brake = K.held('down') || K.held('b');
+    speed = K.clamp(speed + (brake ? -.08 : .006) * (air ? 0 : 1), 3, 6 + dist / 6000);
+    sk.vx = Math.sin(sk.ang) * speed * 1.2; sk.x = K.clamp(sk.x + sk.vx, 12, K.W - 12);
+    const dy = Math.cos(sk.ang) * speed * (air ? 1.2 : 1); dist += dy; sk.y = dist;
+    if (air > 0) air--;
+    hitT = Math.max(0, hitT - 1);
+    trail.push([sk.x, dist]); if (trail.length > 60) trail.shift();
+    const py = dist;
+    for (const t of things) {
+      if (t.done) continue;
+      if (t.k === 'gate' && t.y < py) {
+        t.done = true;
+        if (Math.abs(sk.x - t.x) < t.w / 2) { gates++; combo++; const pts = 50 * Math.min(combo, 8); score += pts; K.sfx.coin(); K.float(t.x, K.H * .3 - 30, '+' + pts, '#2f80ed'); }
+        else { combo = 0; missed++; K.sfx.bad(); K.float(sk.x, K.H * .3 - 30, 'Missed gate', '#ff4d6d'); if (missed % 3 === 0) hurt('Three missed gates'); }
+      } else if ((t.k === 'tree' || t.k === 'rock') && !air && hitT === 0 && Math.abs(t.y - py) < 12 * t.s && Math.abs(t.x - sk.x) < 14 * t.s) { t.done = true; hurt(); }
+      else if (t.k === 'flag' && Math.abs(t.y - py) < 14 && Math.abs(t.x - sk.x) < 16) { t.done = true; score += 25; K.sfx.blip(); K.float(t.x, K.H * .3 - 20, '+25', '#ffb020'); }
+      else if (t.k === 'jump' && !air && Math.abs(t.y - py) < 10 && Math.abs(t.x - sk.x) < 34) { t.done = true; air = 50; score += 100; K.sfx.jump(); K.float(sk.x, K.H * .3 - 30, 'Big air! +100', '#7b61ff'); }
+    }
+    score += Math.floor(dy / 10) ? 0 : 0;
+    things = things.filter((t) => t.y > dist - 100);
+    gen();
+  }
+  function hurt(why) {
+    lives--; hitT = 90; speed = 3; combo = 0; K.sfx.hit(); K.shake(8); K.burst(sk.x, K.H * .3, '#fff', 20, 4);
+    if (lives <= 0) { const total = score + Math.floor(dist / 10); K.over({ score: total, text: `${Math.floor(dist / 10)} m down the mountain, ${gates} gates.`, again: start }); }
+  }
+  function draw() {
+    K.begin('#eef6ff');
+    const off = dist - K.H * .3;
+    c.fillStyle = '#dde9f7'; for (const [x, y] of trail) { c.fillRect(x - 5, y - off, 3, 4); c.fillRect(x + 2, y - off, 3, 4); }
+    const list = things.slice().sort((a, b) => a.y - b.y);
+    for (const t of list) {
+      const y = t.y - off; if (y < -60 || y > K.H + 60) continue;
+      if (t.k === 'gate') { c.fillStyle = t.col; c.fillRect(t.x - t.w / 2 - 3, y - 26, 6, 28); c.fillRect(t.x + t.w / 2 - 3, y - 26, 6, 28); c.fillRect(t.x - t.w / 2, y - 26, 16, 10); c.fillRect(t.x + t.w / 2 - 16, y - 26, 16, 10); if (!t.done) { c.strokeStyle = t.col + '33'; c.setLineDash([4, 6]); c.beginPath(); c.moveTo(t.x - t.w / 2, y); c.lineTo(t.x + t.w / 2, y); c.stroke(); c.setLineDash([]); } }
+      if (t.k === 'tree') { const s = t.s; c.fillStyle = '#6b4a2e'; c.fillRect(t.x - 3 * s, y - 6 * s, 6 * s, 10 * s); c.fillStyle = '#2e7d4f'; c.beginPath(); c.moveTo(t.x, y - 46 * s); c.lineTo(t.x + 18 * s, y - 6 * s); c.lineTo(t.x - 18 * s, y - 6 * s); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.moveTo(t.x, y - 46 * s); c.lineTo(t.x + 6 * s, y - 32 * s); c.lineTo(t.x - 6 * s, y - 32 * s); c.fill(); }
+      if (t.k === 'rock') { c.fillStyle = '#8a94a6'; c.beginPath(); c.ellipse(t.x, y - 4, 16 * t.s, 10 * t.s, 0, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.ellipse(t.x - 3, y - 10 * t.s, 9 * t.s, 4 * t.s, 0, 0, 7); c.fill(); }
+      if (t.k === 'flag' && !t.done) { c.fillStyle = '#555'; c.fillRect(t.x - 1, y - 22, 2, 22); c.fillStyle = '#ffb020'; c.beginPath(); c.moveTo(t.x + 1, y - 22); c.lineTo(t.x + 14, y - 17); c.lineTo(t.x + 1, y - 12); c.fill(); }
+      if (t.k === 'jump') { c.fillStyle = '#cfe0f5'; c.beginPath(); c.moveTo(t.x - 34, y + 6); c.lineTo(t.x + 34, y + 6); c.lineTo(t.x + 26, y - 10); c.lineTo(t.x - 26, y - 10); c.fill(); c.fillStyle = '#7b61ff'; c.fillRect(t.x - 26, y - 12, 52, 3); }
+    }
+    // skier
+    const sy = K.H * .3, lift = air ? Math.sin((50 - air) / 50 * Math.PI) * 24 : 0;
+    if (air) { c.fillStyle = '#0001'; c.beginPath(); c.ellipse(sk.x, sy + 6, 14, 5, 0, 0, 7); c.fill(); }
+    c.save(); c.translate(sk.x, sy - lift); c.rotate(-sk.ang * .8); if (hitT % 10 > 5) c.globalAlpha = .4;
+    c.fillStyle = '#333'; c.fillRect(-8, -2, 3, 22); c.fillRect(5, -2, 3, 22);
+    c.fillStyle = '#ff4d6d'; K.rr(-8, -16, 16, 18, 5); c.fill(); K.circle(0, -21, 6, '#ffd9b8'); c.fillStyle = '#2f80ed'; c.fillRect(-6, -28, 12, 5);
+    c.restore(); c.globalAlpha = 1;
+    K.drawParts();
+    K.text(`${(score + Math.floor(dist / 10)).toLocaleString()}`, 16, 28, { size: 24, weight: 900, color: '#1d3557' });
+    K.text(`${Math.floor(dist / 10)} m · ${gates} gates${combo > 1 ? ' · ×' + Math.min(combo, 8) : ''}`, 16, 54, { size: 14, color: '#47648a' });
+    K.text('❤'.repeat(lives), 16, 80, { size: 18, color: '#ff4d6d' });
+    if (K.state === 'play' && dist < 1200) K.text('Steer through the gates. Hold ↓ to slow down.', K.W / 2, K.H - 30, { size: 14, color: '#47648a', align: 'center' });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.touch({ stick: true, b: 'Slow' });
+  K.screen({ title: 'Ski Slope', text: 'Race down the mountain. Ski between gate poles for combo points, hit ramps for big air, and miss the trees.', best: true,
+    lines: ['Steer: ← → or A D (or the stick)', 'Slow down: ↓ or X', 'Three crashes or nine missed gates ends the run'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>
