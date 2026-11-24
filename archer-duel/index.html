@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archer Duel</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'archer-duel', W: 900, H: 500, bg: '#20304a', accent: '#ffc94d', fit: 'grow' });
+  const c = K.ctx, G = .18;
+  let A, turn, arrow, wind, mode, streak, aim, drag, msg, msgT, hills, waitT, cpuLv = 1, stuck;
+  function groundY(x) { return K.H - 90 - Math.sin(x / 160 + hills[0]) * 30 - Math.sin(x / 60 + hills[1]) * 10 - Math.exp(-Math.pow((x - K.W / 2) / 90, 2)) * hills[2]; }
+  function newRound() {
+    hills = [K.rand(0, 6), K.rand(0, 6), K.rand(40, 160)];
+    const x0 = K.rand(70, 160), x1 = K.W - K.rand(70, 160);
+    A = [{ x: x0, y: groundY(x0), hp: 100, dir: 1, flash: 0 }, { x: x1, y: groundY(x1), hp: 100, dir: -1, flash: 0 }];
+    turn = 0; arrow = null; stuck = []; wind = K.rand(-.03, .03); aim = { ang: -.7, pow: 11 }; waitT = 0; say(mode === 'cpu' ? 'Your shot: drag back and let go' : 'Player 1: drag back and let go');
+  }
+  function say(t) { msg = t; msgT = 180; }
+  function fire(i, ang, pow) {
+    const a = A[i], dx = Math.cos(ang) * a.dir, dy = Math.sin(ang);
+    arrow = { x: a.x + dx * 18, y: a.y - 40 + dy * 18, vx: dx * pow, vy: dy * pow, by: i, trail: [] };
+    K.tone(700, .12, 'triangle', .07, 200);
+  }
+  function simulate(i, ang, pow) { // where would this shot land relative to the target?
+    const a = A[i], t = A[1 - i]; let x = a.x + Math.cos(ang) * a.dir * 18, y = a.y - 40 + Math.sin(ang) * 18, vx = Math.cos(ang) * a.dir * pow, vy = Math.sin(ang) * pow;
+    for (let s = 0; s < 800; s++) { vy += G; vx += wind; x += vx; y += vy; if (Math.abs(x - t.x) < 12 && y > t.y - 60 && y < t.y) return 0; if (y > groundY(x) || x < -50 || x > K.W + 50) return x - t.x; }
+    return 999;
+  }
+  function cpuShot() {
+    let best = null, bd = 1e9;
+    for (let ang = -1.3; ang < -.1; ang += .05) for (let pow = 6; pow <= 18; pow += .5) { const d = Math.abs(simulate(1, ang, pow)); if (d < bd) { bd = d; best = [ang, pow]; } }
+    const err = Math.max(.02, .16 - cpuLv * .025);
+    fire(1, best[0] + K.rand(-err, err) * .6, best[1] * (1 + K.rand(-err, err) * .5));
+  }
+  K.onDown = (p) => { if (K.state === 'play' && !arrow && (turn === 0 || mode === '2p') && waitT <= 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y }; };
+  K.onMove = (p) => { if (drag) { drag.x = p.x; drag.y = p.y; const dx = (drag.sx - p.x) * A[turn].dir, dy = drag.sy - p.y; if (Math.hypot(dx, dy) > 8) { aim.ang = K.clamp(Math.atan2(dy, Math.max(1, dx)), -1.5, .3); aim.pow = K.clamp(Math.hypot(dx, dy) / 9, 4, 19); } } };
+  K.onUp = () => { if (!drag) return; const moved = Math.hypot(drag.x - drag.sx, drag.y - drag.sy) > 20; drag = null; if (moved) fire(turn, aim.ang, aim.pow); };
+  function update() {
+    for (const a of A) a.flash = Math.max(0, a.flash - 1);
+    if (waitT > 0) { if (--waitT === 0) nextTurn(); return; }
+    const human = turn === 0 || mode === '2p';
+    if (!arrow && human) {
+      const ax = K.axis();
+      if (ax.y) aim.ang = K.clamp(aim.ang + ax.y * .02, -1.5, .3);
+      if (ax.x) aim.pow = K.clamp(aim.pow + ax.x * A[turn].dir * .12, 4, 19);
+      if (K.pressed('a')) fire(turn, aim.ang, aim.pow);
+    }
+    if (!arrow && !human && waitT === 0) { waitT = -1; setTimeout(() => { if (K.state === 'play' && !arrow) cpuShot(); waitT = 0; }, 700); }
+    if (arrow) {
+      for (let s = 0; s < 2; s++) {
+        arrow.vy += G / 2; arrow.vx += wind / 2; arrow.x += arrow.vx / 2; arrow.y += arrow.vy / 2;
+        const t = A[1 - arrow.by];
+        if (Math.abs(arrow.x - t.x) < 11 && arrow.y > t.y - 62 && arrow.y < t.y) {
+          const head = arrow.y < t.y - 44, dmg = head ? 50 : 25 + Math.floor(Math.random() * 10);
+          t.hp = Math.max(0, t.hp - dmg); t.flash = 20; K.sfx.hit(); K.shake(head ? 10 : 5); K.burst(arrow.x, arrow.y, '#ff4d4d', head ? 24 : 12, 4);
+          K.float(t.x, t.y - 80, head ? `HEADSHOT -${dmg}` : `-${dmg}`, '#ff6b6b'); stuck.push({ x: arrow.x - t.x, y: arrow.y - t.y, a: Math.atan2(arrow.vy, arrow.vx), on: 1 - arrow.by });
+          arrow = null; return land();
+        }
+        if (arrow.y > groundY(arrow.x)) { stuck.push({ x: arrow.x, y: arrow.y, a: Math.atan2(arrow.vy, arrow.vx), on: -1 }); K.noise(.05, .04); arrow = null; return land(); }
+        if (arrow.x < -100 || arrow.x > K.W + 100 || arrow.y > K.H + 50) { arrow = null; return land(); }
+      }
+      arrow.trail.push([arrow.x, arrow.y]); if (arrow.trail.length > 30) arrow.trail.shift();
+    }
+  }
+  function land() { waitT = 50; }
+  function nextTurn() {
+    const dead = A.findIndex((a) => a.hp <= 0);
+    if (dead >= 0) {
+      const win = 1 - dead;
+      if (mode === 'cpu') {
+        if (win === 0) { streak++; cpuLv++; K.sfx.win(); K.state = 'over'; K.screen({ title: 'Bullseye! You win', big: `${streak} in a row`, text: `Next rival is sharper (level ${cpuLv}).`, buttons: [{ label: 'Next duel', act: () => { newRound(); K.play(); } }, { label: 'Menu', alt: true, act: menu }] }); }
+        else { K.over({ score: streak, text: `The rival archer got you. ${streak} win${streak === 1 ? '' : 's'} in a row.`, buttons: [{ label: 'Try again', act: () => { streak = 0; cpuLv = 1; newRound(); K.play(); } }, { label: 'Menu', alt: true, act: menu }] }); }
+      } else { K.sfx.win(); K.state = 'over'; K.screen({ title: `Player ${win + 1} wins!`, buttons: [{ label: 'Rematch', act: () => { newRound(); K.play(); } }, { label: 'Menu', alt: true, act: menu }] }); }
+      return;
+    }
+    turn = 1 - turn; wind = K.clamp(wind + K.rand(-.01, .01), -.04, .04);
+    aim = { ang: -.7, pow: 11 };
+    say(mode === 'cpu' ? (turn ? 'Rival is aiming…' : 'Your shot') : `Player ${turn + 1}'s shot`);
+  }
+  function archer(a, i) {
+    const x = a.x, y = a.y, col = i ? '#e05d5d' : '#4d8cff';
+    c.save(); c.translate(x, y); c.scale(a.dir, 1);
+    if (a.flash % 6 > 3) c.globalAlpha = .5;
+    c.strokeStyle = '#2a2a2a'; c.lineWidth = 4; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, -20); c.lineTo(-7, 0); c.moveTo(0, -20); c.lineTo(7, 0); c.stroke();
+    c.fillStyle = col; K.rr(-8, -46, 16, 28, 6); c.fill();
+    K.circle(0, -54, 9, '#f2c9a0'); c.fillStyle = col; c.fillRect(-9, -64, 18, 5);
+    const ang = (turn === i && !arrow) ? aim.ang : -.3;
+    c.translate(0, -38); c.rotate(ang); c.strokeStyle = '#8a5a2b'; c.lineWidth = 3; c.beginPath(); c.arc(8, 0, 16, -1.2, 1.2); c.stroke();
+    c.strokeStyle = '#ddd'; c.lineWidth = 1; c.beginPath(); c.moveTo(8 + Math.cos(-1.2) * 16, Math.sin(-1.2) * 16); c.lineTo(8 + Math.cos(1.2) * 16 - (turn === i && drag ? aim.pow : 0), 0); c.lineTo(8 + Math.cos(1.2) * 16, Math.sin(1.2) * 16); c.stroke();
+    c.restore(); c.globalAlpha = 1;
+    // health
+    c.fillStyle = '#0006'; c.fillRect(x - 30, y - 90, 60, 7); c.fillStyle = a.hp > 30 ? '#6ee06e' : '#ff5d5d'; c.fillRect(x - 30, y - 90, 60 * a.hp / 100, 7);
+  }
+  function arrowShape(x, y, a) { c.save(); c.translate(x, y); c.rotate(a); c.strokeStyle = '#6b4a2a'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-22, 0); c.lineTo(6, 0); c.stroke(); c.fillStyle = '#ccc'; c.beginPath(); c.moveTo(10, 0); c.lineTo(3, -4); c.lineTo(3, 4); c.fill(); c.fillStyle = '#ff5d5d'; c.fillRect(-24, -3, 6, 6); c.restore(); }
+  function draw() {
+    K.begin();
+    const sky = c.createLinearGradient(0, 0, 0, K.H); sky.addColorStop(0, '#20304a'); sky.addColorStop(1, '#f2a65a'); c.fillStyle = sky; c.fillRect(0, 0, K.W, K.H);
+    K.circle(K.W * .7, K.H - 160, 50, '#ffd28a88');
+    c.fillStyle = '#3b5d3a'; c.beginPath(); c.moveTo(0, K.H); for (let x = 0; x <= K.W; x += 10) c.lineTo(x, groundY(x)); c.lineTo(K.W, K.H); c.fill();
+    c.fillStyle = '#4f7a46'; c.beginPath(); c.moveTo(0, K.H); for (let x = 0; x <= K.W; x += 10) c.lineTo(x, groundY(x) + 8); c.lineTo(K.W, K.H); c.fill();
+    for (const s of stuck) { if (s.on < 0) arrowShape(s.x, s.y, s.a); else arrowShape(A[s.on].x + s.x, A[s.on].y + s.y, s.a); }
+    A.forEach(archer);
+    // preview dots for the human
+    if (!arrow && (turn === 0 || mode === '2p') && K.state === 'play' && waitT <= 0) {
+      const a = A[turn]; let x = a.x + Math.cos(aim.ang) * a.dir * 18, y = a.y - 40 + Math.sin(aim.ang) * 18, vx = Math.cos(aim.ang) * a.dir * aim.pow, vy = Math.sin(aim.ang) * aim.pow;
+      for (let s = 0; s < 22; s++) { vy += G; vx += wind; x += vx; y += vy; if (s % 2) K.circle(x, y, 2.5, '#ffffffaa'); }
+    }
+    if (arrow) { c.strokeStyle = '#ffffff33'; c.lineWidth = 1; c.beginPath(); arrow.trail.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); arrowShape(arrow.x, arrow.y, Math.atan2(arrow.vy, arrow.vx)); }
+    K.drawParts();
+    // wind
+    K.text(`Wind ${wind > 0 ? '→' : '←'} ${Math.abs(wind * 100).toFixed(1)}`, K.W / 2, 26, { size: 16, weight: 800, align: 'center' });
+    c.fillStyle = '#fff'; c.fillRect(K.W / 2, 40, wind * 1500, 4);
+    if (msgT-- > 0) K.text(msg, K.W / 2, 70, { size: 18, align: 'center', color: '#ffe3a3', weight: 800 });
+    if (mode === 'cpu') K.text(`Streak ${streak}  ·  rival level ${cpuLv}`, 16, 26, { size: 14, color: '#cdd' });
+    if (!arrow && (turn === 0 || mode === '2p')) K.text(`Power ${Math.round(aim.pow / 19 * 100)}%  ·  angle ${Math.round(-aim.ang * 57)}°`, 16, 50, { size: 13, color: '#cdd' });
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Archer Duel', text: 'Take turns firing arrows across the hills. Watch the wind. A headshot does double damage.', best: true,
+      lines: ['Drag back from anywhere and let go to shoot', 'Keys: ↑↓ angle, ←→ power, Space fires', 'The dotted line only shows the start of the arc'],
+      buttons: [{ label: 'Vs CPU', act: () => { mode = 'cpu'; streak = 0; cpuLv = 1; newRound(); K.play(); } }, { label: '2 players', alt: true, act: () => { mode = '2p'; newRound(); K.play(); } }] });
+  }
+  K.fmtBest = (n) => `${n} win streak`;
+  K.onQuit = menu;
+  mode = 'cpu'; streak = 0; newRound(); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

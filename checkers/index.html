@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkers</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'checkers', W: 480, H: 720, bg: '#1d1410', accent: '#e94f37' });
+  const c = K.ctx, N = 8, S = 56, OX = 16, OY = 150;
+  // pieces: 1 red man, 2 red king (player 1, moves up), -1 black man, -2 black king (player 2 / CPU, moves down)
+  let B, side, sel, moves, mode, diff, chain, last, thinking, anim, cur;
+  function reset() {
+    B = Array.from({ length: N }, (_, y) => Array.from({ length: N }, (_, x) => ((x + y) % 2 === 1 ? (y < 3 ? -1 : y > 4 ? 1 : 0) : 0)));
+    side = 1; sel = null; chain = null; last = null; thinking = false; anim = null; cur = { x: 1, y: 5 }; moves = legal(B, side);
+  }
+  const own = (v, s) => v && Math.sign(v) === s;
+  function pieceMoves(b, x, y, onlyJumps) {
+    const v = b[y][x], s = Math.sign(v), out = [], dirs = Math.abs(v) === 2 ? [[1, 1], [-1, 1], [1, -1], [-1, -1]] : [[1, -s], [-1, -s]];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      if (!b[ny][nx]) { if (!onlyJumps) out.push({ fx: x, fy: y, tx: nx, ty: ny }); }
+      else if (Math.sign(b[ny][nx]) === -s) { const jx = nx + dx, jy = ny + dy; if (jx >= 0 && jy >= 0 && jx < N && jy < N && !b[jy][jx]) out.push({ fx: x, fy: y, tx: jx, ty: jy, cx: nx, cy: ny }); }
+    }
+    return out;
+  }
+  function legal(b, s, only) {
+    let all = [];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (own(b[y][x], s) && (!only || (only.x === x && only.y === y))) all.push(...pieceMoves(b, x, y, !!only));
+    const jumps = all.filter((m) => m.cx != null);
+    return jumps.length ? jumps : only ? [] : all;
+  }
+  function apply(b, m) {
+    const v = b[m.fy][m.fx]; b[m.fy][m.fx] = 0; b[m.ty][m.tx] = v; let crowned = false;
+    if (m.cx != null) b[m.cy][m.cx] = 0;
+    if (Math.abs(v) === 1 && (m.ty === 0 && v > 0 || m.ty === N - 1 && v < 0)) { b[m.ty][m.tx] = v * 2; crowned = true; }
+    return crowned;
+  }
+  // full turn sequences (multi-jumps) for the AI
+  function turns(b, s) {
+    const res = [];
+    const rec = (bb, list, path) => {
+      for (const m of list) {
+        const nb = bb.map((r) => r.slice()); const crowned = apply(nb, m);
+        const more = m.cx != null && !crowned ? legal(nb, s, { x: m.tx, y: m.ty }) : [];
+        if (more.length) rec(nb, more, [...path, m]); else res.push({ b: nb, path: [...path, m] });
+      }
+    };
+    rec(b, legal(b, s), []);
+    return res;
+  }
+  function evalB(b) { let s = 0; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const v = b[y][x]; if (!v) continue; const base = Math.abs(v) === 2 ? 3 : 1 + (v > 0 ? (N - 1 - y) : y) * .04; s += Math.sign(v) * (base + (x > 1 && x < 6 && y > 1 && y < 6 ? .05 : 0)); } return s; }
+  function search(b, s, depth, a, be) {
+    const ts = turns(b, s); if (!ts.length) return { v: -s * 1000 };
+    if (depth === 0) return { v: evalB(b) };
+    let best = null;
+    for (const t of ts) {
+      const r = search(t.b, -s, depth - 1, a, be).v;
+      if (!best || (s > 0 ? r > best.v : r < best.v)) best = { v: r, t };
+      if (s > 0) a = Math.max(a, r); else be = Math.min(be, r); if (be <= a) break;
+    }
+    return best;
+  }
+  function cpuTurn() {
+    thinking = true;
+    setTimeout(() => {
+      const ts = turns(B, -1); if (!ts.length) return;
+      let t;
+      if (diff === 0 && Math.random() < .5) t = K.pick(ts);
+      else t = search(B, -1, diff === 0 ? 2 : diff === 1 ? 4 : 5, -1e9, 1e9).t || K.pick(ts);
+      let i = 0;
+      const stepIt = () => { const m = t.path[i++]; doMove(m, true); if (i < t.path.length) setTimeout(stepIt, 350); else { thinking = false; endTurn(); } };
+      stepIt();
+    }, 400);
+  }
+  function doMove(m, cpu) {
+    const crowned = apply(B, m); last = m; anim = { ...m, t: 0 };
+    if (m.cx != null) { K.sfx.hit(); K.burst(OX + m.cx * S + S / 2, OY + m.cy * S + S / 2, '#fff', 10, 3); } else K.tone(300, .05, 'triangle', .07);
+    if (crowned) { K.sfx.good(); K.float(OX + m.tx * S + S / 2, OY + m.ty * S, 'King!', '#ffd166'); }
+    return crowned;
+  }
+  function endTurn() {
+    side = -side; sel = null; chain = null; moves = legal(B, side);
+    if (!moves.length) {
+      const win = -side; K.state = 'over';
+      const t = mode === 'cpu' ? (win === 1 ? 'You win!' : 'CPU wins') : `${win === 1 ? 'Red' : 'Black'} wins!`;
+      if (mode === 'cpu' && win === 1) { K.sfx.win(); const n = K.store.get('checkers:wins', 0) + 1; K.store.set('checkers:wins', n); K.submit(n); } else K.sfx.bad();
+      setTimeout(() => K.screen({ title: t, text: mode === 'cpu' ? `Wins against the CPU: ${K.store.get('checkers:wins', 0)}` : '', buttons: [{ label: 'Play again', act: () => { reset(); K.play(); } }, { label: 'Menu', alt: true, act: menu }] }), 700);
+      return;
+    }
+    if (mode === 'cpu' && side === -1) cpuTurn();
+  }
+  function clickCell(x, y) {
+    if (K.state !== 'play' || thinking || (mode === 'cpu' && side === -1)) return;
+    const mv = moves.find((m) => sel && m.fx === sel.x && m.fy === sel.y && m.tx === x && m.ty === y);
+    if (mv) {
+      const crowned = doMove(mv);
+      if (mv.cx != null && !crowned) { const more = legal(B, side, { x, y }); if (more.length) { chain = { x, y }; sel = { x, y }; moves = more; return; } }
+      return endTurn();
+    }
+    if (chain) return;
+    if (own(B[y]?.[x], side) && moves.some((m) => m.fx === x && m.fy === y)) { sel = { x, y }; K.sfx.blip(); }
+    else if (own(B[y]?.[x], side)) { K.float(OX + x * S + S / 2, OY + y * S, moves[0]?.cx != null ? 'You must jump!' : 'Can\'t move', '#ff8a65'); }
+  }
+  K.onDown = (p) => { const x = Math.floor((p.x - OX) / S), y = Math.floor((p.y - OY) / S); if (x >= 0 && y >= 0 && x < N && y < N) { cur = { x, y }; clickCell(x, y); } };
+  function update() {
+    const dx = K.pressed('right') - K.pressed('left'), dy = K.pressed('down') - K.pressed('up');
+    if (dx || dy) { cur.x = K.clamp(cur.x + dx, 0, N - 1); cur.y = K.clamp(cur.y + dy, 0, N - 1); cur.kb = true; }
+    if (K.pressed('a')) clickCell(cur.x, cur.y);
+    if (anim) { anim.t += .2; if (anim.t >= 1) anim = null; }
+  }
+  function piece(x, y, v) {
+    const cx = OX + x * S + S / 2, cy = OY + y * S + S / 2, red = v > 0;
+    K.circle(cx + 2, cy + 4, S * .38, '#0006'); K.circle(cx, cy, S * .38, red ? '#c0392b' : '#2b2b2b'); K.circle(cx, cy, S * .3, red ? '#e94f37' : '#454545');
+    c.strokeStyle = red ? '#ff8a72' : '#666'; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, S * .22, 0, 7); c.stroke();
+    if (Math.abs(v) === 2) K.text('♛', cx, cy + 1, { size: 22, align: 'center', color: '#ffd166' });
+  }
+  function draw() {
+    K.begin('#1d1410');
+    const who = side === 1 ? (mode === 'cpu' ? 'Your move (red)' : 'Red to move') : mode === 'cpu' ? 'CPU is thinking…' : 'Black to move';
+    K.text('Checkers', 16, 40, { size: 30, weight: 900, color: '#e94f37' });
+    K.text(who, 16, 80, { size: 18, weight: 700, color: '#f2d7c0' });
+    let r = 0, k = 0; for (const row of B) for (const v of row) { if (v > 0) r++; if (v < 0) k++; }
+    K.text(`Red ${r} · Black ${k}`, K.W - 16, 80, { size: 15, color: '#bba08a', align: 'right' });
+    c.fillStyle = '#5c3a21'; K.rr(OX - 8, OY - 8, N * S + 16, N * S + 16, 10); c.fill();
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      c.fillStyle = (x + y) % 2 ? '#7a4f2e' : '#e8cfa7'; c.fillRect(OX + x * S, OY + y * S, S, S);
+      if (last && ((last.fx === x && last.fy === y) || (last.tx === x && last.ty === y))) { c.fillStyle = '#ffd16633'; c.fillRect(OX + x * S, OY + y * S, S, S); }
+    }
+    if (side === 1 || mode === '2p') {
+      if (!sel) for (const m of moves) { if (m.cx != null) { c.strokeStyle = '#ffd166'; c.lineWidth = 3; c.strokeRect(OX + m.fx * S + 3, OY + m.fy * S + 3, S - 6, S - 6); } }
+      if (sel) { c.strokeStyle = '#fff'; c.lineWidth = 3; c.strokeRect(OX + sel.x * S + 2, OY + sel.y * S + 2, S - 4, S - 4); for (const m of moves) if (m.fx === sel.x && m.fy === sel.y) K.circle(OX + m.tx * S + S / 2, OY + m.ty * S + S / 2, 9, '#ffffffaa'); }
+    }
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (B[y][x] && !(anim && anim.tx === x && anim.ty === y)) piece(x, y, B[y][x]);
+    if (anim) { const t = anim.t; c.save(); piece(anim.fx + (anim.tx - anim.fx) * t, anim.fy + (anim.ty - anim.fy) * t, B[anim.ty][anim.tx]); c.restore(); }
+    if (cur.kb) { c.strokeStyle = '#4cc9f0'; c.lineWidth = 3; c.strokeRect(OX + cur.x * S + 4, OY + cur.y * S + 4, S - 8, S - 8); }
+    K.drawParts();
+    K.text('Jumps are compulsory · reach the far side to crown a king', K.W / 2, OY + N * S + 36, { size: 13, color: '#bba08a', align: 'center' });
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Checkers', text: 'The classic board game. Move diagonally, jump to capture, and chain jumps together. If you can jump, you must.', best: true,
+      lines: ['Tap a piece, then tap where it goes', 'Keyboard: arrows + Space'],
+      buttons: [{ label: 'Easy CPU', act: () => start('cpu', 0) }, { label: 'Normal CPU', act: () => start('cpu', 1) }, { label: 'Hard CPU', act: () => start('cpu', 2) }, { label: '2 players', alt: true, act: () => start('2p', 0) }] });
+  }
+  function start(m, d) { mode = m; diff = d; reset(); K.play(); }
+  K.fmtBest = (n) => `${n} wins vs CPU`;
+  K.onQuit = menu;
+  mode = 'cpu'; reset(); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

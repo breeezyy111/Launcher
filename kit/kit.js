@@ -157,6 +157,7 @@
   addEventListener('blur', () => { keys.clear(); if (K.state === 'play') K.pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && K.state === 'play') K.pause(); });
   const touchBtn = { a: false, b: false }; const stick = { x: 0, y: 0 }; const stick2 = { x: 0, y: 0, on: false };
+  K.stick = stick;
   let padPrev = [];
   function pollPads() {
     const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
@@ -178,11 +179,14 @@
     if (n === 'b') return keys.has('@b') || touchBtn.b || K.pad.b;
     const ax = K.axis();
     if (n === 'left') return ax.x < -.4; if (n === 'right') return ax.x > .4; if (n === 'up') return ax.y < -.4; if (n === 'down') return ax.y > .4;
-    return keys.has(n);
+    return false;
   };
-  K.held = (n) => now.has(n);
-  K.pressed = (n) => now.has(n) && !prev.has(n);
-  K.released = (n) => !now.has(n) && prev.has(n);
+  // Logical names (a, b, left, right, up, down) or any raw key name ('ArrowLeft', 'q', ' ').
+  const LOGICAL = new Set(['a', 'b', 'left', 'right', 'up', 'down']);
+  const nm = (n) => (LOGICAL.has(n) ? n : 'k:' + n);
+  K.held = (n) => now.has(nm(n));
+  K.pressed = (n) => now.has(nm(n)) && !prev.has(nm(n));
+  K.released = (n) => !now.has(nm(n)) && prev.has(nm(n));
   K.axis = () => {
     let x = (keys.has('@right') ? 1 : 0) - (keys.has('@left') ? 1 : 0), y = (keys.has('@down') ? 1 : 0) - (keys.has('@up') ? 1 : 0);
     if (K.pad.x) x = K.pad.x; if (K.pad.y) y = K.pad.y;
@@ -195,7 +199,7 @@
   function sampleInput() {
     pollPads(); prev = now; now = new Set();
     for (const n of ['a', 'b', 'left', 'right', 'up', 'down']) if (held(n)) now.add(n);
-    for (const k of keys) now.add(k);
+    for (const k of keys) if (k[0] !== '@') now.add('k:' + k);
   }
   // Pointer events in field coords: K.onDown/onMove/onUp = (p, e) => {}
   let pointerDown = false;

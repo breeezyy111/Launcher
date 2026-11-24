@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Box Claim</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'box-claim', W: 480, H: 720, bg: '#fbf7ef', accent: '#ff6b5b' });
+  const c = K.ctx, COL = ['#ff6b5b', '#3a86ff'];
+  let N, S, OX, OY, H, V, owner, turn, score, mode, busy, lastLine, hover;
+  // H[y][x]: line from dot (x,y) to (x+1,y); V[y][x]: from (x,y) to (x,y+1). Value: 0 none, 1/2 player.
+  function reset(n) {
+    N = n; S = Math.floor(400 / N); OX = (K.W - S * N) / 2; OY = 190;
+    H = Array.from({ length: N + 1 }, () => Array(N).fill(0)); V = Array.from({ length: N }, () => Array(N + 1).fill(0));
+    owner = Array.from({ length: N }, () => Array(N).fill(0)); turn = 0; score = [0, 0]; busy = false; lastLine = null;
+  }
+  const sides = (x, y) => (H[y][x] ? 1 : 0) + (H[y + 1][x] ? 1 : 0) + (V[y][x] ? 1 : 0) + (V[y][x + 1] ? 1 : 0);
+  const boxesOf = (l) => (l.h ? [[l.x, l.y - 1], [l.x, l.y]] : [[l.x - 1, l.y], [l.x, l.y]]).filter(([x, y]) => x >= 0 && y >= 0 && x < N && y < N);
+  function allFree() { const out = []; for (let y = 0; y <= N; y++) for (let x = 0; x < N; x++) if (!H[y][x]) out.push({ h: true, x, y }); for (let y = 0; y < N; y++) for (let x = 0; x <= N; x++) if (!V[y][x]) out.push({ h: false, x, y }); return out; }
+  function play(l) {
+    if (l.h) H[l.y][l.x] = turn + 1; else V[l.y][l.x] = turn + 1; lastLine = l;
+    let got = 0;
+    for (const [x, y] of boxesOf(l)) if (sides(x, y) === 4 && !owner[y][x]) { owner[y][x] = turn + 1; got++; K.burst(OX + (x + .5) * S, OY + (y + .5) * S, COL[turn], 12, 3); }
+    if (got) { score[turn] += got; K.tone(520 + score[turn] * 20, .1, 'triangle', .08); } else { turn = 1 - turn; K.tone(300, .04, 'square', .04); }
+    if (score[0] + score[1] === N * N) {
+      K.state = 'over'; const w = score[0] > score[1] ? 0 : score[1] > score[0] ? 1 : -1;
+      const t = w < 0 ? 'Draw!' : mode === 'cpu' ? (w === 0 ? 'You win!' : 'CPU wins') : `${w ? 'Blue' : 'Red'} wins!`;
+      if (mode === 'cpu' && w === 0) { K.sfx.win(); const n = K.store.get('box-claim:wins', 0) + 1; K.store.set('box-claim:wins', n); K.submit(n); }
+      setTimeout(() => K.screen({ title: t, big: `${score[0]} – ${score[1]}`, buttons: [{ label: 'Play again', act: () => { reset(N); K.play(); } }, { label: 'Menu', alt: true, act: menu }] }), 600);
+      return;
+    }
+    if (mode === 'cpu' && turn === 1) { busy = true; setTimeout(cpu, 450); }
+  }
+  function cpu() {
+    if (K.state !== 'play') { busy = false; return; }
+    const free = allFree();
+    const gives = (l) => boxesOf(l).some(([x, y]) => sides(x, y) === 2);
+    const takes = free.filter((l) => boxesOf(l).some(([x, y]) => sides(x, y) === 3));
+    let pick = takes[0] || K.pick(free.filter((l) => !gives(l)));
+    if (!pick) { // every move gives something away: give the smallest chain
+      let best = null, bc = 1e9;
+      for (const l of K.shuffle(free.slice())) { const n = chainSize(l); if (n < bc) { bc = n; best = l; } }
+      pick = best;
+    }
+    busy = false; play(pick);
+  }
+  function chainSize(l) { // boxes the opponent could grab after this line
+    const sh = H.map((r) => r.slice()), sv = V.map((r) => r.slice());
+    if (l.h) H[l.y][l.x] = 9; else V[l.y][l.x] = 9;
+    let n = 0, again = true;
+    while (again) { again = false; for (const f of allFree()) if (boxesOf(f).some(([x, y]) => sides(x, y) === 3)) { if (f.h) H[f.y][f.x] = 9; else V[f.y][f.x] = 9; n++; again = true; break; } }
+    H = sh; V = sv; return n;
+  }
+  function nearest(p) {
+    let best = null, bd = S * .4;
+    for (const l of allFree()) { const mx = OX + (l.x + (l.h ? .5 : 0)) * S, my = OY + (l.y + (l.h ? 0 : .5)) * S, d = Math.hypot(p.x - mx, p.y - my); if (d < bd) { bd = d; best = l; } }
+    return best;
+  }
+  K.onDown = (p) => { if (K.state !== 'play' || busy || (mode === 'cpu' && turn === 1)) return; const l = nearest(p); if (l) play(l); };
+  K.onMove = (p) => { hover = K.state === 'play' ? nearest(p) : null; };
+  let kb = { h: true, x: 0, y: 0 };
+  function update() {
+    if (busy || (mode === 'cpu' && turn === 1)) return;
+    if (K.pressed('right')) kb.x++; if (K.pressed('left')) kb.x--; if (K.pressed('down')) kb.y++; if (K.pressed('up')) kb.y--;
+    if (K.pressed('b')) kb.h = !kb.h;
+    if (K.pressed('right') || K.pressed('left') || K.pressed('up') || K.pressed('down') || K.pressed('b')) { kb.x = K.clamp(kb.x, 0, kb.h ? N - 1 : N); kb.y = K.clamp(kb.y, 0, kb.h ? N : N - 1); hover = { ...kb }; }
+    if (K.pressed('a') && hover) { const taken = hover.h ? H[hover.y]?.[hover.x] : V[hover.y]?.[hover.x]; if (taken === 0) play({ ...hover }); }
+  }
+  function draw() {
+    K.begin('#fbf7ef');
+    K.text('Box Claim', 20, 40, { size: 30, weight: 900, color: '#2b2d42' });
+    const n0 = mode === 'cpu' ? 'You' : 'Red', n1 = mode === 'cpu' ? 'CPU' : 'Blue';
+    [0, 1].forEach((i) => { const x = i ? K.W - 20 : 20; c.fillStyle = turn === i ? COL[i] : '#e9e3d6'; K.rr(i ? x - 190 : x, 70, 190, 70, 16); c.fill(); K.text(`${i ? n1 : n0}`, i ? x - 170 : x + 20, 92, { size: 16, weight: 800, color: turn === i ? '#fff' : '#555' }); K.text(String(score[i]), i ? x - 20 : x + 170, 108, { size: 34, weight: 900, color: turn === i ? '#fff' : '#555', align: 'right' }); });
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (owner[y][x]) { c.fillStyle = COL[owner[y][x] - 1] + '44'; c.fillRect(OX + x * S + 3, OY + y * S + 3, S - 6, S - 6); K.text(owner[y][x] === 1 ? (mode === 'cpu' ? '★' : 'R') : (mode === 'cpu' ? '●' : 'B'), OX + (x + .5) * S, OY + (y + .5) * S, { size: S * .35, align: 'center', color: COL[owner[y][x] - 1], weight: 900 }); }
+    c.lineCap = 'round';
+    const line = (l, col, w) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(OX + l.x * S, OY + l.y * S); c.lineTo(OX + (l.x + (l.h ? 1 : 0)) * S, OY + (l.y + (l.h ? 0 : 1)) * S); c.stroke(); };
+    for (let y = 0; y <= N; y++) for (let x = 0; x < N; x++) if (H[y][x]) line({ h: true, x, y }, COL[H[y][x] - 1], 6);
+    for (let y = 0; y < N; y++) for (let x = 0; x <= N; x++) if (V[y][x]) line({ h: false, x, y }, COL[V[y][x] - 1], 6);
+    if (hover && K.state === 'play' && !(hover.h ? H[hover.y]?.[hover.x] : V[hover.y]?.[hover.x])) line(hover, COL[turn] + '66', 6);
+    if (lastLine) { const l = lastLine; K.circle(OX + (l.x + (l.h ? .5 : 0)) * S, OY + (l.y + (l.h ? 0 : .5)) * S, 4, '#fff'); }
+    for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) K.circle(OX + x * S, OY + y * S, 6, '#2b2d42');
+    K.drawParts();
+    K.text('Draw lines between dots. Close a box to claim it and go again.', K.W / 2, OY + N * S + 40, { size: 13, color: '#6c6f80', align: 'center' });
+    if (!K.isTouch) K.text('Keys: arrows move, X switches across/down, Space draws', K.W / 2, OY + N * S + 62, { size: 12, color: '#9a9cab', align: 'center' });
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Box Claim', text: 'Take turns drawing a line between two dots. Finish the fourth side of a box to claim it and take another turn. Most boxes wins.', best: true,
+      buttons: [{ label: 'Vs CPU', act: () => { mode = 'cpu'; reset(5); K.play(); } }, { label: 'Vs CPU (big board)', act: () => { mode = 'cpu'; reset(7); K.play(); } }, { label: '2 players', alt: true, act: () => { mode = '2p'; reset(5); K.play(); } }] });
+  }
+  K.fmtBest = (n) => `${n} wins vs CPU`;
+  K.onQuit = menu;
+  mode = 'cpu'; reset(5); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

@@ -1076,6 +1076,204 @@
       "status": "live",
       "embed": true,
       "added": "2026-11-24"
+    },
+    {
+      "id": "hex-arena",
+      "name": "Hex Arena",
+      "description": "Twin-stick survival: move with one hand, shoot with the other, and outlast waves of geometric enemies while building a score multiplier.",
+      "url": "hex-arena/",
+      "icon": "icons/hex-arena.svg",
+      "color": "#5cffb0",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "twin stick",
+        "shooter",
+        "survival",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "archer-duel",
+      "name": "Archer Duel",
+      "description": "Take turns firing arrows across the hills. Read the wind, aim the arc, and land a headshot. Play a CPU that gets sharper, or a friend.",
+      "url": "archer-duel/",
+      "icon": "icons/archer-duel.svg",
+      "color": "#ffc94d",
+      "category": "Games",
+      "genre": "Action",
+      "tags": [
+        "archery",
+        "turn based",
+        "2 player",
+        "versus",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "deep-cast",
+      "name": "Deep Cast",
+      "description": "Drop a hook, steer it into fish, dodge the jellyfish, and sell your catch. Upgrade your line to reach rare glowing fish in the deep.",
+      "url": "deep-cast/",
+      "icon": "icons/deep-cast.svg",
+      "color": "#46e0c8",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "fishing",
+        "upgrades",
+        "relaxing",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "mole-mayhem",
+      "name": "Mole Mayhem",
+      "description": "Sixty seconds to bonk as many moles as you can. Golden moles add time, helmet moles take two hits, and never hit the bombs.",
+      "url": "mole-mayhem/",
+      "icon": "icons/mole-mayhem.svg",
+      "color": "#ff8c42",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "whack",
+        "reflex",
+        "timed",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "echo-pads",
+      "name": "Echo Pads",
+      "description": "Watch the pads play a tune, then play it back. More pads join as you go, and every fifth round you have to play it backwards.",
+      "url": "echo-pads/",
+      "icon": "icons/echo-pads.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Casual",
+      "tags": [
+        "memory",
+        "music",
+        "sequence",
+        "casual",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "checkers",
+      "name": "Checkers",
+      "description": "The classic board game with compulsory jumps, multi-jump chains and kings. Three CPU levels, or two players on one screen.",
+      "url": "checkers/",
+      "icon": "icons/checkers.svg",
+      "color": "#e94f37",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "board game",
+        "classic",
+        "2 player",
+        "strategy",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "box-claim",
+      "name": "Box Claim",
+      "description": "Take turns drawing lines between dots. Close a box to claim it and go again. Beat a CPU that won't hand you easy boxes, or a friend.",
+      "url": "box-claim/",
+      "icon": "icons/box-claim.svg",
+      "color": "#ff6b5b",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "dots",
+        "pen and paper",
+        "2 player",
+        "strategy",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "solitaire",
+      "name": "Solitaire",
+      "description": "Classic patience: build each suit from Ace to King. Tap a card to send it where it fits, drag stacks, undo freely. Draw 1 or Draw 3.",
+      "url": "solitaire/",
+      "icon": "icons/solitaire.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Board & Party",
+      "tags": [
+        "cards",
+        "patience",
+        "classic",
+        "solo",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "hoop-shot",
+      "name": "Hoop Shot",
+      "description": "Sixty seconds to flick as many baskets as you can. Swishes score more, streaks add time, and the hoop starts moving as you get good.",
+      "url": "hoop-shot/",
+      "icon": "icons/hoop-shot.svg",
+      "color": "#ff8a3d",
+      "category": "Games",
+      "genre": "Sports",
+      "tags": [
+        "basketball",
+        "flick",
+        "timed",
+        "sports",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
+    },
+    {
+      "id": "pin-strike",
+      "name": "Pin Strike",
+      "description": "Ten frames of bowling with real strike and spare scoring. Line up, swipe to roll, and bend your swipe to hook the ball into the pocket.",
+      "url": "pin-strike/",
+      "icon": "icons/pin-strike.svg",
+      "color": "#ffd166",
+      "category": "Games",
+      "genre": "Sports",
+      "tags": [
+        "bowling",
+        "sports",
+        "swipe",
+        "game"
+      ],
+      "status": "live",
+      "embed": true,
+      "added": "2026-11-24"
     }
   ]
 }

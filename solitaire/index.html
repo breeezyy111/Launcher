@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Solitaire</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'solitaire', W: 500, H: 780, bg: '#0f5132', accent: '#ffd166' });
+  const c = K.ctx, CW = 64, CH = 90, GAP = 6, OX = (500 - 7 * CW - 6 * GAP) / 2, TOP = 70, TAB = 190;
+  const SUITS = ['♠', '♥', '♦', '♣'], RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  let stock, waste, found, tab, drawN, hist, moves, startT, drag, won, autoT;
+  const red = (cd) => cd.s === 1 || cd.s === 2;
+  function deal() {
+    const deck = []; for (let s = 0; s < 4; s++) for (let r = 0; r < 13; r++) deck.push({ s, r, up: false });
+    K.shuffle(deck);
+    tab = Array.from({ length: 7 }, (_, i) => deck.splice(0, i + 1)); tab.forEach((col) => (col[col.length - 1].up = true));
+    stock = deck; waste = []; found = [[], [], [], []]; hist = []; moves = 0; startT = performance.now(); won = false; drag = null; autoT = 0;
+  }
+  const snap = () => JSON.stringify({ stock, waste, found, tab });
+  function save() { hist.push(snap()); if (hist.length > 200) hist.shift(); }
+  function undo() { const h = hist.pop(); if (!h) return; ({ stock, waste, found, tab } = JSON.parse(h)); moves++; K.sfx.blip(); }
+  function draw3() {
+    save();
+    if (!stock.length) { stock = waste.reverse().map((cd) => ({ ...cd, up: false })); waste = []; }
+    else for (let i = 0; i < drawN && stock.length; i++) { const cd = stock.pop(); cd.up = true; waste.push(cd); }
+    moves++; K.tone(400, .03, 'square', .03);
+  }
+  const canFound = (cd, f) => (f.length ? f[f.length - 1].s === cd.s && f[f.length - 1].r === cd.r - 1 : cd.r === 0);
+  const canTab = (cd, col) => (col.length ? col[col.length - 1].up && red(col[col.length - 1]) !== red(cd) && col[col.length - 1].r === cd.r + 1 : cd.r === 12);
+  // src: {kind:'waste'|'tab'|'found', i, idx}
+  function cardsFrom(src) { if (src.kind === 'waste') return [waste[waste.length - 1]]; if (src.kind === 'found') return [found[src.i][found[src.i].length - 1]]; return tab[src.i].slice(src.idx); }
+  function remove(src) { if (src.kind === 'waste') waste.pop(); else if (src.kind === 'found') found[src.i].pop(); else { tab[src.i].splice(src.idx); const col = tab[src.i]; if (col.length && !col[col.length - 1].up) col[col.length - 1].up = true; } }
+  function tryMove(src, dest) {
+    const cards = cardsFrom(src); if (!cards.length || !cards[0]) return false;
+    if (dest.kind === 'found') { if (cards.length !== 1 || !canFound(cards[0], found[dest.i])) return false; save(); remove(src); found[dest.i].push(cards[0]); }
+    else { if (dest.kind === 'tab' && src.kind === 'tab' && src.i === dest.i) return false; if (!canTab(cards[0], tab[dest.i])) return false; save(); remove(src); tab[dest.i].push(...cards); }
+    moves++; K.tone(dest.kind === 'found' ? 700 : 500, .05, 'triangle', .07);
+    checkWin(); return true;
+  }
+  function autoMove(src) {
+    const cards = cardsFrom(src);
+    if (cards.length === 1) for (let i = 0; i < 4; i++) if (tryMove(src, { kind: 'found', i })) return true;
+    for (let i = 0; i < 7; i++) if (tryMove(src, { kind: 'tab', i })) return true;
+    return false;
+  }
+  function checkWin() {
+    if (found.every((f) => f.length === 13) && !won) {
+      won = true; K.sfx.win(); const t = Math.round((performance.now() - startT) / 1000);
+      const n = K.store.get('solitaire:wins', 0) + 1; K.store.set('solitaire:wins', n); K.submit(n);
+      for (let i = 0; i < 60; i++) setTimeout(() => K.burst(K.rand(0, K.W), K.rand(0, K.H / 2), K.pick(['#ffd166', '#ff6b6b', '#4cc9f0', '#fff']), 10, 5), i * 30);
+      setTimeout(() => { K.state = 'over'; K.screen({ title: 'You won!', big: `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, text: `${moves} moves · games won: ${n}`, buttons: [{ label: 'New game', act: () => { deal(); K.play(); } }, { label: 'Menu', alt: true, act: menu }] }); }, 1500);
+    }
+  }
+  const allUp = () => !stock.length && !waste.length && tab.every((col) => col.every((cd) => cd.up));
+  // layout
+  const fanY = (col, i) => { let y = TAB; const step = Math.min(26, (K.H - TAB - CH - 20) / Math.max(1, col.length)); for (let j = 0; j < i; j++) y += col[j].up ? step : Math.min(12, step); return y; };
+  const colX = (i) => OX + i * (CW + GAP);
+  function hit(p) {
+    if (p.y > TOP && p.y < TOP + CH) {
+      if (p.x > colX(0) && p.x < colX(0) + CW) return { kind: 'stock' };
+      if (p.x > colX(1) && p.x < colX(1) + CW + (drawN === 3 ? 30 : 0) && waste.length) return { kind: 'waste' };
+      for (let i = 0; i < 4; i++) if (p.x > colX(3 + i) && p.x < colX(3 + i) + CW) return { kind: 'found', i };
+    }
+    for (let i = 0; i < 7; i++) {
+      if (p.x < colX(i) || p.x > colX(i) + CW) continue; const col = tab[i];
+      for (let j = col.length - 1; j >= 0; j--) if (p.y > fanY(col, j) && p.y < fanY(col, j) + CH) return col[j].up ? { kind: 'tab', i, idx: j } : null;
+      if (!col.length && p.y > TAB && p.y < TAB + CH) return { kind: 'tabEmpty', i };
+    }
+    return null;
+  }
+  K.onDown = (p) => {
+    if (K.state !== 'play' || won) return;
+    if (p.y < 60 && p.x < 140) return undo();
+    const h = hit(p); if (!h) return;
+    if (h.kind === 'stock') return draw3();
+    if (h.kind === 'found' && !found[h.i].length) return;
+    if (h.kind === 'tabEmpty') return;
+    drag = { src: h, cards: cardsFrom(h), sx: p.x, sy: p.y, x: p.x, y: p.y, ox: 0, oy: 0 };
+  };
+  K.onMove = (p) => { if (drag) { drag.x = p.x; drag.y = p.y; } };
+  K.onUp = (p) => {
+    if (!drag) return; const d = drag; drag = null;
+    if (Math.hypot(p.x - d.sx, p.y - d.sy) < 10) { if (!autoMove(d.src)) K.tone(150, .05, 'square', .03); return; }
+    // drop on whichever pile is under the dragged card's centre
+    const cx = p.x, cy = p.y;
+    if (cy < TOP + CH + 20) for (let i = 0; i < 4; i++) if (Math.abs(cx - colX(3 + i) - CW / 2) < CW * .7 && tryMove(d.src, { kind: 'found', i })) return;
+    for (let i = 0; i < 7; i++) if (Math.abs(cx - colX(i) - CW / 2) < CW * .7 && tryMove(d.src, { kind: 'tab', i })) return;
+    K.tone(150, .05, 'square', .03);
+  };
+  K.onKey = (k) => { if (K.state !== 'play') return; if (k === 'z' || k === 'Z' || k === 'u' || k === 'U') undo(); if (k === 'd' || k === 'D' || k === ' ') draw3(); if (k === 'a' || k === 'A') autoFinish(); };
+  function autoFinish() { // send everything possible to the foundations
+    let any = true; while (any) { any = false; if (waste.length && autoToFound({ kind: 'waste' })) any = true; for (let i = 0; i < 7; i++) if (tab[i].length && autoToFound({ kind: 'tab', i, idx: tab[i].length - 1 })) any = true; }
+  }
+  const autoToFound = (src) => { for (let i = 0; i < 4; i++) if (tryMove(src, { kind: 'found', i })) return true; return false; };
+  function update() {
+    if (allUp() && !won && ++autoT % 6 === 0) { for (let i = 0; i < 7; i++) if (tab[i].length && autoToFound({ kind: 'tab', i, idx: tab[i].length - 1 })) break; }
+  }
+  function card(cd, x, y) {
+    c.fillStyle = '#0004'; K.rr(x + 1, y + 2, CW, CH, 7); c.fill();
+    if (!cd.up) { c.fillStyle = '#2b59c3'; K.rr(x, y, CW, CH, 7); c.fill(); c.strokeStyle = '#fff6'; c.lineWidth = 2; K.rr(x + 5, y + 5, CW - 10, CH - 10, 5); c.stroke(); c.fillStyle = '#ffffff22'; for (let i = 0; i < 4; i++) c.fillRect(x + 10 + i * 12, y + 12, 6, CH - 24); return; }
+    c.fillStyle = '#fffdf6'; K.rr(x, y, CW, CH, 7); c.fill(); c.strokeStyle = '#0002'; c.lineWidth = 1; c.stroke();
+    const col = red(cd) ? '#d63031' : '#222';
+    K.text(RANKS[cd.r], x + 6, y + 14, { size: 17, weight: 900, color: col }); K.text(SUITS[cd.s], x + CW - 6, y + 14, { size: 16, color: col, align: 'right' });
+    K.text(SUITS[cd.s], x + CW / 2, y + CH / 2 + 12, { size: 34, color: col, align: 'center' });
+  }
+  const slot = (x, y, label) => { c.strokeStyle = '#ffffff40'; c.lineWidth = 2; K.rr(x, y, CW, CH, 7); c.stroke(); if (label) K.text(label, x + CW / 2, y + CH / 2, { size: 26, color: '#ffffff40', align: 'center' }); };
+  function draw() {
+    K.begin('#0f5132');
+    const t = Math.round((performance.now() - startT) / 1000);
+    K.text('↶ Undo', 16, 30, { size: 16, weight: 800, color: '#ffd166' });
+    K.text(`${moves} moves · ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, K.W - 70, 30, { size: 14, color: '#cfe8d8', align: 'right' });
+    // stock
+    if (stock.length) card({ up: false }, colX(0), TOP); else slot(colX(0), TOP, '↻');
+    // waste (fanned for draw 3)
+    const hide = drag && drag.src.kind === 'waste' ? 1 : 0;
+    const show = waste.slice(Math.max(0, waste.length - (drawN === 3 ? 3 : 1)), waste.length - hide);
+    show.forEach((cd, i) => card(cd, colX(1) + i * 15, TOP));
+    if (!waste.length) slot(colX(1), TOP);
+    for (let i = 0; i < 4; i++) { const f = found[i], hideF = drag && drag.src.kind === 'found' && drag.src.i === i ? 1 : 0; if (f.length - hideF > 0) card(f[f.length - 1 - hideF], colX(3 + i), TOP); else slot(colX(3 + i), TOP, SUITS[i]); }
+    for (let i = 0; i < 7; i++) {
+      const col = tab[i]; if (!col.length) slot(colX(i), TAB, 'K');
+      col.forEach((cd, j) => { if (drag && drag.src.kind === 'tab' && drag.src.i === i && j >= drag.src.idx) return; card(cd, colX(i), fanY(col, j)); });
+    }
+    if (drag) drag.cards.forEach((cd, j) => card(cd, drag.x - CW / 2, drag.y - 20 + j * 26));
+    K.drawParts();
+    if (allUp() && !won) K.text('Finishing up…', K.W / 2, K.H - 20, { size: 14, align: 'center', color: '#cfe8d8' });
+    else if (!K.isTouch) K.text('Tap a card to auto-move it, or drag · D / Space draws · Z undoes', K.W / 2, K.H - 16, { size: 12, align: 'center', color: '#9fcbb2' });
+    K.end();
+  }
+  function menu() {
+    K.state = 'menu';
+    K.screen({ title: 'Solitaire', text: 'Build all four suits up from Ace to King. Stack the columns down in alternating colours. Tap any card to send it where it fits.', best: true,
+      buttons: [{ label: 'Draw 1', act: () => { drawN = 1; deal(); K.play(); } }, { label: 'Draw 3', alt: true, act: () => { drawN = 3; deal(); K.play(); } }] });
+  }
+  K.fmtBest = (n) => `${n} games won`;
+  K.onQuit = menu;
+  drawN = 1; deal(); menu();
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>

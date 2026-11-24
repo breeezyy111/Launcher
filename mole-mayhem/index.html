@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mole Mayhem</title>
+</head>
+<body>
+<script src="../kit/kit.js"></script>
+<script>
+(() => {
+  const K = window.K.init({ id: 'mole-mayhem', W: 480, H: 760, bg: '#6cbf4f', accent: '#ff8c42' });
+  const c = K.ctx, TIME = 60 * 60, KEYS = ['q', 'w', 'e', 'a', 's', 'd', 'z', 'x', 'c'], NUM = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
+  let holes, score, time, combo, hammer, misses;
+  const pos = (i) => ({ x: 90 + (i % 3) * 150, y: 280 + Math.floor(i / 3) * 150 });
+  function reset() { holes = Array.from({ length: 9 }, () => ({ k: null, t: 0, up: 0, life: 0, hit: 0 })); score = 0; time = TIME; combo = 0; misses = 0; hammer = null; K.clearParts(); }
+  function pop() {
+    const free = holes.map((h, i) => (h.k ? -1 : i)).filter((i) => i >= 0); if (!free.length) return;
+    const h = holes[K.pick(free)], prog = 1 - time / TIME, r = Math.random();
+    h.k = r < .07 ? 'gold' : r < .18 + prog * .12 ? 'bomb' : r < .26 + prog * .1 ? 'helmet' : 'mole';
+    h.life = Math.max(38, 90 - prog * 50) * (h.k === 'gold' ? .7 : 1); h.t = 0; h.hit = 0; h.hp = h.k === 'helmet' ? 2 : 1;
+  }
+  function whack(i) {
+    if (K.state !== 'play') return; const h = holes[i], p = pos(i); hammer = { x: p.x, y: p.y - 30, t: 10 };
+    if (!h.k || h.hit || h.up < .4) { combo = 0; K.tone(150, .05, 'square', .04); return; }
+    if (h.k === 'bomb') { h.hit = 1; score = Math.max(0, score - 50); combo = 0; time = Math.max(0, time - 180); K.sfx.boom(); K.shake(12); K.burst(p.x, p.y - 30, '#ff8c42', 30, 6); K.float(p.x, p.y - 80, '-50  -3s', '#ff4d4d'); return; }
+    if (--h.hp > 0) { K.tone(900, .05, 'square', .05); K.float(p.x, p.y - 80, 'Clank!', '#ddd'); return; }
+    h.hit = 1; combo++;
+    const pts = (h.k === 'gold' ? 100 : h.k === 'helmet' ? 30 : 10) * Math.min(5, 1 + Math.floor(combo / 5));
+    score += pts; if (h.k === 'gold') { time = Math.min(TIME, time + 120); K.sfx.coin(); } else K.tone(300 + combo * 15, .08, 'triangle', .08);
+    K.burst(p.x, p.y - 30, h.k === 'gold' ? '#ffd23f' : '#fff', 12, 4); K.float(p.x, p.y - 80, `+${pts}${h.k === 'gold' ? ' +2s' : ''}`, '#fff');
+  }
+  K.onDown = (p) => { for (let i = 0; i < 9; i++) { const q = pos(i); if (Math.abs(p.x - q.x) < 70 && p.y > q.y - 110 && p.y < q.y + 40) return whack(i); } hammer = { x: p.x, y: p.y, t: 10 }; };
+  K.onKey = (k) => { let i = KEYS.indexOf(k.toLowerCase()); if (i < 0) i = NUM.indexOf(k); if (i >= 0) whack(i); };
+  function update() {
+    time--; if (time <= 0) { K.sfx.win(); return K.over({ score, text: `Time! Best combo this round reached ×${Math.min(5, 1 + Math.floor(combo / 5))}.`, again: start }); }
+    const prog = 1 - time / TIME, rate = Math.max(14, 46 - prog * 34);
+    if (K.t % Math.floor(rate) === 0) pop(); if (prog > .5 && K.t % 97 === 0) pop();
+    for (const h of holes) {
+      if (!h.k) { h.up = Math.max(0, h.up - .15); continue; }
+      h.t++;
+      if (h.hit) { h.up -= .12; if (h.up <= 0) h.k = null; continue; }
+      h.up = h.t < h.life ? Math.min(1, h.up + .18) : h.up - .12;
+      if (h.up <= 0 && h.t > 5) { if (h.k === 'mole' || h.k === 'helmet') { combo = 0; misses++; } h.k = null; }
+    }
+    if (hammer) hammer.t--;
+  }
+  function critter(x, y, h) {
+    const up = h.up, top = y - 70 * up;
+    c.save(); c.beginPath(); c.rect(x - 70, y - 140, 140, 140); c.clip();
+    if (h.k === 'bomb') { K.circle(x, top + 10, 30, '#2b2b36'); c.fillStyle = '#c9a36b'; c.fillRect(x - 3, top - 30, 6, 14); K.circle(x, top - 32, 5 + Math.random() * 3, '#ff8c42'); K.circle(x - 10, top, 5, '#555'); }
+    else {
+      const body = h.k === 'gold' ? '#ffd23f' : '#8b5e3c', belly = h.k === 'gold' ? '#fff1a8' : '#c49a6c';
+      c.fillStyle = body; K.rr(x - 32, top - 20, 64, 90, 30); c.fill(); c.fillStyle = belly; c.beginPath(); c.ellipse(x, top + 30, 18, 24, 0, 0, 7); c.fill();
+      if (h.hit) { K.text('x', x - 12, top, { size: 18, weight: 900, color: '#222', align: 'center' }); K.text('x', x + 12, top, { size: 18, weight: 900, color: '#222', align: 'center' }); }
+      else { K.circle(x - 12, top, 5, '#222'); K.circle(x + 12, top, 5, '#222'); K.circle(x - 10, top - 2, 1.5, '#fff'); K.circle(x + 14, top - 2, 1.5, '#fff'); }
+      K.circle(x, top + 12, 8, '#ff9fb2'); c.fillStyle = '#fff'; c.fillRect(x - 5, top + 19, 4, 6); c.fillRect(x + 1, top + 19, 4, 6);
+      if (h.k === 'helmet') { c.fillStyle = h.hp > 1 ? '#9aa6b2' : '#c0c8d0'; c.beginPath(); c.arc(x, top - 6, 30, Math.PI, 0); c.fill(); c.fillRect(x - 34, top - 8, 68, 6); }
+      if (h.k === 'gold') { c.fillStyle = '#ff8c42'; for (let i = -1; i <= 1; i++) { c.beginPath(); c.moveTo(x + i * 12 - 6, top - 20); c.lineTo(x + i * 12, top - 34); c.lineTo(x + i * 12 + 6, top - 20); c.fill(); } }
+    }
+    c.restore();
+  }
+  function draw() {
+    K.begin('#6cbf4f');
+    c.fillStyle = '#7ccb5d'; for (let i = 0; i < 30; i++) c.fillRect((i * 97) % K.W, (i * 53) % K.H, 4, 10);
+    K.text(score.toLocaleString(), 24, 50, { size: 40, weight: 900, color: '#fff', glow: '#0004' });
+    const sec = Math.ceil(time / 60); K.text(`${sec}s`, K.W - 80, 50, { size: 30, weight: 900, color: sec <= 10 ? '#ff4d4d' : '#fff', align: 'right' });
+    c.fillStyle = '#0002'; K.rr(24, 84, K.W - 48, 12, 6); c.fill(); c.fillStyle = '#ffd23f'; K.rr(24, 84, (K.W - 48) * time / TIME, 12, 6); c.fill();
+    if (combo >= 5) K.text(`Combo ×${Math.min(5, 1 + Math.floor(combo / 5))}`, K.W / 2, 130, { size: 22, weight: 900, color: '#ff8c42', align: 'center' });
+    for (let i = 0; i < 9; i++) {
+      const { x, y } = pos(i);
+      c.fillStyle = '#4a2f1d'; c.beginPath(); c.ellipse(x, y, 58, 22, 0, 0, 7); c.fill();
+      c.fillStyle = '#2a1a10'; c.beginPath(); c.ellipse(x, y + 2, 50, 16, 0, 0, 7); c.fill();
+      if (holes[i].k || holes[i].up > 0) critter(x, y, holes[i]);
+      c.fillStyle = '#6cbf4f'; c.beginPath(); c.ellipse(x, y + 14, 64, 14, 0, 0, Math.PI); c.fill();
+      if (!K.isTouch) K.text(KEYS[i].toUpperCase(), x + 52, y + 26, { size: 12, color: '#ffffff88', weight: 800 });
+    }
+    if (hammer && hammer.t > 0) { c.save(); c.translate(hammer.x + 30, hammer.y - 10); c.rotate(-.9 + (10 - hammer.t) * .09); c.fillStyle = '#8b5a2b'; c.fillRect(-4, 0, 8, 60); c.fillStyle = '#d64545'; K.rr(-24, -16, 48, 26, 8); c.fill(); c.restore(); }
+    K.drawParts();
+    K.text('Bonk the moles · helmets take two hits · never the bombs', K.W / 2, K.H - 40, { size: 14, color: '#fff', align: 'center', weight: 700 });
+    K.end();
+  }
+  function start() { reset(); K.play(); }
+  reset();
+  K.screen({ title: 'Mole Mayhem', text: 'Sixty seconds to bonk as many moles as you can. Golden moles add time, helmet moles need two hits, and bombs cost you points and time.', best: true,
+    lines: ['Tap or click the holes', 'Keys: Q W E / A S D / Z X C (or the number pad)', 'Keep hitting without a miss to build a combo'], buttons: [{ label: 'Play', act: start }] });
+  K.run(update, draw);
+})();
+</script>
+</body>
+</html>
